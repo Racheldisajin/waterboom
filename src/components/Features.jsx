@@ -8,7 +8,7 @@ export default function Features() {
                     {/* Feature 1 */}
                     <div className="feature-item">
                         <div className="feature-icon-wrapper">
-                            <img src="assets/pool.png.png" alt="Water Slides Icon" style={{ width: '92%', height: '92%', objectFit: 'contain' }} />
+                            <img src="assets/pool.png.png" alt="Water Slides Icon" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
                         </div>
                         <div className="feature-info">
                             <h3>
@@ -22,7 +22,7 @@ export default function Features() {
                     {/* Feature 2 */}
                     <div className="feature-item">
                         <div className="feature-icon-wrapper">
-                            <img src="assets/saung.png.png" alt="Gazebo & Rest Area Icon" style={{ width: '92%', height: '92%', objectFit: 'contain' }} />
+                            <img src="assets/saung.png.png" alt="Gazebo & Rest Area Icon" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
                         </div>
                         <div className="feature-info">
                             <h3>
@@ -36,7 +36,7 @@ export default function Features() {
                     {/* Feature 3 */}
                     <div className="feature-item">
                         <div className="feature-icon-wrapper">
-                            <img src="assets/kolam.png.png" alt="Swimming Pools Icon" style={{ width: '92%', height: '92%', objectFit: 'contain' }} />
+                            <img src="assets/kolam.png.png" alt="Swimming Pools Icon" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
                         </div>
                         <div className="feature-info">
                             <h3>
