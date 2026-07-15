@@ -476,6 +476,7 @@ img {
     flex-shrink: 0;
     box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
     transition: var(--transition-smooth);
+    overflow: hidden;
 }
 
 .feature-item:hover .feature-icon-wrapper {
