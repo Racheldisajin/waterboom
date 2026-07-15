@@ -8,7 +8,12 @@ export default function Features() {
                     {/* Feature 1 */}
                     <div className="feature-item">
                         <div className="feature-icon-wrapper">
-                            <i className="fa-solid fa-water-slide"></i>
+                            <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ transform: 'scaleX(-1)' }}>
+                                <path d="M18 20V6M14 20V8" />
+                                <path d="M14 10h4M14 14h4M14 18h4" />
+                                <path d="M18 6C14 6, 12 16, 6 16C4 16, 2 20, 2 20" />
+                                <path d="M1 20h6" />
+                            </svg>
                         </div>
                         <div className="feature-info">
                             <h3>Water Slides</h3>
