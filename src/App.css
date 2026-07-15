@@ -431,6 +431,11 @@ img {
     color: white;
 }
 
+.features-bar > *:not(:last-child) {
+    border-right: 1px solid rgba(255, 255, 255, 0.15);
+    padding-right: 30px;
+}
+
 .feature-item {
     display: flex;
     align-items: flex-start;
@@ -1146,6 +1151,13 @@ img {
         grid-template-columns: 1fr;
         gap: 24px;
         padding: 24px;
+    }
+    
+    .features-bar > *:not(:last-child) {
+        border-right: none;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+        padding-right: 0;
+        padding-bottom: 20px;
     }
     
     .about-container {
