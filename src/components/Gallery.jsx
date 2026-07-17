@@ -24,6 +24,9 @@ export default function Gallery() {
                     <div className="gallery-item card-hover">
                         <img src="assets/5.png?v=1.1" alt="Waterboom Cijoho" />
                     </div>
+                    <div className="gallery-item card-hover">
+                        <img src="assets/gallery_1.png?v=1.1" alt="Meluncur Bersama Teman" />
+                    </div>
                 </div>
             </div>
         </section>

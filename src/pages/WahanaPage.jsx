@@ -35,7 +35,7 @@ export default function WahanaPage() {
         {
             id: 3,
             title: '🧸 Kids Waterplay',
-            desc: 'Area bermain air interaktif yang aman dan menyenangkan khusus untuk anak-anak.',
+            desc: 'Area bermain air interaktif yang aman dan menyenangkan khusus untuk anak.',
             icon: 'assets/kids.png?v=1.1',
             bgGradient: 'linear-gradient(135deg, #92c83e 0%, #7eb32b 100%)',
             details: [
@@ -68,11 +68,11 @@ export default function WahanaPage() {
     return (
         <div style={{ paddingTop: '80px', backgroundColor: '#f4f8fc', minHeight: '100vh' }}>
             {/* Header Banner */}
-            <div style={{ 
-                background: 'linear-gradient(135deg, #052049 0%, #0d3875 100%)', 
-                color: 'white', 
-                padding: '60px 0', 
-                textAlign: 'center' 
+            <div style={{
+                background: 'linear-gradient(135deg, #052049 0%, #0d3875 100%)',
+                color: 'white',
+                padding: '60px 0',
+                textAlign: 'center'
             }}>
                 <div className="container">
                     <h1 style={{ fontSize: '2.8rem', fontWeight: 800, marginBottom: '16px', color: 'white' }}>WAHANA & ATRAKSI</h1>
@@ -89,7 +89,7 @@ export default function WahanaPage() {
                         const isEven = index % 2 === 0;
                         const isLight = wahana.textColor === '#052049';
                         return (
-                            <div 
+                            <div
                                 key={wahana.id}
                                 style={{
                                     display: 'grid',
@@ -124,10 +124,10 @@ export default function WahanaPage() {
                                         boxShadow: '0 8px 20px rgba(0,0,0,0.15)',
                                         marginBottom: '24px'
                                     }}>
-                                        <img 
-                                            src={wahana.icon} 
-                                            alt={wahana.title} 
-                                            style={{ width: '70%', height: '70%', objectFit: 'contain' }} 
+                                        <img
+                                            src={wahana.icon}
+                                            alt={wahana.title}
+                                            style={{ width: '70%', height: '70%', objectFit: 'contain' }}
                                         />
                                     </div>
                                     <h2 style={{ color: isLight ? '#052049' : 'white', fontSize: '1.8rem', fontWeight: 800, marginBottom: '12px' }}>

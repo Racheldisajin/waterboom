@@ -4,20 +4,20 @@
 
 :root {
     /* Brand Colors */
-    --color-primary: #052049;       /* Deep Navy Blue */
-    --color-primary-light: #0d3875; /* Lighter Navy Blue */
-    --color-accent: #92c83e;        /* Bright Lime Green */
-    --color-accent-hover: #7eb32b;  /* Darker Lime Green */
+    --color-primary: #1B2A4A;       /* Navy/Dark Blue */
+    --color-primary-light: #2c3f7c; /* Lighter Navy Blue */
+    --color-accent: #6B9B37;        /* Forest/Leaf Green */
+    --color-accent-hover: #567c2c;  /* Darker Leaf Green */
     --color-teal: #008a90;          /* Teal for swan card */
     --color-teal-hover: #00747a;
-    --color-soft-blue: #e8f1fc;     /* Light blue tint for group card */
+    --color-soft-blue: #D6EAF8;     /* Light blue for background / icons */
     
     /* Backgrounds & Text */
     --color-bg-body: #f4f8fc;
     --color-bg-card: #ffffff;
-    --color-text-dark: #071d3f;
+    --color-text-dark: #1B2A4A;
     --color-text-light: #f4f8fc;
-    --color-text-muted: #536c8b;
+    --color-text-muted: #6B7280;     /* Gray */
     --color-border: #e2eaf4;
     --color-white: #ffffff;
     
@@ -129,7 +129,7 @@ img {
 
 .btn-accent {
     background-color: var(--color-accent);
-    color: var(--color-primary);
+    color: var(--color-white);
     border-color: var(--color-accent);
 }
 
@@ -183,18 +183,19 @@ img {
    HEADER NAVIGATION
    ========================================== */
 .navbar-header {
-    position: sticky;
-    top: 0;
+    position: relative;
+    width: 100%;
     z-index: 100;
-    background-color: rgba(255, 255, 255, 0.95);
-    backdrop-filter: blur(10px);
-    border-bottom: 1px solid var(--color-border);
+    background-color: #ffffff;
+    border-radius: 0 0 35px 35px; /* Round bottom corners */
+    margin: 0;
+    box-shadow: 0 10px 30px rgba(27, 42, 92, 0.04);
+    border-bottom: none;
     transition: var(--transition-smooth);
 }
 
 .navbar-header.scrolled {
-    box-shadow: var(--shadow-soft);
-    padding: 10px 0;
+    box-shadow: 0 12px 35px rgba(27, 42, 92, 0.08);
 }
 
 .navbar-container {
@@ -212,8 +213,11 @@ img {
 }
 
 .brand-logo {
-    height: 48px;
+    height: 52px;
     width: auto;
+    transform: scale(1.4);
+    transform-origin: center;
+    margin-right: 8px;
 }
 
 .brand-text {
@@ -235,7 +239,7 @@ img {
     font-weight: 700;
     font-size: 1.25rem;
     line-height: 1.1;
-    color: #178fe6; /* Ocean light blue accent */
+    color: var(--color-accent);
     letter-spacing: 0.5px;
 }
 
@@ -256,23 +260,24 @@ img {
 }
 
 .nav-link:hover, .nav-link.active {
-    color: var(--color-primary);
+    color: var(--color-accent);
 }
 
 .nav-link::after {
     content: '';
     position: absolute;
     bottom: -4px;
-    left: 0;
+    left: 50%;
+    transform: translateX(-50%);
     width: 0;
-    height: 3px;
-    background-color: var(--color-primary);
+    height: 3.5px;
+    background-color: var(--color-accent);
     border-radius: var(--border-radius-pill);
     transition: var(--transition-smooth);
 }
 
 .nav-link.active::after, .nav-link:hover::after {
-    width: 100%;
+    width: 16px;
 }
 
 .mobile-nav-toggle {
@@ -336,13 +341,14 @@ img {
    HERO SECTION
    ========================================== */
 .hero-section {
-    padding: 80px 0 160px 0;
-    background-color: #ffffff;
+    padding: 60px 0 100px 0;
+    background: linear-gradient(135deg, var(--color-soft-blue) 0%, #ffffff 60%);
     position: relative;
     overflow: hidden;
-    min-height: 600px;
+    min-height: 520px;
     display: flex;
     align-items: center;
+    z-index: 10;
 }
 
 .hero-container {
@@ -393,28 +399,288 @@ img {
     position: absolute;
     top: 0;
     right: 0;
-    width: 58%;
+    width: 54%;
     height: 100%;
     z-index: 1;
+}
+
+.hero-img-container {
+    width: 100%;
+    height: 100%;
+    clip-path: url(#hero-clip-path);
     overflow: hidden;
+    position: relative;
+    z-index: 2;
 }
 
 .hero-img {
     width: 100%;
     height: 100%;
     object-fit: cover;
-    object-position: left center;
+    object-position: center center;
+    transition: transform 0.8s ease;
 }
 
-.hero-media::after {
-    content: '';
+.hero-media:hover .hero-img {
+    transform: scale(1.05);
+}
+
+/* Floating Water Droplets */
+.water-drop {
+    position: absolute;
+    background: radial-gradient(circle at 35% 35%, rgba(255, 255, 255, 0.9), rgba(186, 226, 255, 0.6) 55%, rgba(91, 171, 237, 0.3) 100%);
+    border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%;
+    z-index: 3;
+    pointer-events: none;
+    box-shadow: inset 1px 1px 3px rgba(255, 255, 255, 0.8), 2px 4px 6px rgba(27, 42, 92, 0.15);
+    animation: float-drop 4s ease-in-out infinite alternate;
+}
+
+.drop-1 {
+    width: 25px;
+    height: 30px;
+    left: 8%;
+    top: 20%;
+    animation-delay: 0s;
+}
+
+.drop-2 {
+    width: 15px;
+    height: 18px;
+    left: 2%;
+    top: 48%;
+    animation-delay: 1s;
+}
+
+.drop-3 {
+    width: 20px;
+    height: 24px;
+    left: 6%;
+    top: 72%;
+    animation-delay: 2s;
+}
+
+.drop-4 {
+    width: 12px;
+    height: 14px;
+    left: 14%;
+    top: 86%;
+    animation-delay: 0.5s;
+}
+
+.drop-5 {
+    width: 35px;
+    height: 40px;
+    left: -5%;
+    top: 75%;
+    animation-delay: 1.5s;
+}
+
+.drop-6 {
+    width: 15px;
+    height: 18px;
+    left: 8%;
+    top: 85%;
+    animation-delay: 2.5s;
+    background: radial-gradient(circle at 35% 35%, rgba(255, 255, 255, 1), rgba(186, 226, 255, 0.8) 55%, rgba(91, 171, 237, 0.5) 100%);
+}
+
+.sun-flare {
     position: absolute;
     top: 0;
-    left: -1px;
+    left: 36%;
+    width: 200px;
+    height: 200px;
+    z-index: 5;
+    pointer-events: none;
+    transform: translate(-50%, -50%);
+}
+
+.sun-flare svg {
     width: 100%;
     height: 100%;
-    background: linear-gradient(to right, #ffffff 0%, rgba(255, 255, 255, 0.95) 10%, rgba(255, 255, 255, 0) 30%);
+}
+
+.hero-curves {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
     pointer-events: none;
+    z-index: 3;
+}
+
+.water-splash-overlay {
+    position: absolute;
+    bottom: -30px;
+    left: -80px;
+    width: 300px;
+    height: 300px;
+    z-index: 4;
+    pointer-events: none;
+    transform: rotate(5deg);
+}
+
+.water-splash-overlay svg {
+    width: 100%;
+    height: 100%;
+}
+
+@keyframes float-drop {
+    0% {
+        transform: translateY(0) rotate(0deg) scale(1);
+    }
+    100% {
+        transform: translateY(-8px) rotate(8deg) scale(1.05);
+    }
+}
+
+/* Reverted standard wrappers */
+
+/* Palm Leaf Ornament in Bottom-Left Corner of Hero */
+.palm-leaf-decor {
+    position: absolute;
+    bottom: -40px;
+    left: -30px;
+    width: 150px;
+    height: auto;
+    z-index: 22; /* High z-index to hover slightly over the features bar */
+    pointer-events: none;
+    mix-blend-mode: multiply;
+    opacity: 0.95;
+    transform: rotate(-10deg);
+}
+
+.dot-matrix {
+    position: absolute;
+    background-image: radial-gradient(#93c2f0 2.5px, transparent 2.5px);
+    background-size: 14px 14px;
+    opacity: 0.65;
+    pointer-events: none;
+}
+
+.dot-matrix-left {
+    bottom: 50px;
+    left: 20px;
+    width: 58px;
+    height: 86px;
+    z-index: 1;
+}
+
+/* Curved Green Underline under Hero Title */
+.curved-underline {
+    width: 260px;
+    height: auto;
+    margin-top: -6px;
+    margin-bottom: 24px;
+    display: block;
+}
+
+/* Floating Features Bar (Navy Banner Overlay) */
+.floating-features-bar {
+    background: #ffffff;
+    border: 1px solid rgba(0, 0, 0, 0.05);
+    border-radius: 60px; /* Highly rounded pill layout */
+    padding: 24px 50px;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 30px;
+    box-shadow: 0 15px 40px rgba(0, 0, 0, 0.06);
+    margin: -25px auto 25px auto; /* Reduced margin bottom to match user request */
+    position: relative;
+    z-index: 20;
+    max-width: var(--container-width);
+    width: calc(100% - 48px);
+}
+
+.floating-feature-item {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+
+.floating-feature-item:not(:last-child) {
+    border-right: 1px solid rgba(0, 0, 0, 0.08); /* Clean light grey border line */
+    padding-right: 20px;
+}
+
+.floating-feature-item .feature-icon-circle {
+    width: 72px;
+    height: 72px;
+    border-radius: 50%;
+    background-color: var(--color-soft-blue); /* Light Blue #D6EAF8 */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: var(--transition-smooth);
+    overflow: hidden;
+}
+
+.floating-feature-item:hover .feature-icon-circle {
+    transform: scale(1.08);
+    background-color: #e0ecff; /* Slightly darker light blue on hover */
+}
+
+.floating-feature-item .feature-text {
+    display: flex;
+    flex-direction: column;
+}
+
+.floating-feature-item .feature-title {
+    font-family: var(--font-heading);
+    font-size: 1.05rem;
+    font-weight: 800;
+    color: var(--color-primary); /* Dark navy */
+    margin-bottom: 2px;
+}
+
+.feature-title-underline {
+    width: 25px;
+    height: 2.5px;
+    background-color: var(--color-accent); /* Forest Green */
+    border-radius: 2px;
+    margin-top: 2px;
+    margin-bottom: 8px;
+}
+
+.floating-feature-item .feature-desc {
+    font-family: var(--font-body);
+    font-size: 0.8rem;
+    color: #4a5568; /* Dark grey/slate text */
+    line-height: 1.4;
+}
+
+.feature-img-icon {
+    width: 56px;
+    height: 56px;
+    object-fit: contain;
+    transform: scale(1.45);
+}
+
+.feature-title {
+    font-family: var(--font-heading);
+    font-size: 0.95rem;
+    font-weight: 800;
+    color: var(--color-primary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 6px;
+}
+
+.feature-line {
+    width: 25px;
+    height: 3px;
+    background-color: var(--color-accent);
+    border-radius: 2px;
+    margin-bottom: 12px;
+}
+
+.feature-desc {
+    font-size: 0.85rem;
+    color: var(--color-text-muted);
+    line-height: 1.5;
 }
 
 .btn-icon-circle {
@@ -501,7 +767,7 @@ img {
    ABOUT SECTION (TENTANG KAMI)
    ========================================== */
 .about-section {
-    padding: 80px 0;
+    padding: 30px 0;
 }
 
 .about-container {
@@ -617,7 +883,7 @@ img {
    TICKETS SECTION
    ========================================== */
 .tickets-section {
-    padding: 100px 0;
+    padding: 45px 0 100px 0;
     background-color: white;
 }
 
@@ -725,64 +991,123 @@ img {
    TESTIMONIAL SECTION
    ========================================== */
 .testimonial-section {
-    padding: 80px 0;
-    background-color: var(--color-bg-body);
+    padding: 40px 0;
+    background-color: #f4f8fc;
 }
 
-.testimonial-container {
-    background-color: var(--color-primary);
-    border-radius: var(--border-radius-lg);
+.testimonial-card {
+    background-color: #ffffff;
+    border-radius: 30px;
     overflow: hidden;
     display: grid;
-    grid-template-columns: 1.2fr 0.8fr;
-    color: white;
-    box-shadow: var(--shadow-medium);
+    grid-template-columns: 53% 47%;
+    box-shadow: 0 25px 60px rgba(27, 42, 92, 0.06);
+    min-height: 420px;
+    position: relative;
+}
+
+.testimonial-splash-bg {
+    position: absolute;
+    bottom: -20px;
+    left: 20%;
+    width: 280px;
+    height: 280px;
+    opacity: 0.75;
+    pointer-events: none;
+    z-index: 1;
 }
 
 .testimonial-content {
-    padding: 60px;
+    padding: 60px 40px 50px 75px;
     display: flex;
     flex-direction: column;
     justify-content: center;
-}
-
-.quote-mark {
-    font-family: var(--font-heading);
-    font-size: 6rem;
-    font-weight: 800;
-    color: var(--color-accent);
-    line-height: 1;
-    margin-bottom: -20px;
-}
-
-.testimonial-text {
-    font-size: 1.6rem;
-    font-weight: 500;
-    line-height: 1.4;
-    margin-bottom: 20px;
-    font-style: italic;
-}
-
-.testimonial-author {
-    font-size: 1rem;
-    color: var(--color-accent);
-    font-weight: 600;
-}
-
-.testimonial-img-wrapper {
     position: relative;
-    min-height: 300px;
+    z-index: 5;
 }
 
-.testimonial-img-slice {
+.testimonial-quote-icon {
+    margin-bottom: 24px;
+    display: flex;
+    align-items: center;
+}
+
+.testimonial-quote-text {
+    font-family: var(--font-body);
+    font-size: 1.55rem;
+    font-weight: 700;
+    line-height: 1.5;
+    color: var(--color-primary); /* Bold Navy */
+    margin: 0 0 22px 0;
+    padding: 0;
+    border: none;
+    background: none;
+}
+
+.testimonial-line {
+    width: 45px;
+    height: 4px;
+    background-color: var(--color-accent); /* Forest Green accent line */
+    border-radius: 2px;
+    margin-bottom: 18px;
+}
+
+.testimonial-quote-author {
+    font-family: var(--font-body);
+    font-size: 1.05rem;
+    font-style: italic;
+    font-weight: 600;
+    color: var(--color-accent-hover); /* Forest Green color for author */
+    margin-bottom: 35px;
+}
+
+.testimonial-pagination {
+    display: flex;
+    gap: 8px;
+    margin-top: 10px;
+}
+
+.testimonial-pagination .dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background-color: #e2e8f0;
+    transition: all 0.3s ease;
+}
+
+.testimonial-pagination .dot.active {
+    background-color: var(--color-accent);
+    width: 22px;
+    border-radius: 4px;
+}
+
+.testimonial-curve-divider {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 53%; /* Sits exactly at the grid boundary */
+    width: 150px;
+    height: 100%;
+    z-index: 4;
+    transform: translateX(-100%);
+    pointer-events: none;
+}
+
+.testimonial-image-area {
+    position: relative;
+    height: 100%;
+    width: 100%;
+    z-index: 2;
+}
+
+.testimonial-image {
     position: absolute;
     top: 0;
     left: 0;
-    right: -30px; /* Stretch beyond container to eliminate blue border on the right */
+    right: 0;
     bottom: 0;
-    background-size: 155%; /* Zoom in the image further */
-    background-position: center center;
-    clip-path: polygon(5% 0, 100% 0, 100% 100%, 0% 100%); /* Push slant closer to the left edge */
+    background-size: cover;
+    background-position: center;
 }
 
 /* ==========================================
@@ -819,12 +1144,26 @@ img {
 }
 
 .gallery-grid {
-    display: grid;
-    grid-template-columns: repeat(5, 1fr);
+    display: flex;
+    overflow-x: auto;
     gap: 16px;
+    padding-bottom: 12px;
+}
+
+.gallery-grid::-webkit-scrollbar {
+    height: 8px;
+}
+.gallery-grid::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.05);
+    border-radius: 4px;
+}
+.gallery-grid::-webkit-scrollbar-thumb {
+    background: var(--color-accent);
+    border-radius: 4px;
 }
 
 .gallery-item {
+    flex: 0 0 280px; /* Uniform width */
     border-radius: var(--border-radius-md);
     overflow: hidden;
     box-shadow: var(--shadow-soft);
@@ -1153,6 +1492,23 @@ img {
         border-bottom: none;
         padding-bottom: 0;
     }
+
+    .floating-features-bar {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 30px;
+        border-radius: 30px;
+        padding: 24px 35px;
+    }
+    .floating-features-bar .floating-feature-item {
+        border-right: none !important;
+        padding-right: 0 !important;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+        padding-bottom: 15px;
+    }
+    .floating-features-bar .floating-feature-item:nth-last-child(-n+2) {
+        border-bottom: none !important;
+        padding-bottom: 0 !important;
+    }
 }
 
 @media (max-width: 1024px) {
@@ -1209,12 +1565,17 @@ img {
         margin: 0 auto;
     }
     
-    .testimonial-container {
+    .testimonial-card {
         grid-template-columns: 1fr;
+        min-height: auto;
     }
     
-    .testimonial-img-wrapper {
+    .testimonial-image-area {
         display: none;
+    }
+    
+    .testimonial-content {
+        padding: 45px 35px 35px 35px;
     }
     
     .footer-grid {
@@ -1245,6 +1606,23 @@ img {
     
     .section-title, .section-title-center {
         font-size: 2rem;
+    }
+
+    .floating-features-bar {
+        grid-template-columns: 1fr;
+        gap: 20px;
+        padding: 24px;
+        border-radius: 24px;
+    }
+    .floating-features-bar .floating-feature-item {
+        border-right: none !important;
+        padding-right: 0 !important;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.12) !important;
+        padding-bottom: 15px !important;
+    }
+    .floating-features-bar .floating-feature-item:last-child {
+        border-bottom: none !important;
+        padding-bottom: 0 !important;
     }
 }
 

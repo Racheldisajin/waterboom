@@ -6,7 +6,10 @@ export default function Tickets({ onOpenBooking }) {
             <div className="container">
                 <div className="section-header-center">
                     <h5 className="section-badge-green">PEMBELIAN ONLINE</h5>
-                    <h2 className="section-title-center">DAFTAR TIKET</h2>
+                    <h2 className="section-title-center" style={{ marginBottom: '4px' }}>DAFTAR TIKET</h2>
+                    <svg className="curved-underline" width="220" height="12" viewBox="0 0 220 12" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ margin: '4px auto 0 auto', display: 'block' }}>
+                        <path d="M 4 8 C 50 14, 170 14, 216 8" stroke="var(--color-accent)" strokeWidth="3.5" strokeLinecap="round" />
+                    </svg>
                 </div>
                 <div className="tickets-grid">
                     {/* Ticket Card 1 */}

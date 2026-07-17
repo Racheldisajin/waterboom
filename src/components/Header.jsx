@@ -4,15 +4,24 @@ import { Link, useLocation } from 'react-router-dom';
 export default function Header({ onOpenBooking }) {
     const [isScrolled, setIsScrolled] = useState(false);
     const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+    const [showNotif, setShowNotif] = useState(false);
+    const [isMobile, setIsMobile] = useState(window.innerWidth <= 600);
     const { pathname } = useLocation();
 
     useEffect(() => {
         const handleScroll = () => {
             setIsScrolled(window.scrollY > 20);
         };
+        const handleResize = () => {
+            setIsMobile(window.innerWidth <= 600);
+        };
 
         window.addEventListener('scroll', handleScroll);
-        return () => window.removeEventListener('scroll', handleScroll);
+        window.addEventListener('resize', handleResize);
+        return () => {
+            window.removeEventListener('scroll', handleScroll);
+            window.removeEventListener('resize', handleResize);
+        };
     }, []);
 
     const navLinks = [
@@ -24,6 +33,88 @@ export default function Header({ onOpenBooking }) {
         { path: '/tentang-kami', label: 'Tentang Kami' },
         { path: '/kontak', label: 'Kontak' }
     ];
+
+    if (isMobile) {
+        if (pathname === '/') {
+            return null; // Handled by MobileAppView directly
+        }
+        return (
+            <>
+                <header className="mobile-app-header">
+                    <button className="header-icon-btn" onClick={() => setIsDrawerOpen(true)}>
+                        <i className="fa-solid fa-bars-staggered"></i>
+                    </button>
+                    <div className="header-logo-container">
+                        <img src="assets/logo.png" alt="Waterboom Logo" className="app-logo-img" />
+                        <div className="app-logo-text">
+                            <span className="app-title">WATERBOOM</span>
+                            <span className="app-subtitle">CIJOHO INDAH</span>
+                        </div>
+                    </div>
+                    <div style={{ display: 'flex', gap: '14px', alignItems: 'center' }}>
+                        <button className="header-icon-btn notif-bell" onClick={() => setShowNotif(!showNotif)}>
+                            <i className="fa-regular fa-bell"></i>
+                            <span className="bell-badge"></span>
+                        </button>
+                        <Link to="/?tab=profil" className="header-avatar-btn">
+                            <img src="assets/bebek.png?v=1.1" alt="Avatar" className="app-avatar-img" />
+                        </Link>
+                    </div>
+                </header>
+
+                {showNotif && (
+                    <div className="notif-dropdown">
+                        <div className="notif-header">
+                            <h4>Notifikasi</h4>
+                            <button onClick={() => setShowNotif(false)}>&times;</button>
+                        </div>
+                        <div className="notif-list">
+                            <div className="notif-item unread">
+                                <i className="fa-solid fa-gift text-accent"></i>
+                                <div>
+                                    <p><strong>Diskon Rombongan 25%</strong></p>
+                                    <small>Nikmati potongan harga rombongan sekolah!</small>
+                                </div>
+                            </div>
+                            <div className="notif-item">
+                                <i className="fa-solid fa-circle-check text-green"></i>
+                                <div>
+                                    <p><strong>Wahana Kids Waterplay Dibuka!</strong></p>
+                                    <small>Nikmati keseruan ember tumpah terbaru.</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* Mobile Navigation Drawer */}
+                <div className={`mobile-drawer ${isDrawerOpen ? 'active' : ''}`}>
+                    <button className="mobile-drawer-close" onClick={() => setIsDrawerOpen(false)}>
+                        <i className="fa-solid fa-xmark"></i>
+                    </button>
+                    <ul className="mobile-drawer-links">
+                        {navLinks.map((link) => (
+                            <li key={link.path}>
+                                <Link 
+                                    to={link.path} 
+                                    onClick={() => setIsDrawerOpen(false)} 
+                                    className={`drawer-link ${pathname === link.path ? 'active' : ''}`}
+                                    style={{ color: pathname === link.path ? 'var(--color-primary)' : 'inherit' }}
+                                >
+                                    {link.label}
+                                </Link>
+                            </li>
+                        ))}
+                        <li>
+                            <button className="btn btn-accent btn-pill w-full" onClick={() => { setIsDrawerOpen(false); onOpenBooking(); }}>
+                                <i className="fa-solid fa-ticket"></i> PESAN TIKET
+                            </button>
+                        </li>
+                    </ul>
+                </div>
+            </>
+        );
+    }
 
     return (
         <>
@@ -53,7 +144,7 @@ export default function Header({ onOpenBooking }) {
                     </nav>
 
                     <div className="nav-actions">
-                        <button className="btn btn-primary-dark btn-pill" onClick={() => onOpenBooking()}>
+                        <button className="btn btn-accent btn-pill" onClick={() => onOpenBooking()}>
                             <i className="fa-solid fa-ticket"></i> PESAN TIKET
                         </button>
                     </div>
@@ -83,7 +174,7 @@ export default function Header({ onOpenBooking }) {
                         </li>
                     ))}
                     <li>
-                        <button className="btn btn-primary-dark btn-pill w-full" onClick={() => { setIsDrawerOpen(false); onOpenBooking(); }}>
+                        <button className="btn btn-accent btn-pill w-full" onClick={() => { setIsDrawerOpen(false); onOpenBooking(); }}>
                             <i className="fa-solid fa-ticket"></i> PESAN TIKET
                         </button>
                     </li>

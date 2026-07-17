@@ -1,8 +1,17 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 
 export default function MobileAppView({ onOpenBooking }) {
     const [activeTab, setActiveTab] = useState('beranda');
+    const location = useLocation();
+
+    useEffect(() => {
+        const params = new URLSearchParams(location.search);
+        const tab = params.get('tab');
+        if (tab && ['beranda', 'tiket', 'riwayat', 'profil'].includes(tab)) {
+            setActiveTab(tab);
+        }
+    }, [location]);
     const [selectedTicket, setSelectedTicket] = useState('reguler');
     const [ticketQty, setTicketQty] = useState(0);
     const [sewaBan, setSewaBan] = useState(0);
