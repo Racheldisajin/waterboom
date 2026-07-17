@@ -169,6 +169,7 @@ export default function WahanaPage() {
                     })}
                 </div>
             </div>
+            </div>
         </div>
     );
 }

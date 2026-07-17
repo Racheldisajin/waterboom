@@ -134,6 +134,7 @@ export default function GaleriPage() {
                     ))}
                 </div>
             </div>
+            </div>
         </div>
     );
 }

@@ -126,6 +126,7 @@ export default function FasilitasPage() {
                     </p>
                 </div>
             </div>
+            </div>
         </div>
     );
 }

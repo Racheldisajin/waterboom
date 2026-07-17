@@ -205,6 +205,7 @@ export default function KontakPage() {
                     </div>
                 </div>
             </div>
+            </div>
         </div>
     );
 }

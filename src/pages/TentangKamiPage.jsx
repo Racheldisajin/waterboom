@@ -183,6 +183,7 @@ export default function TentangKamiPage() {
                     </div>
                 </div>
             </div>
+            </div>
         </div>
     );
 }
