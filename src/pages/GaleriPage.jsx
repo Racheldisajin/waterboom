@@ -23,23 +23,24 @@ export default function GaleriPage() {
         : galleryItems.filter(item => item.category === selectedCategory);
 
     return (
-        <div style={{ paddingTop: '80px', backgroundColor: '#f4f8fc', minHeight: '100vh' }}>
-            {/* Title Section */}
-            <div style={{ 
-                background: 'linear-gradient(135deg, #052049 0%, #0d3875 100%)', 
-                color: 'white', 
-                padding: '60px 0', 
-                textAlign: 'center' 
-            }}>
-                <div className="container">
-                    <h1 style={{ fontSize: '2.8rem', fontWeight: 800, marginBottom: '16px', color: 'white' }}>GALERI FOTO</h1>
-                    <p style={{ fontSize: '1.1rem', opacity: 0.9, maxWidth: '600px', margin: '0 auto' }}>
+        <div className="page-wrapper">
+            <div className="container" style={{ padding: '20px 24px 20px 24px' }}>
+                {/* Title Section */}
+                <div className="page-header-center">
+                    <h5 className="section-badge-green">GALERI FOTO</h5>
+                    <h1 className="page-title">Galeri Momen Seru</h1>
+                    <p className="page-subtitle">
                         Abadikan momen-momen seru, tawa ceria keluarga, dan suasana menyegarkan di destinasi wisata air terbaik Tasikmalaya.
                     </p>
+                    <div style={{ marginTop: '12px' }}>
+                        <svg width="45" height="10" viewBox="0 0 45 10" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M2 3 C 8 0, 10 6, 16 3 C 22 0, 24 6, 30 3 C 36 0, 38 6, 43 3" stroke="var(--color-accent)" strokeWidth="2.5" strokeLinecap="round" />
+                            <path d="M2 7 C 8 4, 10 10, 16 7 C 22 4, 24 10, 30 7 C 36 4, 38 10, 43 7" stroke="#cbd5e1" strokeWidth="1.5" strokeLinecap="round" opacity="0.6" />
+                        </svg>
+                    </div>
                 </div>
-            </div>
 
-            <div className="container" style={{ padding: '40px 24px 80px 24px' }}>
+                <div style={{ padding: '20px 0 80px 0' }}>
                 {/* Filter Categories */}
                 <div style={{ 
                     display: 'flex', 
