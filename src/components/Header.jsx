@@ -5,7 +5,7 @@ export default function Header({ onOpenBooking }) {
     const [isScrolled, setIsScrolled] = useState(false);
     const [isDrawerOpen, setIsDrawerOpen] = useState(false);
     const [showNotif, setShowNotif] = useState(false);
-    const [isMobile, setIsMobile] = useState(window.innerWidth <= 600);
+    const [isMobile, setIsMobile] = useState(window.innerWidth <= 1024);
     const { pathname } = useLocation();
 
     useEffect(() => {
@@ -13,7 +13,7 @@ export default function Header({ onOpenBooking }) {
             setIsScrolled(window.scrollY > 20);
         };
         const handleResize = () => {
-            setIsMobile(window.innerWidth <= 600);
+            setIsMobile(window.innerWidth <= 1024);
         };
 
         window.addEventListener('scroll', handleScroll);
@@ -42,7 +42,7 @@ export default function Header({ onOpenBooking }) {
             <>
                 <header className="mobile-app-header">
                     <button className="header-icon-btn" onClick={() => setIsDrawerOpen(true)}>
-                        <i className="fa-solid fa-bars-staggered"></i>
+                        <i className="fa-solid fa-bars"></i>
                     </button>
                     <div className="header-logo-container">
                         <img src="assets/logo.png" alt="Waterboom Logo" className="app-logo-img" />

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { HashRouter as Router, Routes, Route } from 'react-router-dom';
+import { HashRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
 import './App.css';
 import Header from './components/Header';
 import Footer from './components/Footer';
@@ -15,12 +15,14 @@ import BeritaPage from './pages/BeritaPage';
 import FasilitasPage from './pages/FasilitasPage';
 import TentangKamiPage from './pages/TentangKamiPage';
 import KontakPage from './pages/KontakPage';
+import MobileAppView from './components/MobileAppView';
 
-function App() {
+function AppContent() {
   const [isBookingOpen, setIsBookingOpen] = useState(false);
   const [isSuccessOpen, setIsSuccessOpen] = useState(false);
   const [selectedTicket, setSelectedTicket] = useState('reguler');
   const [bookingDetails, setBookingDetails] = useState(null);
+  const location = useLocation();
 
   const handleOpenBooking = (ticketType = 'reguler') => {
     setSelectedTicket(ticketType);
@@ -47,12 +49,14 @@ function App() {
     setIsSuccessOpen(false);
   };
 
+  const isKasir = location.pathname === '/kasir';
+
   return (
-    <Router>
+    <>
       <ScrollToTop />
-      <Header onOpenBooking={handleOpenBooking} />
+      {!isKasir && <Header onOpenBooking={handleOpenBooking} />}
       
-      <main>
+      <main className={isKasir ? 'kasir-main' : ''}>
         <Routes>
           <Route path="/" element={<Home onOpenBooking={handleOpenBooking} />} />
           <Route path="/wahana" element={<WahanaPage />} />
@@ -61,10 +65,11 @@ function App() {
           <Route path="/fasilitas" element={<FasilitasPage />} />
           <Route path="/tentang-kami" element={<TentangKamiPage />} />
           <Route path="/kontak" element={<KontakPage />} />
+          <Route path="/kasir" element={<MobileAppView isCashierMode={true} onOpenBooking={handleOpenBooking} />} />
         </Routes>
       </main>
 
-      <Footer onOpenBooking={handleOpenBooking} />
+      {!isKasir && <Footer onOpenBooking={handleOpenBooking} />}
 
       {/* Booking Form Overlay */}
       <BookingModal 
@@ -80,6 +85,14 @@ function App() {
         onClose={handleCloseSuccess} 
         details={bookingDetails}
       />
+    </>
+  );
+}
+
+function App() {
+  return (
+    <Router>
+      <AppContent />
     </Router>
   );
 }

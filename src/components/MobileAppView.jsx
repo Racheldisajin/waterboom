@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 
-export default function MobileAppView({ onOpenBooking }) {
+export default function MobileAppView({ onOpenBooking, isCashierMode = false }) {
     const [activeTab, setActiveTab] = useState('beranda');
     const location = useLocation();
 
@@ -19,6 +19,10 @@ export default function MobileAppView({ onOpenBooking }) {
     const [sewaGazebo, setSewaGazebo] = useState(0);
     const [showSidebar, setShowSidebar] = useState(false);
     const [showNotif, setShowNotif] = useState(false);
+    const [showReceipt, setShowReceipt] = useState(false);
+    const [receiptData, setReceiptData] = useState(null);
+    const [cashReceived, setCashReceived] = useState('');
+    const [cashChange, setCashChange] = useState(0);
 
     // Purchase history & active tickets
     const [activeTicketData, setActiveTicketData] = useState(null);
@@ -70,30 +74,46 @@ export default function MobileAppView({ onOpenBooking }) {
 
     // Handle Payment simulation
     const handlePayment = () => {
+        if (ticketQty <= 0) {
+            alert('Silakan tentukan jumlah tiket terlebih dahulu!');
+            return;
+        }
+
         const bookingCode = 'WCI-' + Math.floor(100000 + Math.random() * 900000);
-        const today = new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+        const today = new Date().toLocaleDateString('id-ID', { 
+            day: 'numeric', 
+            month: 'long', 
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+        });
         
         const newTicket = {
             code: bookingCode,
             date: today,
             type: selectedTicket === 'reguler' ? 'Tiket Reguler' : selectedTicket === 'rombongan' ? 'Tiket Rombongan' : 'Kursus Renang',
+            ticketTypeKey: selectedTicket,
             qty: ticketQty,
+            ticketPrice: ticketPrice,
+            subtotal: subtotal,
             rentals: {
                 ban: sewaBan,
                 sepeda: sewaSepeda,
                 gazebo: sewaGazebo
             },
+            rentalsPrice: {
+                ban: PRICES.rentals.ban,
+                sepeda: PRICES.rentals.sepeda,
+                gazebo: PRICES.rentals.gazebo
+            },
             total: grandTotal
         };
 
-        // Set as active ticket
-        setActiveTicketData(newTicket);
-        
         // Add to history
         setHistoryList(prev => [
             {
                 code: bookingCode,
-                date: today,
+                date: today.split(',')[0],
                 type: newTicket.type,
                 qty: ticketQty,
                 total: grandTotal,
@@ -102,14 +122,42 @@ export default function MobileAppView({ onOpenBooking }) {
             ...prev
         ]);
 
+        if (isCashierMode) {
+            setReceiptData(newTicket);
+            setCashReceived('');
+            setCashChange(0);
+            setShowReceipt(true);
+        } else {
+            // Set as active ticket for visitor mode
+            setActiveTicketData(newTicket);
+            
+            // Reset inputs
+            setTicketQty(0);
+            setSewaBan(0);
+            setSewaSepeda(0);
+            setSewaGazebo(0);
+
+            // Redirect to "Tiket Saya" tab
+            setActiveTab('tiket');
+        }
+    };
+
+    const handleNewTransaction = () => {
         // Reset inputs
         setTicketQty(0);
         setSewaBan(0);
         setSewaSepeda(0);
         setSewaGazebo(0);
+        
+        // Hide receipt modal
+        setShowReceipt(false);
+        setReceiptData(null);
+        setCashReceived('');
+        setCashChange(0);
+    };
 
-        // Redirect to "Tiket Saya" tab
-        setActiveTab('tiket');
+    const handlePrintReceipt = () => {
+        alert("Mencetak Struk Penjualan...\nKode: " + receiptData.code);
     };
 
     return (
@@ -117,13 +165,13 @@ export default function MobileAppView({ onOpenBooking }) {
             {/* Top App Header */}
             <header className="mobile-app-header">
                 <button className="header-icon-btn" onClick={() => setShowSidebar(true)}>
-                    <i className="fa-solid fa-bars-staggered"></i>
+                    <i className="fa-solid fa-bars"></i>
                 </button>
                 <div className="header-logo-container">
                     <img src="assets/logo.png" alt="Waterboom Logo" className="app-logo-img" />
                     <div className="app-logo-text">
-                        <span className="app-title">WATERBOOM</span>
-                        <span className="app-subtitle">CIJOHO INDAH</span>
+                        <span className="app-title">{isCashierMode ? 'KASIR - WATERBOOM' : 'WATERBOOM'}</span>
+                        <span className="app-subtitle" style={{ color: '#1a73e8' }}>CIJOHO INDAH</span>
                     </div>
                 </div>
                 <div style={{ display: 'flex', gap: '14px', alignItems: 'center' }}>
@@ -131,8 +179,8 @@ export default function MobileAppView({ onOpenBooking }) {
                         <i className="fa-regular fa-bell"></i>
                         <span className="bell-badge"></span>
                     </button>
-                    <button className="header-avatar-btn" onClick={() => setActiveTab('profil')}>
-                        <img src="assets/bebek.png?v=1.1" alt="Avatar" className="app-avatar-img" />
+                    <button className="header-avatar-btn" onClick={() => setActiveTab('profil')} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid #d0deef', background: 'none' }}>
+                        <i className="fa-regular fa-user" style={{ color: 'var(--color-primary)', fontSize: '1.1rem' }}></i>
                     </button>
                 </div>
             </header>
@@ -200,6 +248,14 @@ export default function MobileAppView({ onOpenBooking }) {
                             <div className="slider-overlay">
                                 <h3>Selamat Datang!</h3>
                                 <p>Nikmati liburan seru di Waterboom Cijoho Indah</p>
+                                
+                                {/* Wavy separator decoration */}
+                                <div className="slider-wave-decor" style={{ margin: '8px 0', opacity: 0.8 }}>
+                                    <svg width="40" height="6" viewBox="0 0 40 6" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                        <path d="M0 3 C 5 0, 5 6, 10 3 C 15 0, 15 6, 20 3 C 25 0, 25 6, 30 3 C 35 0, 35 6, 40 3" stroke="white" strokeWidth="2" strokeLinecap="round" fill="none"/>
+                                    </svg>
+                                </div>
+
                                 <div className="slider-dots">
                                     {sliderImages.map((_, idx) => (
                                         <span 
@@ -214,7 +270,7 @@ export default function MobileAppView({ onOpenBooking }) {
 
                         {/* Ticket Selector Section */}
                         <div className="app-section">
-                            <h4 className="section-title"><i className="fa-solid fa-ticket-simple text-blue"></i> PILIH JENIS TIKET</h4>
+                            <h4 className="section-title"><i className="fa-solid fa-tag text-blue"></i> PILIH JENIS TIKET</h4>
                             <div className="ticket-cards-scroll">
                                 <div 
                                     className={`app-ticket-card reguler ${selectedTicket === 'reguler' ? 'active' : ''}`}
@@ -249,87 +305,99 @@ export default function MobileAppView({ onOpenBooking }) {
                                     </div>
                                     <h5>Kursus Renang</h5>
                                     <span className="price-tag green">Rp 15.000</span>
-                                    <span className="price-unit">/pertemuan</span>
+                                    <span className="price-unit">/1x pertemuan</span>
                                 </div>
                             </div>
                         </div>
 
-                        {/* Ticket Counter */}
-                        <div className="app-section counter-section">
-                            <div className="counter-row">
-                                <div>
-                                    <span className="counter-label-top">JUMLAH TIKET {selectedTicket.toUpperCase()}</span>
-                                    <div className="counter-control">
-                                        <button className="counter-btn" onClick={() => ticketQty > 0 && setTicketQty(ticketQty - 1)}>-</button>
-                                        <span className="counter-value">{ticketQty}</span>
-                                        <button className="counter-btn" onClick={() => setTicketQty(ticketQty + 1)}>+</button>
+                        {/* Ticket Counter Section */}
+                        <div className="app-section">
+                            <span className="counter-section-title" style={{ fontSize: '0.8rem', fontWeight: 800, color: 'var(--color-primary)', display: 'block', marginBottom: '8px', letterSpacing: '0.5px' }}>
+                                JUMLAH {selectedTicket === 'reguler' ? 'TIKET REGULER' : selectedTicket === 'rombongan' ? 'TIKET ROMBONGAN' : 'KURSUS RENANG'}
+                            </span>
+                            <div className="ticket-counter-row">
+                                {/* Left Side: Counter Box */}
+                                <div className="counter-box-wrapper">
+                                    <button 
+                                        className={`counter-circle-btn minus ${ticketQty > 0 ? 'active' : ''}`}
+                                        onClick={() => ticketQty > 0 && setTicketQty(ticketQty - 1)}
+                                    >
+                                        -
+                                    </button>
+                                    <div className="counter-number-display">
+                                        <span className="counter-number-val">{ticketQty}</span>
+                                        <span className="counter-number-unit">Orang</span>
                                     </div>
+                                    <button 
+                                        className="counter-circle-btn plus" 
+                                        onClick={() => setTicketQty(ticketQty + 1)}
+                                    >
+                                        +
+                                    </button>
                                 </div>
-                                <div className="subtotal-display">
-                                    <span className="subtotal-label">SUBTOTAL</span>
-                                    <span className="subtotal-value">Rp {subtotal.toLocaleString('id-ID')}</span>
+
+                                {/* Right Side: Subtotal Display Box */}
+                                <div className="subtotal-box-wrapper">
+                                    <span className="subtotal-box-label">SUBTOTAL</span>
+                                    <span className="subtotal-box-val">Rp {subtotal.toLocaleString('id-ID')}</span>
                                 </div>
                             </div>
                         </div>
 
                         {/* Rentals Grid */}
                         <div className="app-section">
-                            <h4 className="section-title"><i className="fa-solid fa-box-open text-blue"></i> TAMBAH SEWA (OPSIONAL)</h4>
-                            <div className="rentals-list">
+                            <h4 className="section-title"><i className="fa-solid fa-bookmark text-blue"></i> TAMBAH SEWA (OPSIONAL)</h4>
+                            <div className="rental-cards-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px' }}>
                                 {/* Rent Ban */}
-                                <div className="rental-item-card">
-                                    <img src="assets/bebek.png?v=1.1" alt="Sewa Ban" className="rental-thumb" />
-                                    <div className="rental-info">
-                                        <h5>Sewa Ban</h5>
-                                        <span className="rental-price">Rp 5.000</span>
+                                <div className="rental-grid-card" style={{ backgroundColor: 'white', borderRadius: '16px', padding: '10px 8px', boxShadow: 'var(--shadow-soft)', border: '1px solid #eef2f7', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', minHeight: '94px' }}>
+                                    <div className="rental-card-top" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                        <img src="assets/ban_illustration.png" alt="Sewa Ban" style={{ width: '30px', height: '30px', objectFit: 'contain' }} />
+                                        <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                            <span style={{ fontSize: '0.65rem', fontWeight: 800, color: '#0c294a', lineHeight: 1.2 }}>Sewa Ban</span>
+                                            <span style={{ fontSize: '0.55rem', color: '#7b8e9f', fontWeight: 600 }}>Rp 5.000</span>
+                                        </div>
                                     </div>
-                                    <div className="rental-counter">
-                                        <button className="rental-cbtn" onClick={() => sewaBan > 0 && setSewaBan(sewaBan - 1)}>-</button>
-                                        <span className="rental-cval">{sewaBan}</span>
-                                        <button className="rental-cbtn" onClick={() => setSewaBan(sewaBan + 1)}>+</button>
+                                    <div className="rental-card-counter" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#f5f8fc', borderRadius: '8px', padding: '4px 6px', marginTop: '8px' }}>
+                                        <button onClick={() => sewaBan > 0 && setSewaBan(sewaBan - 1)} style={{ background: 'none', border: 'none', color: '#1a73e8', fontWeight: 800, fontSize: '0.9rem', width: '18px', height: '18px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>-</button>
+                                        <span style={{ fontSize: '0.75rem', fontWeight: 800, color: '#0c294a' }}>{sewaBan}</span>
+                                        <button onClick={() => setSewaBan(sewaBan + 1)} style={{ background: 'none', border: 'none', color: '#1a73e8', fontWeight: 800, fontSize: '0.9rem', width: '18px', height: '18px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>+</button>
                                     </div>
                                 </div>
 
                                 {/* Rent Sepeda Air */}
-                                <div className="rental-item-card">
-                                    <img src="assets/kids.png?v=1.1" alt="Sewa Sepeda Air" className="rental-thumb" />
-                                    <div className="rental-info">
-                                        <h5>Sepeda Air</h5>
-                                        <span className="rental-price">Rp 5.000</span>
+                                <div className="rental-grid-card" style={{ backgroundColor: 'white', borderRadius: '16px', padding: '10px 8px', boxShadow: 'var(--shadow-soft)', border: '1px solid #eef2f7', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', minHeight: '94px' }}>
+                                    <div className="rental-card-top" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                        <img src="assets/sepeda_air_illustration.png" alt="Sewa Sepeda Air" style={{ width: '30px', height: '30px', objectFit: 'contain' }} />
+                                        <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                            <span style={{ fontSize: '0.65rem', fontWeight: 800, color: '#0c294a', lineHeight: 1.2 }}>Sewa Sepeda Air</span>
+                                            <span style={{ fontSize: '0.55rem', color: '#7b8e9f', fontWeight: 600 }}>Rp 5.000</span>
+                                        </div>
                                     </div>
-                                    <div className="rental-counter">
-                                        <button className="rental-cbtn" onClick={() => sewaSepeda > 0 && setSewaSepeda(sewaSepeda - 1)}>-</button>
-                                        <span className="rental-cval">{sewaSepeda}</span>
-                                        <button className="rental-cbtn" onClick={() => setSewaSepeda(sewaSepeda + 1)}>+</button>
+                                    <div className="rental-card-counter" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#f5f8fc', borderRadius: '8px', padding: '4px 6px', marginTop: '8px' }}>
+                                        <button onClick={() => sewaSepeda > 0 && setSewaSepeda(sewaSepeda - 1)} style={{ background: 'none', border: 'none', color: '#1a73e8', fontWeight: 800, fontSize: '0.9rem', width: '18px', height: '18px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>-</button>
+                                        <span style={{ fontSize: '0.75rem', fontWeight: 800, color: '#0c294a' }}>{sewaSepeda}</span>
+                                        <button onClick={() => setSewaSepeda(sewaSepeda + 1)} style={{ background: 'none', border: 'none', color: '#1a73e8', fontWeight: 800, fontSize: '0.9rem', width: '18px', height: '18px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>+</button>
                                     </div>
                                 </div>
 
                                 {/* Rent Gazebo */}
-                                <div className="rental-item-card">
-                                    <img src="assets/saung.png.png?v=1.1" alt="Sewa Gazebo" className="rental-thumb" />
-                                    <div className="rental-info">
-                                        <h5>Sewa Gazebo</h5>
-                                        <span className="rental-price">Rp 20.000</span>
+                                <div className="rental-grid-card" style={{ backgroundColor: 'white', borderRadius: '16px', padding: '10px 8px', boxShadow: 'var(--shadow-soft)', border: '1px solid #eef2f7', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', minHeight: '94px' }}>
+                                    <div className="rental-card-top" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                        <img src="assets/saung.png.png?v=1.1" alt="Sewa Gazebo" style={{ width: '30px', height: '30px', objectFit: 'contain' }} />
+                                        <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                            <span style={{ fontSize: '0.65rem', fontWeight: 800, color: '#0c294a', lineHeight: 1.2 }}>Sewa Gazebo</span>
+                                            <span style={{ fontSize: '0.55rem', color: '#7b8e9f', fontWeight: 600 }}>Rp 20.000</span>
+                                        </div>
                                     </div>
-                                    <div className="rental-counter">
-                                        <button className="rental-cbtn" onClick={() => sewaGazebo > 0 && setSewaGazebo(sewaGazebo - 1)}>-</button>
-                                        <span className="rental-cval">{sewaGazebo}</span>
-                                        <button className="rental-cbtn" onClick={() => setSewaGazebo(sewaGazebo + 1)}>+</button>
+                                    <div className="rental-card-counter" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#f5f8fc', borderRadius: '8px', padding: '4px 6px', marginTop: '8px' }}>
+                                        <button onClick={() => sewaGazebo > 0 && setSewaGazebo(sewaGazebo - 1)} style={{ background: 'none', border: 'none', color: '#1a73e8', fontWeight: 800, fontSize: '0.9rem', width: '18px', height: '18px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>-</button>
+                                        <span style={{ fontSize: '0.75rem', fontWeight: 800, color: '#0c294a' }}>{sewaGazebo}</span>
+                                        <button onClick={() => setSewaGazebo(sewaGazebo + 1)} style={{ background: 'none', border: 'none', color: '#1a73e8', fontWeight: 800, fontSize: '0.9rem', width: '18px', height: '18px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>+</button>
                                     </div>
                                 </div>
                             </div>
                         </div>
 
-                        {/* Checkout Payment Bar */}
-                        <div className="app-checkout-bar">
-                            <div className="checkout-total-col">
-                                <span className="total-label">TOTAL TAGIHAN</span>
-                                <span className="total-value">Rp {grandTotal.toLocaleString('id-ID')}</span>
-                            </div>
-                            <button className="checkout-btn" onClick={handlePayment}>
-                                BAYAR <i className="fa-solid fa-arrow-right"></i>
-                            </button>
-                        </div>
                     </div>
                 )}
 
@@ -435,10 +503,11 @@ export default function MobileAppView({ onOpenBooking }) {
                         {/* Profile Card Header */}
                         <div className="profile-header-card">
                             <div className="profile-avatar-wrapper">
-                                <img src="assets/bebek.png?v=1.1" alt="Profile Avatar" className="profile-large-avatar" />
+                                <img src={isCashierMode ? "assets/logo.png" : "assets/bebek.png?v=1.1"} alt="Profile Avatar" className="profile-large-avatar" style={{ objectFit: 'contain', padding: isCashierMode ? '8px' : '0' }} />
                             </div>
-                            <h4>Pengunjung Setia Cijoho</h4>
-                            <p>pengunjung@cijohoindah.com</p>
+                            <h4>{isCashierMode ? "Petugas Kasir 1" : "Pengunjung Setia Cijoho"}</h4>
+                            <p>{isCashierMode ? "kasir1@cijohoindah.com" : "pengunjung@cijohoindah.com"}</p>
+                            {isCashierMode && <span className="cashier-shift-badge" style={{ backgroundColor: '#eff6ff', color: '#1a73e8', fontSize: '0.7rem', fontWeight: 800, padding: '4px 12px', borderRadius: '50px', display: 'inline-block', marginTop: '6px', border: '1px solid #dbe8f7' }}>Shift Pagi</span>}
                         </div>
 
                         {/* Account Menu List */}
@@ -467,6 +536,19 @@ export default function MobileAppView({ onOpenBooking }) {
                     </div>
                 )}
             </div>
+
+            {/* Checkout Payment Bar (Rendered outside scrollable content for proper fixed positioning in frame) */}
+            {activeTab === 'beranda' && (
+                <div className="app-checkout-bar">
+                    <div className="checkout-total-col">
+                        <span className="total-label">TOTAL TAGIHAN</span>
+                        <span className="total-value" style={{ color: '#1a73e8', fontWeight: 900 }}>Rp {grandTotal.toLocaleString('id-ID')}</span>
+                    </div>
+                    <button className="checkout-btn" onClick={handlePayment}>
+                        BAYAR <i className="fa-solid fa-arrow-right"></i>
+                    </button>
+                </div>
+            )}
 
             {/* Bottom Tab Navigation Bar */}
             <nav className="mobile-app-bottom-nav">
@@ -499,6 +581,115 @@ export default function MobileAppView({ onOpenBooking }) {
                     <span>Profil</span>
                 </button>
             </nav>
+
+            {/* Cashier Receipt Modal / Struk Penjualan */}
+            {showReceipt && receiptData && (
+                <div className="receipt-modal-backdrop" onClick={handleNewTransaction}>
+                    <div className="receipt-modal-content" onClick={(e) => e.stopPropagation()}>
+                        <div className="receipt-success-icon">
+                            <i className="fa-solid fa-circle-check"></i>
+                        </div>
+                        <h3>Pembayaran Berhasil!</h3>
+                        <p className="receipt-subtitle">Transaksi telah berhasil diproses.</p>
+                        
+                        <div className="receipt-divider-dashed"></div>
+                        
+                        <div className="receipt-details-list">
+                            <div className="receipt-detail-row">
+                                <span>No. Transaksi</span>
+                                <strong>{receiptData.code}</strong>
+                            </div>
+                            <div className="receipt-detail-row">
+                                <span>Waktu</span>
+                                <span>{receiptData.date}</span>
+                            </div>
+                            <div className="receipt-detail-row">
+                                <span>Kasir</span>
+                                <span>Petugas Kasir 1 (Shift Pagi)</span>
+                            </div>
+                            
+                            <div className="receipt-divider-dashed"></div>
+                            
+                            <div className="receipt-item-title">Rincian Tiket:</div>
+                            <div className="receipt-detail-row">
+                                <span>{receiptData.qty}x {receiptData.type}</span>
+                                <span>Rp {receiptData.subtotal.toLocaleString('id-ID')}</span>
+                            </div>
+                            
+                            {(receiptData.rentals.ban > 0 || receiptData.rentals.sepeda > 0 || receiptData.rentals.gazebo > 0) && (
+                                <>
+                                    <div className="receipt-item-title" style={{ marginTop: '8px' }}>Rincian Tambahan:</div>
+                                    {receiptData.rentals.ban > 0 && (
+                                        <div className="receipt-detail-row">
+                                            <span>{receiptData.rentals.ban}x Sewa Ban</span>
+                                            <span>Rp {(receiptData.rentals.ban * receiptData.rentalsPrice.ban).toLocaleString('id-ID')}</span>
+                                        </div>
+                                    )}
+                                    {receiptData.rentals.sepeda > 0 && (
+                                        <div className="receipt-detail-row">
+                                            <span>{receiptData.rentals.sepeda}x Sewa Sepeda Air</span>
+                                            <span>Rp {(receiptData.rentals.sepeda * receiptData.rentalsPrice.sepeda).toLocaleString('id-ID')}</span>
+                                        </div>
+                                    )}
+                                    {receiptData.rentals.gazebo > 0 && (
+                                        <div className="receipt-detail-row">
+                                            <span>{receiptData.rentals.gazebo}x Sewa Gazebo</span>
+                                            <span>Rp {(receiptData.rentals.gazebo * receiptData.rentalsPrice.gazebo).toLocaleString('id-ID')}</span>
+                                        </div>
+                                    )}
+                                </>
+                            )}
+                            
+                            <div className="receipt-divider-dashed"></div>
+                            
+                            <div className="receipt-detail-row total-row">
+                                <span>TOTAL TAGIHAN</span>
+                                <strong style={{ color: '#1a73e8', fontSize: '1.2rem', fontWeight: 900 }}>Rp {receiptData.total.toLocaleString('id-ID')}</strong>
+                            </div>
+                            
+                            {/* Cash calculator for cashier */}
+                            <div className="receipt-cash-calculator">
+                                <div className="cash-input-field">
+                                    <label>Uang Tunai (Bayar)</label>
+                                    <div className="cash-input-wrapper">
+                                        <span className="currency-prefix">Rp</span>
+                                        <input 
+                                            type="number" 
+                                            placeholder="0"
+                                            value={cashReceived}
+                                            onChange={(e) => {
+                                                const val = e.target.value;
+                                                setCashReceived(val);
+                                                const tunai = parseFloat(val) || 0;
+                                                if (tunai >= receiptData.total) {
+                                                    setCashChange(tunai - receiptData.total);
+                                                } else {
+                                                    setCashChange(0);
+                                                }
+                                            }}
+                                            className="cash-input"
+                                            style={{ border: 'none', background: 'none', outline: 'none', fontWeight: 800, width: '100%', color: '#0c294a' }}
+                                        />
+                                    </div>
+                                </div>
+                                <div className="cash-change-display">
+                                    <span>Kembalian</span>
+                                    <strong style={{ color: '#2b8a2e', fontSize: '1.15rem' }}>Rp {cashChange.toLocaleString('id-ID')}</strong>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div className="receipt-modal-actions">
+                            <button className="receipt-btn btn-print" onClick={handlePrintReceipt}>
+                                <i className="fa-solid fa-print"></i> Cetak Struk
+                            </button>
+                            <button className="receipt-btn btn-new" onClick={handleNewTransaction}>
+                                Transaksi Baru <i className="fa-solid fa-plus"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

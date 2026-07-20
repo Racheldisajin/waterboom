@@ -8,11 +8,11 @@ import Gallery from '../components/Gallery';
 import MobileAppView from '../components/MobileAppView';
 
 export default function Home({ onOpenBooking }) {
-    const [isMobile, setIsMobile] = useState(window.innerWidth <= 600);
+    const [isMobile, setIsMobile] = useState(window.innerWidth <= 1024);
 
     useEffect(() => {
         const handleResize = () => {
-            setIsMobile(window.innerWidth <= 600);
+            setIsMobile(window.innerWidth <= 1024);
         };
         window.addEventListener('resize', handleResize);
         return () => window.removeEventListener('resize', handleResize);

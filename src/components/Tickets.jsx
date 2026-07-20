@@ -86,7 +86,7 @@ export default function Tickets({ onOpenBooking }) {
                     <div className="ticket-card" data-ticket="angsa">
                         <div className="ticket-icon-circle bg-light-teal">
                             {/* Cute swan float SVG */}
-                            <svg width="34" height="34" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                            <svg width="26" height="26" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
                                 <path d="M12 12c-4.42 0-8 2.24-8 5s3.58 5 8 5 8-2.24 8-5c0-1.8-1.5-3.35-3.9-4.25C15.4 12.35 14.5 12 13.5 12h-1.5zm0 1.5c3.2 0 6 1.3 6 3.5s-2.8 3.5-6 3.5-6-1.3-6-3.5 2.8-3.5 6-3.5z" />
                                 <path d="M14 14.5c.3-1.2.5-3 .1-4.3-.5-1.5-1.5-2.5-1-3.7.3-.8 1.2-1.5 2.2-1.5.8 0 1.4.5 1.3 1.2-.1 1-1.1 1.7-1.3 2.8.2.8 1 1.8 1.8 2.3.8.5.9 1.4.3 2.1-.3.4-.8.7-1.4.8l-2 .3z" />
                                 <path d="M17.5 6.2l1.8.8-1.8.8-.4-.8.4-.8z" />
@@ -138,7 +138,7 @@ export default function Tickets({ onOpenBooking }) {
                         <div className="ticket-icon-circle bg-light-blue" style={{ position: 'relative' }}>
                             <i className="fa-solid fa-users"></i>
                             {/* Sparkle star SVG */}
-                            <svg width="12" height="12" viewBox="0 0 24 24" fill="#1a73e8" xmlns="http://www.w3.org/2000/svg" style={{ position: 'absolute', top: '8px', right: '4px' }}>
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="#1a73e8" xmlns="http://www.w3.org/2000/svg" style={{ position: 'absolute', top: '6px', right: '2px' }}>
                                 <path d="M12 0l3 9 9 3-9 3-3 9-3-9-9-3 9-3z" />
                             </svg>
                         </div>
@@ -147,7 +147,7 @@ export default function Tickets({ onOpenBooking }) {
                             Dapatkan harga spesial<br />untuk grup dan paket.
                         </p>
                         <div className="ticket-divider"></div>
-                        <a href="https://wa.me/628123456789?text=Halo%20Waterboom%20Cijoho%20Indah%2C%20saya%20tertarik%20dengan%20paket%20rombongan%20grup.%20Bisa%20berikan%20informasi%20lebih%20lanjut%20mengenai%20diskon%20dan%20ketentuannya%3F" target="_blank" rel="noreferrer" className="btn btn-outline-blue btn-pill btn-full" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', height: '42px', textDecoration: 'none', fontWeight: 700 }}>
+                        <a href="https://wa.me/628123456789?text=Halo%20Waterboom%20Cijoho%20Indah%2C%20saya%20tertarik%20dengan%20paket%20rombongan%20grup.%20Bisa%20berikan%20informasi%20lebih%20lanjut%20mengenai%20diskon%20dan%20ketentuannya%3F" target="_blank" rel="noreferrer" className="btn btn-outline-blue btn-pill btn-full" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', textDecoration: 'none', fontWeight: 700 }}>
                             HUBUNGI KAMI <i className="fa-solid fa-arrow-right-long"></i>
                         </a>
                         
