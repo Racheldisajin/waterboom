@@ -4540,7 +4540,7 @@ img {
     padding: 20px 24px;
     display: flex;
     flex-direction: column;
-    align-items: center;
+    align-items: stretch;
     overflow-y: auto;
     height: 100vh;
     box-sizing: border-box;
@@ -4549,7 +4549,6 @@ img {
 }
 
 .superadmin-content-wrapper {
-    max-width: 1240px;
     width: 100%;
     display: flex;
     flex-direction: column;
@@ -4867,8 +4866,9 @@ img {
 /* Charts Grid Row 1 */
 .dashboard-charts-row-1 {
     display: grid;
-    grid-template-columns: 2fr 1.2fr 1fr;
+    grid-template-columns: 2fr 1.3fr 1.2fr;
     gap: 20px;
+    align-items: stretch;
 }
 
 .chart-card-box {
@@ -4998,7 +4998,14 @@ img {
 .channel-sales-card {
     display: flex;
     flex-direction: column;
-    gap: 16px;
+    height: 100%;
+}
+
+.channel-boxes-container {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    flex-grow: 1;
 }
 
 .channel-box {
@@ -5009,6 +5016,8 @@ img {
     display: flex;
     flex-direction: column;
     gap: 12px;
+    flex-grow: 1;
+    justify-content: center;
 }
 
 .channel-info-row {
@@ -5098,6 +5107,7 @@ img {
     display: grid;
     grid-template-columns: 2fr 1.1fr;
     gap: 20px;
+    align-items: stretch;
 }
 
 .data-table-card {
@@ -5274,6 +5284,7 @@ img {
     display: grid;
     grid-template-columns: 1fr 1fr 1.3fr;
     gap: 20px;
+    align-items: stretch;
 }
 
 .payment-chart-wrap {

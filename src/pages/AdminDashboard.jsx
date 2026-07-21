@@ -739,36 +739,38 @@ export default function AdminDashboard() {
                             {/* Progress channel card */}
                             <div className="chart-card-box channel-sales-card">
                                 <h3>Penjualan Tiket Masuk</h3>
-                                <div className="channel-box">
-                                    <div className="channel-info-row">
-                                        <div className="channel-title">
-                                            <div className="channel-icon-square blue"><i className="fa-solid fa-store"></i></div>
-                                            <div>
-                                                <span className="channel-label">Offline</span>
-                                                <div className="channel-value">Rp 26.450.000</div>
-                                                <span className="channel-sub">1.452 Tiket</span>
+                                <div className="channel-boxes-container">
+                                    <div className="channel-box">
+                                        <div className="channel-info-row">
+                                            <div className="channel-title">
+                                                <div className="channel-icon-square blue"><i className="fa-solid fa-store"></i></div>
+                                                <div>
+                                                    <span className="channel-label">Offline</span>
+                                                    <div className="channel-value">Rp 26.450.000</div>
+                                                    <span className="channel-sub">1.452 Tiket</span>
+                                                </div>
                                             </div>
                                         </div>
-                                    </div>
-                                    <div className="bar-wrapper">
-                                        <div className="bar-fill blue" style={{ width: '57%' }}></div>
-                                        <span className="pct-label">57%</span>
-                                    </div>
-                                </div>
-                                <div className="channel-box">
-                                    <div className="channel-info-row">
-                                        <div className="channel-title">
-                                            <div className="channel-icon-square green"><i className="fa-solid fa-globe"></i></div>
-                                            <div>
-                                                <span className="channel-label">Online</span>
-                                                <div className="channel-value">Rp 14.850.000</div>
-                                                <span className="channel-sub">904 Tiket</span>
-                                            </div>
+                                        <div className="bar-wrapper">
+                                            <div className="bar-fill blue" style={{ width: '57%' }}></div>
+                                            <span className="pct-label">57%</span>
                                         </div>
                                     </div>
-                                    <div className="bar-wrapper">
-                                        <div className="bar-fill green" style={{ width: '43%' }}></div>
-                                        <span className="pct-label">43%</span>
+                                    <div className="channel-box">
+                                        <div className="channel-info-row">
+                                            <div className="channel-title">
+                                                <div className="channel-icon-square green"><i className="fa-solid fa-globe"></i></div>
+                                                <div>
+                                                    <span className="channel-label">Online</span>
+                                                    <div className="channel-value">Rp 14.850.000</div>
+                                                    <span className="channel-sub">904 Tiket</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div className="bar-wrapper">
+                                            <div className="bar-fill green" style={{ width: '43%' }}></div>
+                                            <span className="pct-label">43%</span>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
