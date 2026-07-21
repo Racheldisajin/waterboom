@@ -11,8 +11,8 @@ export default function AdminDashboard() {
 
     // Sidebar Collapsible Sub-menus
     const [menuOpen, setMenuOpen] = useState({
-        tiketMasuk: true,
-        sewaLayanan: true
+        tiketMasuk: false,
+        sewaLayanan: false
     });
 
     // Date range filter

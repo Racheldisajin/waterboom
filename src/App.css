@@ -4277,7 +4277,7 @@ img {
 }
 
 .sidebar-brand-header {
-    padding: 24px;
+    padding: 16px 20px;
     display: flex;
     align-items: center;
     gap: 12px;
@@ -4285,7 +4285,7 @@ img {
 }
 
 .sidebar-brand-header .brand-logo {
-    height: 38px;
+    height: 34px;
     width: auto;
 }
 
@@ -4296,23 +4296,23 @@ img {
 
 .brand-name {
     color: white;
-    font-size: 0.95rem;
+    font-size: 0.92rem;
     font-weight: 900;
     letter-spacing: 0.5px;
 }
 
 .brand-loc {
     color: #3b82f6;
-    font-size: 0.72rem;
+    font-size: 0.7rem;
     font-weight: 800;
     letter-spacing: 0.5px;
 }
 
 .sidebar-profile-card {
-    margin: 20px 24px;
-    padding: 16px;
+    margin: 10px 16px;
+    padding: 10px 14px;
     background-color: rgba(255, 255, 255, 0.03);
-    border-radius: 16px;
+    border-radius: 12px;
     display: flex;
     align-items: center;
     gap: 12px;
@@ -4320,15 +4320,15 @@ img {
 }
 
 .profile-avatar-circle {
-    width: 40px;
-    height: 40px;
+    width: 34px;
+    height: 34px;
     border-radius: 50%;
     background-color: #3b82f6;
     color: white;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 1.1rem;
+    font-size: 1rem;
 }
 
 .profile-meta {
@@ -4338,33 +4338,47 @@ img {
 
 .profile-meta strong {
     color: white;
-    font-size: 0.88rem;
+    font-size: 0.84rem;
     font-weight: 800;
 }
 
 .profile-meta span {
     color: #64748b;
-    font-size: 0.72rem;
+    font-size: 0.7rem;
     font-weight: 600;
 }
 
 .sidebar-navigation {
-    padding: 0 16px;
+    padding: 0 12px;
     overflow-y: auto;
     flex-grow: 1;
     display: flex;
     flex-direction: column;
-    gap: 4px;
+    gap: 2px;
+}
+
+/* Custom styled thin scrollbar for sidebar */
+.sidebar-navigation::-webkit-scrollbar {
+    width: 5px;
+}
+
+.sidebar-navigation::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.02);
+}
+
+.sidebar-navigation::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.15);
+    border-radius: 4px;
 }
 
 .sidebar-section-header {
-    font-size: 0.72rem;
+    font-size: 0.68rem;
     font-weight: 700;
     color: #8fa0b8;
     letter-spacing: 0.8px;
-    padding: 16px 12px 6px 12px;
+    padding: 10px 10px 4px 10px;
     border-top: 1px solid rgba(255, 255, 255, 0.08);
-    margin-top: 8px;
+    margin-top: 4px;
 }
 
 .sidebar-section-header:first-of-type {
@@ -4373,7 +4387,7 @@ img {
 }
 
 .nav-menu-item {
-    border-radius: 8px;
+    border-radius: 6px;
     overflow: hidden;
     transition: all 0.2s;
 }
@@ -4382,23 +4396,23 @@ img {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 10px 12px;
+    padding: 7px 10px;
     color: #ffffff;
     text-decoration: none;
     font-weight: 600;
-    font-size: 0.9rem;
+    font-size: 0.86rem;
     cursor: pointer;
     transition: all 0.2s;
 }
 
 .nav-menu-item a {
     justify-content: flex-start;
-    gap: 14px;
+    gap: 12px;
 }
 
 .nav-menu-item a i, .nav-menu-item.dropdown-toggle i {
-    font-size: 1.05rem;
-    width: 22px;
+    font-size: 0.98rem;
+    width: 20px;
     text-align: center;
     color: #ffffff;
 }
