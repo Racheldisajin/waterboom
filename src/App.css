@@ -528,13 +528,13 @@ img {
 
 .water-splash-overlay {
     position: absolute;
-    bottom: -30px;
-    left: -80px;
-    width: 300px;
-    height: 300px;
+    bottom: -40px;
+    left: -165px;
+    width: 380px;
+    height: 380px;
     z-index: 4;
     pointer-events: none;
-    transform: rotate(5deg);
+    transform: rotate(0deg);
 }
 
 .water-splash-overlay svg {

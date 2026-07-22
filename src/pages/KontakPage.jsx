@@ -75,7 +75,7 @@ export default function KontakPage() {
                                 <div style={{
                                     backgroundColor: 'var(--color-soft-blue)',
                                     color: 'var(--color-primary)',
-                                    padding: '50px',
+                                    padding: '20px',
                                     borderRadius: '16px',
                                     textAlign: 'center',
                                     fontWeight: 700,
@@ -187,7 +187,7 @@ export default function KontakPage() {
                                 border: '1px solid var(--color-border)'
                             }}>
                                 <h2 style={{ fontSize: '1.3rem', fontWeight: 800, color: 'var(--color-primary)', marginBottom: '20px' }}>
-                                    ❓ Pertanyaan Populer (FAQ)
+                                    Pertanyaan Populer (FAQ)
                                 </h2>
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                                     {faqs.map((faq, idx) => (
