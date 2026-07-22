@@ -9289,17 +9289,31 @@ body,
     margin: 0 !important;
 }
 
+/* Remove duplicate inner scrollbar in visitor mode & allow natural browser page scrolling */
+.mobile-app-wrapper {
+    height: auto !important;
+    min-height: 100vh !important;
+    overflow: visible !important;
+}
+
 .mobile-only-booking-view {
     padding-top: 0 !important;
     margin-top: 0 !important;
+    height: auto !important;
+    overflow: visible !important;
 }
 
 .visitor-booking-page-root {
     padding-top: 0 !important;
     margin-top: 0 !important;
+    height: auto !important;
+    overflow: visible !important;
 }
 
 .visitor-view-content {
     padding-top: 2px !important;
     margin-top: 0 !important;
+    overflow: visible !important;
+    height: auto !important;
+    padding-bottom: 40px !important;
 }

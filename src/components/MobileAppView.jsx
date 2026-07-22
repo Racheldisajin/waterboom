@@ -400,15 +400,15 @@ Mohon diproses konfirmasinya dan dikirimkan *Tiket Resmi PDF* ke nomor WhatsApp 
                             className="hero-slider-track-container" 
                             style={{ 
                                 overflow: 'hidden', 
-                                borderRadius: '18px', 
+                                borderRadius: '16px', 
                                 position: 'relative', 
                                 margin: '2px 0 0 0', 
-                                boxShadow: '0 8px 25px rgba(12, 41, 74, 0.08)',
-                                height: '190px',
-                                backgroundImage: `linear-gradient(to top, rgba(12, 41, 74, 0.92) 0%, rgba(12, 41, 74, 0.4) 60%, transparent 100%), url('${sliderSlides[currentSlide].img}')`,
+                                boxShadow: '0 6px 20px rgba(12, 41, 74, 0.08)',
+                                height: '140px',
+                                backgroundImage: `linear-gradient(to top, rgba(12, 41, 74, 0.92) 0%, rgba(12, 41, 74, 0.35) 60%, transparent 100%), url('${sliderSlides[currentSlide].img}')`,
                                 backgroundSize: 'cover',
                                 backgroundPosition: 'center',
-                                padding: '20px 18px',
+                                padding: '14px 16px',
                                 display: 'flex',
                                 flexDirection: 'column',
                                 justifyContent: 'flex-end',
@@ -416,11 +416,11 @@ Mohon diproses konfirmasinya dan dikirimkan *Tiket Resmi PDF* ke nomor WhatsApp 
                                 boxSizing: 'border-box'
                             }}
                         >
-                            <h3 style={{ fontSize: '1.2rem', fontWeight: 900, textShadow: '0 2px 4px rgba(0,0,0,0.7)', margin: 0, lineHeight: 1.25 }}>{sliderSlides[currentSlide].title}</h3>
-                            <p style={{ fontSize: '0.82rem', opacity: 0.95, marginTop: '4px', textShadow: '0 1px 3px rgba(0,0,0,0.7)', margin: 0, fontWeight: 500 }}>{sliderSlides[currentSlide].subtitle}</p>
+                            <h3 style={{ fontSize: '1.1rem', fontWeight: 900, textShadow: '0 2px 4px rgba(0,0,0,0.7)', margin: 0, lineHeight: 1.2 }}>{sliderSlides[currentSlide].title}</h3>
+                            <p style={{ fontSize: '0.78rem', opacity: 0.95, marginTop: '2px', textShadow: '0 1px 3px rgba(0,0,0,0.7)', margin: 0, fontWeight: 500 }}>{sliderSlides[currentSlide].subtitle}</p>
 
-                            <div className="slider-wave-decor" style={{ margin: '6px 0 0 0', opacity: 0.85 }}>
-                                <svg width="42" height="6" viewBox="0 0 42 6" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <div className="slider-wave-decor" style={{ margin: '4px 0 0 0', opacity: 0.85 }}>
+                                <svg width="36" height="5" viewBox="0 0 42 6" fill="none" xmlns="http://www.w3.org/2000/svg">
                                     <path d="M0 3 C 5 0, 5 6, 10 3 C 15 0, 15 6, 20 3 C 25 0, 25 6, 30 3 C 35 0, 35 6, 40 3" stroke="white" strokeWidth="2.5" strokeLinecap="round" fill="none" />
                                 </svg>
                             </div>
@@ -428,7 +428,7 @@ Mohon diproses konfirmasinya dan dikirimkan *Tiket Resmi PDF* ke nomor WhatsApp 
 
                         {/* Mode Switcher: OFFLINE vs ONLINE (Hanya Tampil di Mode Kasir) */}
                         {isCashierMode ? (
-                            <div style={{ padding: '0 16px', marginTop: '14px' }}>
+                            <div style={{ padding: '0 16px', marginTop: '10px' }}>
                                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', backgroundColor: '#e2e8f0', padding: '4px', borderRadius: '12px' }}>
                                     <button
                                         type="button"
@@ -475,33 +475,27 @@ Mohon diproses konfirmasinya dan dikirimkan *Tiket Resmi PDF* ke nomor WhatsApp 
                                 </div>
                             </div>
                         ) : (
-                            <div style={{ padding: '0 16px', marginTop: '16px' }}>
+                            <div style={{ padding: '0 4px', marginTop: '10px' }}>
                                 <div style={{
                                     backgroundColor: '#f0fdf4',
                                     border: '1.5px solid #86efac',
-                                    borderRadius: '16px',
-                                    padding: '14px 18px',
+                                    borderRadius: '14px',
+                                    padding: '10px 14px',
                                     display: 'flex',
                                     alignItems: 'center',
-                                    gap: '14px',
-                                    boxShadow: '0 4px 15px rgba(37, 211, 102, 0.1)'
+                                    gap: '12px',
+                                    boxShadow: '0 3px 10px rgba(37, 211, 102, 0.08)'
                                 }}>
-                                    <div style={{ width: '42px', height: '42px', borderRadius: '50%', backgroundColor: '#25D366', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.3rem', flexShrink: 0, boxShadow: '0 3px 10px rgba(37, 211, 102, 0.3)' }}>
+                                    <div style={{ width: '36px', height: '36px', borderRadius: '50%', backgroundColor: '#25D366', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.15rem', flexShrink: 0, boxShadow: '0 2px 8px rgba(37, 211, 102, 0.25)' }}>
                                         <i className="fa-brands fa-whatsapp"></i>
                                     </div>
                                     <div>
-                                        <h5 style={{ margin: 0, color: '#166534', fontSize: '0.95rem', fontWeight: 900, letterSpacing: '0.3px' }}>PEMESANAN TIKET ONLINE WA</h5>
-                                        <small style={{ color: '#15803d', fontSize: '0.8rem', fontWeight: 600, display: 'block', marginTop: '2px', lineHeight: 1.3 }}>Tiket PDF resmi langsung dikirim ke WhatsApp Anda via Admin</small>
+                                        <h5 style={{ margin: 0, color: '#166534', fontSize: '0.88rem', fontWeight: 900, letterSpacing: '0.2px' }}>PEMESANAN TIKET ONLINE WA</h5>
+                                        <small style={{ color: '#15803d', fontSize: '0.76rem', fontWeight: 600, display: 'block', marginTop: '1px', lineHeight: 1.2 }}>Tiket PDF resmi langsung dikirim ke WhatsApp Anda via Admin</small>
                                     </div>
                                 </div>
                             </div>
                         )}
-
-                        <div style={{ fontSize: '0.75rem', color: posMode === 'offline' ? '#0c294a' : '#15803d', marginTop: '6px', fontWeight: 700, textAlign: 'center' }}>
-                            {posMode === 'offline'
-                                ? '⚡ Pembelian Offline: Langsung dapet tiket & struk cetak di lokasi kasir.'
-                                : '📱 Pembelian Online: Chat WA Admin dlu baru dikirim Tiket PDF.'}
-                        </div>
 
                         {/* Ticket Selector Section */}
                         <div className="app-section">
