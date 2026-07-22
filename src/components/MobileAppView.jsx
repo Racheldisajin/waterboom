@@ -395,69 +395,34 @@ Mohon diproses konfirmasinya dan dikirimkan *Tiket Resmi PDF* ke nomor WhatsApp 
                 {/* 1. BERANDA / BOOKING TAB */}
                 {activeTab === 'beranda' && (
                     <div className="app-tab-pane fade-in" style={{ paddingTop: 0, marginTop: 0 }}>
-                        {/* Smooth Horizontal Slide Banner Carousel */}
-                        <div className="hero-slider-track-container" style={{ overflow: 'hidden', borderRadius: '18px', position: 'relative', margin: '2px 0 0 0', boxShadow: '0 8px 25px rgba(12, 41, 74, 0.08)' }}>
-                            <div
-                                className="hero-slider-track"
-                                style={{
-                                    display: 'flex',
-                                    transform: `translateX(-${currentSlide * 100}%)`,
-                                    transition: 'transform 0.6s cubic-bezier(0.25, 1, 0.5, 1)',
-                                    width: '100%'
-                                }}
-                            >
-                                {sliderSlides.map((slide, idx) => (
-                                    <div
-                                        key={idx}
-                                        className="hero-slide-item"
-                                        style={{
-                                            width: '100%',
-                                            minWidth: '100%',
-                                            maxWidth: '100%',
-                                            flex: '0 0 100%',
-                                            boxSizing: 'border-box',
-                                            height: '190px',
-                                            backgroundImage: `linear-gradient(to top, rgba(12, 41, 74, 0.92) 0%, rgba(12, 41, 74, 0.4) 60%, transparent 100%), url('${slide.img}')`,
-                                            backgroundSize: 'cover',
-                                            backgroundPosition: 'center',
-                                            borderRadius: '18px',
-                                            padding: '20px 18px',
-                                            display: 'flex',
-                                            flexDirection: 'column',
-                                            justifyContent: 'flex-end',
-                                            color: 'white',
-                                            position: 'relative'
-                                        }}
-                                    >
-                                        <h3 style={{ fontSize: '1.2rem', fontWeight: 900, textShadow: '0 2px 4px rgba(0,0,0,0.7)', margin: 0, lineHeight: 1.25 }}>{slide.title}</h3>
-                                        <p style={{ fontSize: '0.82rem', opacity: 0.95, marginTop: '4px', textShadow: '0 1px 3px rgba(0,0,0,0.7)', margin: 0, fontWeight: 500 }}>{slide.subtitle}</p>
+                        {/* Locked Banner Card (Zero Scroll / Permanently Locked in Place) */}
+                        <div 
+                            className="hero-slider-track-container" 
+                            style={{ 
+                                overflow: 'hidden', 
+                                borderRadius: '18px', 
+                                position: 'relative', 
+                                margin: '2px 0 0 0', 
+                                boxShadow: '0 8px 25px rgba(12, 41, 74, 0.08)',
+                                height: '190px',
+                                backgroundImage: `linear-gradient(to top, rgba(12, 41, 74, 0.92) 0%, rgba(12, 41, 74, 0.4) 60%, transparent 100%), url('${sliderSlides[currentSlide].img}')`,
+                                backgroundSize: 'cover',
+                                backgroundPosition: 'center',
+                                padding: '20px 18px',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                justifyContent: 'flex-end',
+                                color: 'white',
+                                boxSizing: 'border-box'
+                            }}
+                        >
+                            <h3 style={{ fontSize: '1.2rem', fontWeight: 900, textShadow: '0 2px 4px rgba(0,0,0,0.7)', margin: 0, lineHeight: 1.25 }}>{sliderSlides[currentSlide].title}</h3>
+                            <p style={{ fontSize: '0.82rem', opacity: 0.95, marginTop: '4px', textShadow: '0 1px 3px rgba(0,0,0,0.7)', margin: 0, fontWeight: 500 }}>{sliderSlides[currentSlide].subtitle}</p>
 
-                                        <div className="slider-wave-decor" style={{ margin: '6px 0 18px 0', opacity: 0.85 }}>
-                                            <svg width="42" height="6" viewBox="0 0 42 6" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                                <path d="M0 3 C 5 0, 5 6, 10 3 C 15 0, 15 6, 20 3 C 25 0, 25 6, 30 3 C 35 0, 35 6, 40 3" stroke="white" strokeWidth="2.5" strokeLinecap="round" fill="none" />
-                                            </svg>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-
-                            {/* Dots Indicator Overlay */}
-                            <div className="slider-dots-overlay" style={{ position: 'absolute', bottom: '12px', left: '0', right: '0', display: 'flex', justifyContent: 'center', gap: '6px', zIndex: 10 }}>
-                                {sliderSlides.map((_, idx) => (
-                                    <span
-                                        key={idx}
-                                        className={`slider-dot ${currentSlide === idx ? 'active' : ''}`}
-                                        onClick={() => setCurrentSlide(idx)}
-                                        style={{
-                                            width: currentSlide === idx ? '22px' : '8px',
-                                            height: '8px',
-                                            borderRadius: '4px',
-                                            backgroundColor: currentSlide === idx ? '#2563eb' : 'rgba(255,255,255,0.7)',
-                                            cursor: 'pointer',
-                                            transition: 'all 0.3s ease'
-                                        }}
-                                    ></span>
-                                ))}
+                            <div className="slider-wave-decor" style={{ margin: '6px 0 0 0', opacity: 0.85 }}>
+                                <svg width="42" height="6" viewBox="0 0 42 6" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                    <path d="M0 3 C 5 0, 5 6, 10 3 C 15 0, 15 6, 20 3 C 25 0, 25 6, 30 3 C 35 0, 35 6, 40 3" stroke="white" strokeWidth="2.5" strokeLinecap="round" fill="none" />
+                                </svg>
                             </div>
                         </div>
 
