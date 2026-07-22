@@ -9291,4 +9291,15 @@ body,
 
 .mobile-only-booking-view {
     padding-top: 0 !important;
+    margin-top: 0 !important;
+}
+
+.visitor-booking-page-root {
+    padding-top: 0 !important;
+    margin-top: 0 !important;
+}
+
+.visitor-view-content {
+    padding-top: 2px !important;
+    margin-top: 0 !important;
 }
