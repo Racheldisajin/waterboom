@@ -684,22 +684,59 @@ Mohon diproses konfirmasinya dan dikirimkan *Tiket Resmi PDF* ke nomor WhatsApp 
 
                 {/* 3. RIWAYAT TAB */}
                 {activeTab === 'riwayat' && (
-                    <div className="app-tab-pane fade-in" style={{ padding: '20px' }}>
-                        <h3 className="tab-title">Riwayat Transaksi Langsung</h3>
+                    <div className="app-tab-pane fade-in" style={{ padding: '16px 12px' }}>
+                        <h3 className="tab-title" style={{ fontSize: '1.15rem', fontWeight: 900, color: '#0f2942', marginBottom: '14px' }}>Riwayat Transaksi Langsung</h3>
                         <div className="history-list-container">
                             {historyList.map((item, idx) => (
-                                <div key={idx} className="history-item-card">
-                                    <div className="history-card-header">
+                                <div key={idx} className="history-item-card" style={{ marginBottom: '14px', padding: '14px', borderRadius: '16px', border: '1.5px solid #e2e8f0', backgroundColor: 'white', boxShadow: '0 4px 12px rgba(12, 41, 74, 0.04)' }}>
+                                    <div className="history-card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
                                         <div>
-                                            <h4>{item.type}</h4>
-                                            <small>{item.date} &bull; {item.code}</small>
+                                            <h4 style={{ margin: 0, fontSize: '0.98rem', fontWeight: 900, color: '#0f2942' }}>{item.type}</h4>
+                                            <small style={{ color: '#64748b', fontSize: '0.78rem' }}>{item.date} &bull; {item.code}</small>
                                         </div>
-                                        <span className="status-badge used">{item.status}</span>
+                                        <span className="status-badge used" style={{ backgroundColor: '#fef3c7', color: '#92400e', padding: '4px 10px', borderRadius: '20px', fontSize: '0.72rem', fontWeight: 800 }}>{item.status}</span>
                                     </div>
-                                    <div className="history-card-details">
-                                        <span>Pemesanan: {item.name}</span>
-                                        <strong>Rp {item.total.toLocaleString('id-ID')}</strong>
+                                    <div className="history-card-details" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '8px', borderTop: '1px dashed #e2e8f0' }}>
+                                        <span style={{ fontSize: '0.82rem', color: '#475569', fontWeight: 600 }}>Pemesanan: {item.name}</span>
+                                        <strong style={{ fontSize: '0.95rem', color: '#2563eb', fontWeight: 900 }}>Rp {item.total.toLocaleString('id-ID')}</strong>
                                     </div>
+
+                                    {/* Action Button: Re-send / Confirm to Admin WA */}
+                                    <button
+                                        className="btn-rewa-confirm"
+                                        onClick={() => {
+                                            const adminWaNumber = '6281234567890';
+                                            let rentalsText = '';
+                                            if (item.details?.rentals?.ban > 0) rentalsText += `\n• Sewa Ban: ${item.details.rentals.ban}x`;
+                                            if (item.details?.rentals?.sepeda > 0) rentalsText += `\n• Sewa Sepeda Air: ${item.details.rentals.sepeda}x`;
+                                            if (item.details?.rentals?.gazebo > 0) rentalsText += `\n• Sewa Gazebo: ${item.details.rentals.gazebo}x`;
+
+                                            const waMessage = `Halo Admin Waterboom Cijoho Indah! 👋\nSaya ingin konfirmasi pesanan Tiket Online:\n\n📌 *Kode Booking:* ${item.code}\n👤 *Nama Pemesan:* ${item.name}\n📱 *No. WA:* ${item.phone || item.details?.phone || '-'}\n📅 *Tgl Kunjungan:* ${item.date}\n🎟️ *Detail Tiket:* ${item.type} (${item.qty || item.details?.qty || 1} Orang)${rentalsText ? `\n🚣 *Tambahan Sewa:*${rentalsText}` : ''}\n💰 *Total Pembayaran:* Rp ${item.total.toLocaleString('id-ID')}\n\nMohon diproses konfirmasinya dan dikirimkan *Tiket Resmi PDF* ke nomor WhatsApp ini. Terima kasih!`;
+
+                                            window.open(`https://wa.me/${adminWaNumber}?text=${encodeURIComponent(waMessage)}`, '_blank');
+                                        }}
+                                        style={{
+                                            marginTop: '12px',
+                                            width: '100%',
+                                            backgroundColor: '#25D366',
+                                            color: 'white',
+                                            border: 'none',
+                                            padding: '10px 14px',
+                                            borderRadius: '10px',
+                                            fontSize: '0.84rem',
+                                            fontWeight: 800,
+                                            cursor: 'pointer',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            gap: '8px',
+                                            boxShadow: '0 3px 10px rgba(37, 211, 102, 0.25)',
+                                            transition: 'all 0.2s ease'
+                                        }}
+                                    >
+                                        <i className="fa-brands fa-whatsapp" style={{ fontSize: '1.1rem' }}></i>
+                                        Konfirmasi ke WA Admin
+                                    </button>
                                 </div>
                             ))}
                         </div>
