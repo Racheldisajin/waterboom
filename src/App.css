@@ -195,15 +195,16 @@ img {
    HEADER NAVIGATION
    ========================================== */
 .navbar-header {
-    position: relative;
+    position: sticky;
+    top: 0;
     width: 100%;
-    z-index: 100;
-    background: rgba(255, 255, 255, 0.85);
+    z-index: 9999;
+    background: rgba(255, 255, 255, 0.95);
     backdrop-filter: blur(16px);
     -webkit-backdrop-filter: blur(16px);
     border-radius: 0 0 20px 20px;
     margin: 0;
-    box-shadow: 0 6px 25px rgba(12, 41, 74, 0.05);
+    box-shadow: 0 6px 25px rgba(12, 41, 74, 0.08);
     border-bottom: 1px solid rgba(255, 255, 255, 0.7);
     transition: var(--transition-smooth);
 }
@@ -8250,11 +8251,17 @@ img {
         align-items: center !important;
         justify-content: center !important;
         order: 1 !important;
-        margin-right: 4px !important;
+        margin-right: 8px !important;
+        position: relative !important;
+        z-index: 10000 !important;
+        visibility: visible !important;
+        opacity: 1 !important;
     }
 
     .logo-wrapper {
         order: 2 !important;
+        margin-right: auto !important;
+        margin-left: 4px !important;
     }
 
     .logo-wrapper .brand-title {
