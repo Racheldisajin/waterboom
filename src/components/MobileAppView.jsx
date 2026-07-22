@@ -404,7 +404,7 @@ Mohon diproses konfirmasinya dan dikirimkan *Tiket Resmi PDF* ke nomor WhatsApp 
                                 position: 'relative',
                                 margin: '0',
                                 boxShadow: '0 6px 20px rgba(12, 41, 74, 0.12)',
-                                height: '140px',
+                                height: '160px',
                                 backgroundImage: `linear-gradient(to top, rgba(10, 25, 47, 0.95) 0%, rgba(10, 25, 47, 0.55) 65%, rgba(10, 25, 47, 0.2) 100%), url('${sliderSlides[currentSlide].img}')`,
                                 backgroundSize: 'cover',
                                 backgroundPosition: 'center',
