@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { supabase } from '../supabase'; // Pastikan path ini sesuai dengan struktur folder Anda
 
 export default function AdminDashboard() {
     const [history, setHistory] = useState([]);
@@ -249,11 +250,37 @@ export default function AdminDashboard() {
                 transactions: historyData.length
             });
         };
-
+        
         loadAllData();
         window.addEventListener('storage', loadAllData);
         return () => window.removeEventListener('storage', loadAllData);
     }, []);
+
+    // --- Hitung KPI setiap kali history atau expenditures berubah ---
+    useEffect(() => {
+        let totalSales = 0;
+        let totalTransactions = 0;
+        history.forEach(item => {
+            if (item.code.startsWith('WCI-')) {
+                totalSales += item.total || 0;
+                totalTransactions += 1;
+            }
+        });
+        
+        let totalOutflow = 0;
+        expenditures.forEach(e => totalOutflow += e.amount || 0);
+
+        const ticketRows = history.filter(i => i.type === 'Tiket Masuk');
+        const visitors = ticketRows.reduce((sum, r) => sum + (r.qty || 0), 0);
+
+        setKpis({
+            sales: 48750000 + totalSales,
+            inflow: 55350000 + totalSales,
+            outflow: totalOutflow,
+            visitors: 2356 + visitors,
+            transactions: 1024 + totalTransactions
+        });
+    }, [history, expenditures]);
 
     const toggleSubmenu = (menu) => {
         setMenuOpen(prev => ({
@@ -421,17 +448,14 @@ export default function AdminDashboard() {
         setExpenditures(updated);
         localStorage.setItem('waterboom_expenditures', JSON.stringify(updated));
 
-        // Reset form
         setNewExpense({ date: '', category: 'Operasional', desc: '', amount: '' });
 
-        // Update stats
         let total = 0;
         updated.forEach(item => total += item.amount);
         setKpis(prev => ({
             ...prev,
             outflow: total
         }));
-
         alert('Pengeluaran berhasil ditambahkan!');
     };
 
@@ -441,7 +465,6 @@ export default function AdminDashboard() {
             const updated = expenditures.filter(item => item.id !== id);
             setExpenditures(updated);
             localStorage.setItem('waterboom_expenditures', JSON.stringify(updated));
-
             let total = 0;
             updated.forEach(item => total += item.amount);
             setKpis(prev => ({ ...prev, outflow: total }));
@@ -467,7 +490,6 @@ export default function AdminDashboard() {
         setStaffUsers(updated);
         localStorage.setItem('waterboom_staff_users', JSON.stringify(updated));
 
-        // Reset form
         setNewUser({ name: '', email: '', role: 'kasir', password: '' });
         alert('Akun Staf baru berhasil didaftarkan!');
     };
@@ -485,9 +507,20 @@ export default function AdminDashboard() {
         }
     };
 
-    // Delete sales history transaction (Refund)
-    const handleDeleteTransaction = (code) => {
+    // Delete sales history transaction (Refund) – hapus dari Supabase berdasarkan booking_code
+    const handleDeleteTransaction = async (code) => {
         if (window.confirm(`Apakah Anda yakin ingin melakukan refund/hapus transaksi ${code}?`)) {
+            const { error } = await supabase
+                .from('transactions')
+                .delete()
+                .eq('booking_code', code);
+
+            if (error) {
+                alert('Gagal menghapus transaksi: ' + error.message);
+                return;
+            }
+
+            // Update local state immediately for responsiveness
             const updated = history.filter(item => item.code !== code);
             setHistory(updated);
             localStorage.setItem('waterboom_sales_history', JSON.stringify(updated));
@@ -499,7 +532,6 @@ export default function AdminDashboard() {
                 addedSales += Number(item.total) || 0;
                 addedVisitors += Number(item.qty) || 1;
             });
-
             setKpis(prev => ({
                 ...prev,
                 sales: addedSales,
@@ -507,7 +539,7 @@ export default function AdminDashboard() {
                 visitors: addedVisitors,
                 transactions: updated.length
             }));
-            alert(`Transaksi ${code} berhasil direfund.`);
+            alert(`Transaksi ${code} berhasil direfund dan dihapus dari database.`);
         }
     };
 
@@ -534,7 +566,6 @@ export default function AdminDashboard() {
                         <span className="brand-loc">PORTAL UTAMA</span>
                     </div>
                 </div>
-
                 <div className="sidebar-profile-card">
                     <div className="profile-avatar-circle" style={{ backgroundColor: currentAccount.badgeColor }}>
                         <i className={`fa-solid ${currentAccount.avatarIcon}`}></i>
@@ -544,12 +575,10 @@ export default function AdminDashboard() {
                         <span>{currentAccount.role}</span>
                     </div>
                 </div>
-
                 <nav className="sidebar-navigation">
                     <div className={`nav-menu-item ${activeTab === 'dashboard' ? 'active' : ''}`}>
                         <a href="#/admin" onClick={(e) => { e.preventDefault(); setActiveTab('dashboard'); }}><i className="fa-solid fa-chart-pie"></i> Dashboard</a>
                     </div>
-
                     {/* PENJUALAN */}
                     <div className="sidebar-section-header clickable-header" onClick={() => toggleSection('penjualan')}>
                         <span>PENJUALAN</span>
@@ -583,7 +612,6 @@ export default function AdminDashboard() {
                                     </li>
                                 </ul>
                             </div>
-
                             <div className={`nav-menu-dropdown-wrapper ${menuOpen.sewaLayanan || (activeTab === 'transaksi' && searchQuery !== '') ? 'open' : ''}`}>
                                 <div className={`nav-menu-item dropdown-toggle ${activeTab === 'transaksi' && searchQuery !== '' ? 'active-parent' : ''}`} onClick={() => toggleSubmenu('sewaLayanan')}>
                                     <span><i className="fa-solid fa-parachute-box"></i> Sewa & Layanan</span>
@@ -619,13 +647,11 @@ export default function AdminDashboard() {
                                     </li>
                                 </ul>
                             </div>
-
                             <div className={`nav-menu-item ${activeTab === 'transaksi' && selectedFilter === 'all' && searchQuery === '' ? 'active' : ''}`}>
                                 <a href="#/admin" onClick={(e) => { e.preventDefault(); setActiveTab('transaksi'); setSelectedFilter('all'); setSearchQuery(''); }}><i className="fa-solid fa-receipt"></i> Transaksi</a>
                             </div>
                         </div>
                     )}
-
                     {/* KEUANGAN */}
                     <div className="sidebar-section-header clickable-header" onClick={() => toggleSection('keuangan')}>
                         <span>KEUANGAN</span>
@@ -641,7 +667,6 @@ export default function AdminDashboard() {
                             </div>
                         </div>
                     )}
-
                     {/* LAPORAN */}
                     <div className="sidebar-section-header clickable-header" onClick={() => toggleSection('laporan')}>
                         <span>LAPORAN</span>
@@ -660,7 +685,6 @@ export default function AdminDashboard() {
                             </div>
                         </div>
                     )}
-
                     {/* MASTER DATA */}
                     <div className="sidebar-section-header clickable-header" onClick={() => toggleSection('masterData')}>
                         <span>MASTER DATA</span>
@@ -682,7 +706,6 @@ export default function AdminDashboard() {
                             </div>
                         </div>
                     )}
-
                     {/* PENGATURAN */}
                     <div className="sidebar-section-header clickable-header" onClick={() => toggleSection('pengaturan')}>
                         <span>PENGATURAN</span>
@@ -699,7 +722,6 @@ export default function AdminDashboard() {
                         </div>
                     )}
                 </nav>
-
                 <div className="sidebar-logout-footer">
                     <button onClick={handleLogout} className="btn-sidebar-logout">
                         <i className="fa-solid fa-arrow-right-from-bracket"></i> Keluar
@@ -737,7 +759,6 @@ export default function AdminDashboard() {
                             {activeTab !== 'dashboard' && activeTab !== 'transaksi' && activeTab !== 'produk_harga' && activeTab !== 'pengguna' && activeTab !== 'pengeluaran' && activeTab !== 'rekap_keuangan' && 'Manajemen master data dan laporan operasional'}
                         </p>
                     </div>
-
                     <div className="header-controls-column">
                         <div className="date-range-selector">
                             <i className="fa-regular fa-calendar-days"></i>
@@ -881,7 +902,6 @@ export default function AdminDashboard() {
                                 </div>
                             )}
                         </div>
-
                         <div className="user-profile-dropdown-container">
                             <div className="avatar-capsule" onClick={() => setShowProfileDropdown(!showProfileDropdown)}>
                                 <div className="profile-avatar-circle" style={{ width: '32px', height: '32px', fontSize: '0.85rem', backgroundColor: currentAccount.badgeColor, flexShrink: 0 }}>
@@ -893,13 +913,11 @@ export default function AdminDashboard() {
                                 </div>
                                 <i className={`fa-solid fa-chevron-${showProfileDropdown ? 'up' : 'down'} caret`}></i>
                             </div>
-
                             {showProfileDropdown && (
                                 <div className="account-switcher-dropdown">
                                     <div className="account-switcher-header">
                                         <span className="switcher-title">Beralih Akun (Account Switcher)</span>
                                     </div>
-
                                     <div className="account-switcher-list">
                                         {accounts.map(acc => (
                                             <div
@@ -925,7 +943,6 @@ export default function AdminDashboard() {
                                             </div>
                                         ))}
                                     </div>
-
                                     <div className="account-switcher-actions">
                                         <button
                                             className="account-action-btn"
@@ -951,7 +968,6 @@ export default function AdminDashboard() {
 
                 {/* Scrollable content area below navbar */}
                 <div className="superadmin-content-wrapper">
-
                     {/* KPI stats bar displayed globally across main pages */}
                     {(activeTab === 'dashboard' || activeTab === 'transaksi' || activeTab === 'pemasukan' || activeTab === 'pengeluaran') && (
                         <div className="superadmin-kpi-grid">
@@ -999,7 +1015,6 @@ export default function AdminDashboard() {
                     )}
 
                     {/* 3. SWITCH RENDER TAB CONTENT */}
-
                     {/* TAB: DASHBOARD (MOCKUP COPIED) */}
                     {activeTab === 'dashboard' && (
                         <>
@@ -1080,7 +1095,6 @@ export default function AdminDashboard() {
                                         </div>
                                     </div>
                                 </div>
-
                                 {/* Progress channel card */}
                                 <div className="chart-card-box channel-sales-card">
                                     <h3>Penjualan Tiket Masuk</h3>
@@ -1124,7 +1138,6 @@ export default function AdminDashboard() {
                                     </div>
                                 </div>
                             </div>
-
                             <div className="dashboard-charts-row-2">
                                 {/* Latest Sales Log */}
                                 <div className="data-table-card latest-sales">
@@ -1162,7 +1175,6 @@ export default function AdminDashboard() {
                                         </table>
                                     </div>
                                 </div>
-
                                 {/* Rentals Totals */}
                                 <div className="data-table-card rental-summary">
                                     <div className="table-header-block">
@@ -1184,7 +1196,6 @@ export default function AdminDashboard() {
                                     </div>
                                 </div>
                             </div>
-
                             {/* Third Row: method, chart & expenditure */}
                             <div className="dashboard-charts-row-3">
                                 <div className="chart-card-box payment-methods-card">
@@ -1209,7 +1220,6 @@ export default function AdminDashboard() {
                                         </div>
                                     </div>
                                 </div>
-
                                 <div className="chart-card-box daily-visitors-card">
                                     <h3>Pengunjung Harian</h3>
                                     <div className="visitors-chart-container">
@@ -1224,7 +1234,6 @@ export default function AdminDashboard() {
                                         </div>
                                     </div>
                                 </div>
-
                                 <div className="data-table-card recent-expenditures">
                                     <div className="table-header-block">
                                         <h3>Pengeluaran Terbaru</h3>
@@ -1266,7 +1275,6 @@ export default function AdminDashboard() {
                                             onChange={(e) => setSearchQuery(e.target.value)}
                                         />
                                     </div>
-
                                     <select
                                         value={selectedFilter}
                                         onChange={(e) => setSelectedFilter(e.target.value)}
@@ -1278,7 +1286,6 @@ export default function AdminDashboard() {
                                     </select>
                                 </div>
                             </div>
-
                             <div className="superadmin-table-wrapper">
                                 <table className="superadmin-table">
                                     <thead>
@@ -1346,7 +1353,6 @@ export default function AdminDashboard() {
                                     <div className="donut-legend-list" style={{ flexGrow: 1 }}>
                                         <h3 style={{ fontSize: '1.25rem', color: '#0f172a', marginBottom: '6px' }}>Total Pemasukan: <span className="text-green">Rp {kpis.inflow.toLocaleString('id-ID')}</span></h3>
                                         <p style={{ color: '#64748b', fontSize: '0.88rem', marginBottom: '16px' }}>Arus kas masuk bersumber dari Tiket Masuk (Offline & Online) serta Sewa Wahana & Peralatan.</p>
-
                                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px' }}>
                                             <div className="legend-row"><span className="bullet blue"></span><div className="info"><span>Tiket Masuk Offline</span><strong>Rp {reportMetrics.offlineSales.toLocaleString('id-ID')} <small>({reportMetrics.sales > 0 ? ((reportMetrics.offlineSales / reportMetrics.sales) * 100).toFixed(1) : '0.0'}%)</small></strong></div></div>
                                             <div className="legend-row"><span className="bullet green"></span><div className="info"><span>Tiket Masuk Online</span><strong>Rp {reportMetrics.onlineSales.toLocaleString('id-ID')} <small>({reportMetrics.sales > 0 ? ((reportMetrics.onlineSales / reportMetrics.sales) * 100).toFixed(1) : '0.0'}%)</small></strong></div></div>
@@ -1357,7 +1363,6 @@ export default function AdminDashboard() {
                                     </div>
                                 </div>
                             </div>
-
                             <div className="data-table-card">
                                 <div className="table-header-block">
                                     <h3>Daftar Log Transaksi Pemasukan Masuk</h3>
@@ -1447,7 +1452,6 @@ export default function AdminDashboard() {
                                     </button>
                                 </form>
                             </div>
-
                             {/* List tabel pengeluaran */}
                             <div className="data-table-card">
                                 <h3>Arus Kas Keluar</h3>
@@ -1532,13 +1536,10 @@ export default function AdminDashboard() {
                     {/* TAB: REKAP KEUANGAN — Full Financial Dashboard */}
                     {activeTab === 'rekap_keuangan' && (
                         <div className="rkeu-dashboard" style={{ fontFamily: "'Roboto', sans-serif" }}>
-
                             {/* === TOP ROW: 70/30 === */}
                             <div className="rkeu-top-row">
-
                                 {/* LEFT COLUMN (70%) */}
                                 <div className="rkeu-left-col">
-
                                     {/* Bar Chart: Pemasukan vs Pengeluaran */}
                                     <div className="rkeu-card">
                                         <div className="rkeu-card-title">
@@ -1569,7 +1570,6 @@ export default function AdminDashboard() {
                                             </div>
                                         </div>
                                     </div>
-
                                     {/* Two Donut Charts side by side */}
                                     <div className="rkeu-donut-row">
                                         {/* Donut 1: Pemasukan Berdasarkan Sumber */}
@@ -1600,7 +1600,6 @@ export default function AdminDashboard() {
                                                 </div>
                                             </div>
                                         </div>
-
                                         {/* Donut 2: Metode Pembayaran */}
                                         <div className="rkeu-card rkeu-donut-card">
                                             <div className="rkeu-card-title">Metode Pembayaran</div>
@@ -1626,7 +1625,6 @@ export default function AdminDashboard() {
                                             </div>
                                         </div>
                                     </div>
-
                                     {/* 2x2 Ticket Sales Grid */}
                                     <div className="rkeu-ticket-grid">
                                         <div className="rkeu-card rkeu-ticket-card">
@@ -1671,7 +1669,6 @@ export default function AdminDashboard() {
                                         </div>
                                     </div>
                                 </div>
-
                                 {/* RIGHT COLUMN (30%) */}
                                 <div className="rkeu-right-col">
                                     {/* Tabel Transaksi Terbaru */}
@@ -1699,7 +1696,6 @@ export default function AdminDashboard() {
                                             </tbody>
                                         </table>
                                     </div>
-
                                     {/* Tabel Ringkasan Layanan Sewa */}
                                     <div className="rkeu-card rkeu-right-panel">
                                         <div className="rkeu-panel-title">
@@ -1732,7 +1728,6 @@ export default function AdminDashboard() {
                                             </tbody>
                                         </table>
                                     </div>
-
                                     {/* Tabel Pengeluaran Terbaru */}
                                     <div className="rkeu-card rkeu-right-panel">
                                         <div className="rkeu-panel-title">
@@ -1759,7 +1754,6 @@ export default function AdminDashboard() {
                                     </div>
                                 </div>
                             </div>
-
                             {/* === BOTTOM: Full-width Stacked Bar Chart === */}
                             <div className="rkeu-card rkeu-stacked-card">
                                 <div className="rkeu-card-title">Pengunjung Harian</div>
@@ -1786,7 +1780,6 @@ export default function AdminDashboard() {
                                     </div>
                                 </div>
                             </div>
-
                         </div>
                     )}
 
@@ -1797,7 +1790,6 @@ export default function AdminDashboard() {
                             <p style={{ color: '#64748b', fontSize: '0.85rem', marginBottom: '24px' }}>
                                 Perubahan harga di bawah ini akan langsung merubah tarif pada portal Kasir (POS) petugas di lapangan.
                             </p>
-
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
                                 <h4 style={{ borderBottom: '1px solid #e2e8f0', paddingBottom: '6px' }}>Harga Tiket Masuk (Rp)</h4>
                                 <div className="input-group-field">
@@ -1839,7 +1831,6 @@ export default function AdminDashboard() {
                                         style={{ height: '42px', padding: '10px' }}
                                     />
                                 </div>
-
                                 <h4 style={{ borderBottom: '1px solid #e2e8f0', paddingBottom: '6px', marginTop: '10px' }}>Harga Layanan Sewa (Rp)</h4>
                                 <div className="input-group-field">
                                     <label>Sewa Ban Pelampung</label>
@@ -1880,7 +1871,6 @@ export default function AdminDashboard() {
                                         style={{ height: '42px', padding: '10px' }}
                                     />
                                 </div>
-
                                 <button type="submit" className="btn-login-submit" style={{ height: '48px', borderRadius: '12px', marginTop: '10px' }}>
                                     <i className="fa-solid fa-circle-check"></i> Simpan Perubahan Tarif
                                 </button>
@@ -1921,7 +1911,6 @@ export default function AdminDashboard() {
                                     <p style={{ fontSize: '0.85rem', color: '#64748b' }}>Daftar pesanan tiket pengunjung langsung. Admin dapat mencetak Tiket PDF & mengirimkan via WhatsApp.</p>
                                 </div>
                             </div>
-
                             <div className="superadmin-table-wrapper" style={{ marginTop: '15px' }}>
                                 <table className="superadmin-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
                                     <thead>
@@ -1954,15 +1943,15 @@ export default function AdminDashboard() {
                                                 </td>
                                                 <td>
                                                     <div style={{ display: 'flex', gap: '6px' }}>
-                                                        <button 
-                                                            onClick={() => setSelectedPDFTicket(t)} 
+                                                        <button
+                                                            onClick={() => setSelectedPDFTicket(t)}
                                                             style={{ backgroundColor: '#0c294a', color: 'white', border: 'none', padding: '6px 12px', borderRadius: '8px', fontSize: '0.78rem', fontWeight: 800, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
                                                         >
                                                             <i className="fa-solid fa-file-pdf"></i> Cetak PDF
                                                         </button>
-                                                        <button 
+                                                        <button
                                                             onClick={() => {
-                                                                const waText = `Halo kak ${t.name || ''}, berikut Tiket Resmi PDF Waterboom Cijoho Indah untuk Kode Booking: *${t.code}*.\n\nTanggal: ${t.date}\nTotal: Rp ${t.total?.toLocaleString('id-ID')}\n\nE-Tiket PDF siap digunakan di pintu masuk. Terima kasih!`;
+                                                                const waText = `Halo kak ${t.name || ''}, berikut Tiket Resmi PDF Waterboom Cijoho Indah untuk Kode Booking: *${t.code}*.\nTanggal: ${t.date}\nTotal: Rp ${t.total?.toLocaleString('id-ID')}\nE-Tiket PDF siap digunakan di pintu masuk. Terima kasih!`;
                                                                 window.open(`https://wa.me/${(t.phone || '6281234567890').replace(/[^0-9]/g, '')}?text=${encodeURIComponent(waText)}`, '_blank');
                                                             }}
                                                             style={{ backgroundColor: '#25D366', color: 'white', border: 'none', padding: '6px 10px', borderRadius: '8px', fontSize: '0.78rem', fontWeight: 800, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
@@ -2039,7 +2028,6 @@ export default function AdminDashboard() {
                                     </button>
                                 </form>
                             </div>
-
                             {/* List tabel pengguna */}
                             <div className="data-table-card">
                                 <h3>Daftar Staf Aktif</h3>
@@ -2129,7 +2117,6 @@ export default function AdminDashboard() {
                                         style={{ height: '42px', padding: '10px' }}
                                     />
                                 </div>
-
                                 <button type="submit" className="btn-login-submit" style={{ height: '48px', borderRadius: '12px' }}>
                                     <i className="fa-solid fa-floppy-disk"></i> Simpan Pengaturan
                                 </button>
@@ -2149,7 +2136,6 @@ export default function AdminDashboard() {
                             </h4>
                             <button onClick={() => setSelectedPDFTicket(null)} style={{ color: 'white' }}>&times;</button>
                         </div>
-
                         <div className="v-modal-body" style={{ padding: '24px', backgroundColor: '#fff' }}>
                             <div id="pdf-printable-area" style={{ border: '2px solid #0c294a', borderRadius: '16px', padding: '20px', backgroundColor: '#f8fafc' }}>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '2px solid #0c294a', paddingBottom: '12px', marginBottom: '16px' }}>
@@ -2164,7 +2150,6 @@ export default function AdminDashboard() {
                                         VALIDATED / LUNAS
                                     </span>
                                 </div>
-
                                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', fontSize: '0.85rem', marginBottom: '16px' }}>
                                     <div>
                                         <span style={{ color: '#64748b', fontSize: '0.72rem', display: 'block' }}>KODE BOOKING</span>
@@ -2183,7 +2168,6 @@ export default function AdminDashboard() {
                                         <strong>{selectedPDFTicket.phone || '-'}</strong>
                                     </div>
                                 </div>
-
                                 <div style={{ borderTop: '1px dashed #cbd5e1', paddingTop: '10px', marginBottom: '16px' }}>
                                     <span style={{ color: '#64748b', fontSize: '0.72rem', display: 'block', marginBottom: '6px' }}>RINCIAN ITEM & TOTAL:</span>
                                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
@@ -2191,7 +2175,6 @@ export default function AdminDashboard() {
                                         <strong>Rp {selectedPDFTicket.total?.toLocaleString('id-ID')}</strong>
                                     </div>
                                 </div>
-
                                 <div style={{ backgroundColor: 'white', border: '1px solid #cbd5e1', borderRadius: '12px', padding: '16px', textAlign: 'center' }}>
                                     <div style={{ fontSize: '4.5rem', color: '#0c294a', lineHeight: 1 }}>
                                         <i className="fa-solid fa-qrcode"></i>
@@ -2202,17 +2185,16 @@ export default function AdminDashboard() {
                                     <small style={{ color: '#94a3b8', fontSize: '0.7rem' }}>Tunjukkan barcode/QR code ini ke loket pintu masuk</small>
                                 </div>
                             </div>
-
                             <div style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
-                                <button 
+                                <button
                                     onClick={() => window.print()}
                                     style={{ flex: 1, backgroundColor: '#1a73e8', color: 'white', border: 'none', padding: '12px', borderRadius: '10px', fontWeight: 800, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
                                 >
                                     <i className="fa-solid fa-print"></i> Cetak / Simpan Ke PDF
                                 </button>
-                                <button 
+                                <button
                                     onClick={() => {
-                                        const waText = `Halo kak ${selectedPDFTicket.name || ''}, berikut Tiket Resmi PDF Waterboom Cijoho Indah untuk Kode Booking: *${selectedPDFTicket.code}*.\n\nTanggal: ${selectedPDFTicket.date}\nTotal: Rp ${selectedPDFTicket.total?.toLocaleString('id-ID')}\n\nE-Tiket PDF siap digunakan di pintu masuk. Terima kasih!`;
+                                        const waText = `Halo kak ${selectedPDFTicket.name || ''}, berikut Tiket Resmi PDF Waterboom Cijoho Indah untuk Kode Booking: *${selectedPDFTicket.code}*.\nTanggal: ${selectedPDFTicket.date}\nTotal: Rp ${selectedPDFTicket.total?.toLocaleString('id-ID')}\nE-Tiket PDF siap digunakan di pintu masuk. Terima kasih!`;
                                         window.open(`https://wa.me/${(selectedPDFTicket.phone || '6281234567890').replace(/[^0-9]/g, '')}?text=${encodeURIComponent(waText)}`, '_blank');
                                     }}
                                     style={{ flex: 1, backgroundColor: '#25D366', color: 'white', border: 'none', padding: '12px', borderRadius: '10px', fontWeight: 800, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
