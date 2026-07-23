@@ -345,23 +345,7 @@ export default function AdminDashboard() {
 
     const reportMetrics = getReportMetrics();
 
-    // Reset all reports and transactions to 0
-    const handleResetAllReports = () => {
-        if (window.confirm('Apakah Anda yakin ingin mereset semua data laporan dan transaksi kembali ke 0?')) {
-            localStorage.setItem('waterboom_sales_history', JSON.stringify([]));
-            localStorage.setItem('waterboom_expenditures', JSON.stringify([]));
-            setHistory([]);
-            setExpenditures([]);
-            setKpis({
-                sales: 0,
-                inflow: 0,
-                outflow: 0,
-                visitors: 0,
-                transactions: 0
-            });
-            alert('Semua data laporan telah direset menjadi 0.');
-        }
-    };
+
 
     // Edit price submit
     const handleSavePrices = (e) => {
@@ -717,27 +701,6 @@ export default function AdminDashboard() {
                     </div>
 
                     <div className="header-controls-column">
-                        <button
-                            onClick={handleResetAllReports}
-                            title="Reset semua transaksi dan laporan ke 0"
-                            style={{
-                                backgroundColor: '#fee2e2',
-                                color: '#dc2626',
-                                border: '1px solid #fca5a5',
-                                padding: '8px 14px',
-                                borderRadius: '10px',
-                                fontWeight: 700,
-                                fontSize: '0.82rem',
-                                cursor: 'pointer',
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '6px',
-                                whiteSpace: 'nowrap'
-                            }}
-                        >
-                            <i className="fa-solid fa-rotate-left"></i> Reset Laporan ke 0
-                        </button>
-
                         <div className="date-range-selector">
                             <i className="fa-regular fa-calendar-days"></i>
                             <span>{dateRange}</span>
