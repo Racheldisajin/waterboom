@@ -99,13 +99,13 @@ export default function AdminDashboard() {
         capacity: 1000
     });
 
-    // KPI values
+    // KPI values (Starts from 0)
     const [kpis, setKpis] = useState({
-        sales: 48750000,
-        inflow: 55350000,
-        outflow: 8620000,
-        visitors: 2356,
-        transactions: 1024
+        sales: 0,
+        inflow: 0,
+        outflow: 0,
+        visitors: 0,
+        transactions: 0
     });
 
     // Forms temp states
@@ -116,129 +116,22 @@ export default function AdminDashboard() {
 
     const navigate = useNavigate();
 
-    // --- Helper: format tipe tiket menjadi label yang lebih mudah dibaca ---
-    const mapTicketTypeLabel = (type) => {
-        switch (type) {
-            case 'reguler': return 'Tiket Reguler';
-            case 'rombongan': return 'Tiket Rombongan';
-            case 'kursus': return 'Kursus Renang';
-            case 'ban': return 'Sewa Ban';
-            case 'angsa': return 'Sewa Angsa';
-            case 'gazebo': return 'Sewa Gazebo';
-            default: return type;
-        }
-    };
-
-    const mapPaymentMethodLabel = (method) => {
-        switch (method) {
-            case 'tunai': return 'Tunai';
-            case 'qris': return 'QRIS';
-            case 'transfer': return 'Transfer';
-            default: return method || '-';
-        }
-    };
-
-    // --- Fetch transaksi dari Supabase dan transformasikan ke format history ---
-    const fetchTransactions = async () => {
-        try {
-            const { data, error } = await supabase
-                .from('transactions')
-                .select('*')
-                .order('created_at', { ascending: false });
-
-            if (error) {
-                console.error('Gagal mengambil transaksi:', error);
-                // fallback ke localStorage jika ada
-                const savedHistory = localStorage.getItem('waterboom_sales_history');
-                if (savedHistory) {
-                    setHistory(JSON.parse(savedHistory));
-                }
-                return;
-            }
-
-            // Kelompokkan berdasarkan booking_code
-            const grouped = {};
-            data.forEach(row => {
-                const code = row.booking_code;
-                if (!grouped[code]) {
-                    grouped[code] = {
-                        code,
-                        date: new Date(row.created_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }) + ' ' + new Date(row.created_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }),
-                        items: [],
-                        payment_method: row.payment_method,
-                        cashier_name: row.cashier_name,
-                        customer_name: row.customer_name
-                    };
-                }
-                grouped[code].items.push({
-                    ticket_type: row.ticket_type,
-                    quantity: row.quantity,
-                    total_price: row.total_price,
-                    product: mapTicketTypeLabel(row.ticket_type)
-                });
-            });
-
-            // Ubah ke array history (seperti format sebelumnya)
-            const newHistory = [];
-            Object.values(grouped).forEach(grp => {
-                // Buat satu entri untuk tiket masuk (jika ada item tiket)
-                const ticketItems = grp.items.filter(it => ['reguler', 'rombongan', 'kursus'].includes(it.ticket_type));
-                const rentalItems = grp.items.filter(it => ['ban', 'angsa', 'gazebo'].includes(it.ticket_type));
-
-                // Gabungkan tiket masuk dalam satu entri (jika ada)
-                if (ticketItems.length > 0) {
-                    const totalTickets = ticketItems.reduce((s, it) => s + it.quantity, 0);
-                    const totalPrice = ticketItems.reduce((s, it) => s + it.total_price, 0);
-                    newHistory.push({
-                        code: grp.code,
-                        date: grp.date,
-                        type: 'Tiket Masuk',
-                        channel: grp.payment_method === 'transfer' ? 'Online' : 'Offline',
-                        product: ticketItems.map(it => it.product).join(', '),
-                        qty: totalTickets,
-                        total: totalPrice,
-                        method: mapPaymentMethodLabel(grp.payment_method),
-                        status: 'Lunas',
-                        details: { 
-                            ticketTypeKey: ticketItems[0]?.ticket_type || 'reguler',
-                            rentals: {
-                                ban: rentalItems.filter(r => r.ticket_type === 'ban').reduce((s, r) => s + r.quantity, 0),
-                                sepeda: rentalItems.filter(r => r.ticket_type === 'angsa').reduce((s, r) => s + r.quantity, 0),
-                                gazebo: rentalItems.filter(r => r.ticket_type === 'gazebo').reduce((s, r) => s + r.quantity, 0)
-                            }
-                        }
-                    });
-                }
-
-                // Setiap item sewa menjadi entri sendiri-sendiri
-                rentalItems.forEach(rit => {
-                    newHistory.push({
-                        code: grp.code,
-                        date: grp.date,
-                        type: 'Sewa ' + (rit.ticket_type === 'ban' ? 'Ban' : rit.ticket_type === 'angsa' ? 'Angsa' : 'Gazebo'),
-                        channel: grp.payment_method === 'transfer' ? 'Online' : 'Offline',
-                        product: rit.product,
-                        qty: rit.quantity,
-                        total: rit.total_price,
-                        method: mapPaymentMethodLabel(grp.payment_method),
-                        status: 'Lunas',
-                        details: null
-                    });
-                });
-            });
-
-            setHistory(newHistory);
-            localStorage.setItem('waterboom_sales_history', JSON.stringify(newHistory));
-        } catch (err) {
-            console.error('Error fetching transactions:', err);
-        }
-    };
-
     // Load initial data and localStorage configurations
     useEffect(() => {
         const loadAllData = () => {
-            // 1. Ambil transaksi dari Supabase (menggantikan hardcoded history)
-            fetchTransactions();
+            // 1. Load Sales History (Defaults to 0 / empty array)
+            const savedHistory = localStorage.getItem('waterboom_sales_history');
+            let historyData = [];
+            if (savedHistory) {
+                try {
+                    historyData = JSON.parse(savedHistory);
+                } catch(e) {
+                    historyData = [];
+                }
+            } else {
+                localStorage.setItem('waterboom_sales_history', JSON.stringify([]));
+            }
+            setHistory(historyData);
 
             // 2. Load Prices
             const savedPrices = localStorage.getItem('waterboom_prices');
@@ -254,17 +147,17 @@ export default function AdminDashboard() {
             setPrices(pricingData);
             setPriceEdit(pricingData);
 
-            // 3. Load Expenditures
+            // 3. Load Expenditures (Defaults to 0 / empty array)
             const savedExpenses = localStorage.getItem('waterboom_expenditures');
-            let expensesData = [
-                { id: '1', date: '2025-05-21', category: 'Operasional', desc: 'Pembelian Bahan Kimia Kolam', amount: 1250000 },
-                { id: '2', date: '2025-05-21', category: 'Listrik & Air', desc: 'Pembayaran Listrik & Air', amount: 2150000 },
-                { id: '3', date: '2025-05-20', category: 'Perawatan', desc: 'Perawatan Wahana Air', amount: 1800000 }
-            ];
+            let expensesData = [];
             if (savedExpenses) {
-                expensesData = JSON.parse(savedExpenses);
+                try {
+                    expensesData = JSON.parse(savedExpenses);
+                } catch(e) {
+                    expensesData = [];
+                }
             } else {
-                localStorage.setItem('waterboom_expenditures', JSON.stringify(expensesData));
+                localStorage.setItem('waterboom_expenditures', JSON.stringify([]));
             }
             setExpenditures(expensesData);
 
@@ -297,30 +190,26 @@ export default function AdminDashboard() {
             setSystemSettings(settingsData);
             setSettingsEdit(settingsData);
 
-            // Compute Statistics & KPIs (akan di-update ulang saat history dari Supabase selesai dimuat)
-            let addedSales = 0;
-            let addedTransactions = 0;
-            // Kita gunakan history state yang sudah di-set oleh fetchTransactions, 
-            // tapi untuk initial render kita hitung dari local fallback jika ada
-            const currentHistory = JSON.parse(localStorage.getItem('waterboom_sales_history') || '[]');
-            currentHistory.forEach(item => {
-                if (item.code.startsWith('WCI-')) {
-                    addedSales += item.total || 0;
-                    addedTransactions += 1;
-                }
+            // Compute Statistics & KPIs from 0
+            let totalSales = 0;
+            let totalVisitors = 0;
+
+            historyData.forEach(item => {
+                totalSales += Number(item.total) || 0;
+                totalVisitors += Number(item.qty) || 1;
             });
 
             let totalExpenses = 0;
             expensesData.forEach(e => {
-                totalExpenses += e.amount || 0;
+                totalExpenses += Number(e.amount) || 0;
             });
 
             setKpis({
-                sales: 48750000 + addedSales,
-                inflow: 55350000 + addedSales,
+                sales: totalSales,
+                inflow: totalSales,
                 outflow: totalExpenses,
-                visitors: 2356 + (addedTransactions * 2),
-                transactions: 1024 + addedTransactions
+                visitors: totalVisitors,
+                transactions: historyData.length
             });
         };
         
@@ -367,26 +256,39 @@ export default function AdminDashboard() {
         navigate('/login');
     };
 
-    // Calculate aggregated rental items sold
+    // Calculate aggregated rental items sold starting from 0
     const getRentalTotals = () => {
-        let banQty = 525;
-        let gazeboQty = 320;
-        let angsaQty = 240;
+        let banQty = 0;
+        let gazeboQty = 0;
+        let angsaQty = 0;
+
         history.forEach(item => {
-            if (item.code.startsWith('WCI-') && item.details && item.details.rentals) {
+            const qty = Number(item.qty) || 1;
+            const prod = (item.product || item.type || '').toLowerCase();
+
+            if (item.details && item.details.rentals) {
                 const r = item.details.rentals;
                 banQty += r.ban || 0;
-                angsaQty += r.sepeda || 0; // sepeda maps to angsa
+                angsaQty += r.sepeda || 0;
                 gazeboQty += r.gazebo || 0;
-            } else if (item.type && item.type.includes('Sewa')) {
-                if (item.type.includes('Ban')) banQty += item.qty || 0;
-                else if (item.type.includes('Angsa')) angsaQty += item.qty || 0;
-                else if (item.type.includes('Gazebo')) gazeboQty += item.qty || 0;
+            } else if (item.rentals) {
+                const r = item.rentals;
+                banQty += r.ban || 0;
+                angsaQty += r.sepeda || 0;
+                gazeboQty += r.gazebo || 0;
+            } else if (prod.includes('ban')) {
+                banQty += qty;
+            } else if (prod.includes('gazebo')) {
+                gazeboQty += qty;
+            } else if (prod.includes('angsa') || prod.includes('sepeda')) {
+                angsaQty += qty;
             }
         });
-        const banRev = banQty * prices.rentals.ban;
-        const gazeboRev = gazeboQty * prices.rentals.gazebo;
-        const angsaRev = angsaQty * prices.rentals.sepeda;
+
+        const banRev = banQty * (prices.rentals?.ban || 5000);
+        const gazeboRev = gazeboQty * (prices.rentals?.gazebo || 20000);
+        const angsaRev = angsaQty * (prices.rentals?.sepeda || 5000);
+
         return {
             ban: { qty: banQty, rev: banRev },
             gazebo: { qty: gazeboQty, rev: gazeboRev },
@@ -397,6 +299,80 @@ export default function AdminDashboard() {
     };
 
     const rentals = getRentalTotals();
+
+    // Compute dynamic metrics for Laporan and Rekap Keuangan
+    const getReportMetrics = () => {
+        let sales = 0;
+        let offlineSales = 0;
+        let onlineSales = 0;
+        let offlineTickets = 0;
+        let onlineTickets = 0;
+
+        let regulerSales = 0;
+        let regulerTickets = 0;
+        let rombonganSales = 0;
+        let rombonganTickets = 0;
+
+        let cashSales = 0;
+        let qrisSales = 0;
+        let transferSales = 0;
+
+        history.forEach(item => {
+            const itemTotal = Number(item.total) || 0;
+            const qty = Number(item.qty) || 1;
+            sales += itemTotal;
+
+            const isOnline = item.channel === 'Online' || (item.code && item.code.startsWith('WCI-'));
+            if (isOnline) {
+                onlineSales += itemTotal;
+                onlineTickets += qty;
+            } else {
+                offlineSales += itemTotal;
+                offlineTickets += qty;
+            }
+
+            const prod = (item.product || item.type || '').toLowerCase();
+            if (prod.includes('rombongan')) {
+                rombonganSales += itemTotal;
+                rombonganTickets += qty;
+            } else if (prod.includes('reguler') || prod.includes('tiket')) {
+                regulerSales += itemTotal;
+                regulerTickets += qty;
+            }
+
+            const method = (item.method || item.paymentMethod || '').toLowerCase();
+            if (method.includes('qris')) {
+                qrisSales += itemTotal;
+            } else if (method.includes('transfer')) {
+                transferSales += itemTotal;
+            } else {
+                cashSales += itemTotal;
+            }
+        });
+
+        const totalTickets = offlineTickets + onlineTickets;
+
+        return {
+            sales,
+            offlineSales,
+            onlineSales,
+            offlineTickets,
+            onlineTickets,
+            totalTickets,
+            regulerSales,
+            regulerTickets,
+            rombonganSales,
+            rombonganTickets,
+            cashSales,
+            qrisSales,
+            transferSales,
+            rentals
+        };
+    };
+
+    const reportMetrics = getReportMetrics();
+
+
 
     // Edit price submit
     const handleSavePrices = (e) => {
@@ -510,22 +486,20 @@ export default function AdminDashboard() {
             const updated = history.filter(item => item.code !== code);
             setHistory(updated);
             localStorage.setItem('waterboom_sales_history', JSON.stringify(updated));
-            
-            // Recalculate stats
+
+            // Recalculate stats from 0
             let addedSales = 0;
-            let addedTransactions = 0;
+            let addedVisitors = 0;
             updated.forEach(item => {
-                if (item.code.startsWith('WCI-')) {
-                    addedSales += item.total || 0;
-                    addedTransactions += 1;
-                }
+                addedSales += Number(item.total) || 0;
+                addedVisitors += Number(item.qty) || 1;
             });
             setKpis(prev => ({
                 ...prev,
-                sales: 48750000 + addedSales,
-                inflow: 55350000 + addedSales,
-                visitors: 2356 + (addedTransactions * 2),
-                transactions: 1024 + addedTransactions
+                sales: addedSales,
+                inflow: addedSales,
+                visitors: addedVisitors,
+                transactions: updated.length
             }));
             alert(`Transaksi ${code} berhasil direfund dan dihapus dari database.`);
         }
@@ -1202,11 +1176,11 @@ export default function AdminDashboard() {
                                         <h3 style={{ fontSize: '1.25rem', color: '#0f172a', marginBottom: '6px' }}>Total Pemasukan: <span className="text-green">Rp {kpis.inflow.toLocaleString('id-ID')}</span></h3>
                                         <p style={{ color: '#64748b', fontSize: '0.88rem', marginBottom: '16px' }}>Arus kas masuk bersumber dari Tiket Masuk (Offline & Online) serta Sewa Wahana & Peralatan.</p>
                                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px' }}>
-                                            <div className="legend-row"><span className="bullet blue"></span><div className="info"><span>Tiket Masuk Offline</span><strong>Rp 26.450.000 <small>(47.8%)</small></strong></div></div>
-                                            <div className="legend-row"><span className="bullet green"></span><div className="info"><span>Tiket Masuk Online</span><strong>Rp 14.850.000 <small>(26.8%)</small></strong></div></div>
-                                            <div className="legend-row"><span className="bullet orange"></span><div className="info"><span>Sewa Ban Renang</span><strong>Rp {rentals.ban.rev.toLocaleString('id-ID')} <small>(9.5%)</small></strong></div></div>
-                                            <div className="legend-row"><span className="bullet indigo"></span><div className="info"><span>Sewa Gazebo</span><strong>Rp {rentals.gazebo.rev.toLocaleString('id-ID')} <small>(11.6%)</small></strong></div></div>
-                                            <div className="legend-row"><span className="bullet pink"></span><div className="info"><span>Sewa Bebek / Angsa</span><strong>Rp {rentals.angsa.rev.toLocaleString('id-ID')} <small>(4.3%)</small></strong></div></div>
+                                            <div className="legend-row"><span className="bullet blue"></span><div className="info"><span>Tiket Masuk Offline</span><strong>Rp {reportMetrics.offlineSales.toLocaleString('id-ID')} <small>({reportMetrics.sales > 0 ? ((reportMetrics.offlineSales / reportMetrics.sales) * 100).toFixed(1) : '0.0'}%)</small></strong></div></div>
+                                            <div className="legend-row"><span className="bullet green"></span><div className="info"><span>Tiket Masuk Online</span><strong>Rp {reportMetrics.onlineSales.toLocaleString('id-ID')} <small>({reportMetrics.sales > 0 ? ((reportMetrics.onlineSales / reportMetrics.sales) * 100).toFixed(1) : '0.0'}%)</small></strong></div></div>
+                                            <div className="legend-row"><span className="bullet orange"></span><div className="info"><span>Sewa Ban Renang</span><strong>Rp {rentals.ban.rev.toLocaleString('id-ID')} <small>({reportMetrics.sales > 0 ? ((rentals.ban.rev / reportMetrics.sales) * 100).toFixed(1) : '0.0'}%)</small></strong></div></div>
+                                            <div className="legend-row"><span className="bullet indigo"></span><div className="info"><span>Sewa Gazebo</span><strong>Rp {rentals.gazebo.rev.toLocaleString('id-ID')} <small>({reportMetrics.sales > 0 ? ((rentals.gazebo.rev / reportMetrics.sales) * 100).toFixed(1) : '0.0'}%)</small></strong></div></div>
+                                            <div className="legend-row"><span className="bullet pink"></span><div className="info"><span>Sewa Bebek / Angsa</span><strong>Rp {rentals.angsa.rev.toLocaleString('id-ID')} <small>({reportMetrics.sales > 0 ? ((rentals.angsa.rev / reportMetrics.sales) * 100).toFixed(1) : '0.0'}%)</small></strong></div></div>
                                         </div>
                                     </div>
                                 </div>
@@ -1362,9 +1336,9 @@ export default function AdminDashboard() {
                                     <tbody>
                                         {activeTab === 'laporan_penjualan' && (
                                             <>
-                                                <tr><td>Penjualan Tiket Masuk Offline (Kasir)</td><td>1.452 Orang</td><td className="font-bold">Rp 26.450.000</td></tr>
-                                                <tr><td>Penjualan Tiket Masuk Online (Mobile App)</td><td>904 Orang</td><td className="font-bold">Rp 14.850.000</td></tr>
-                                                <tr className="total-row-highlight"><td><strong>Total Tiket Terjual</strong></td><td><strong>2.356 Orang</strong></td><td className="font-bold text-blue"><strong>Rp 41.300.000</strong></td></tr>
+                                                <tr><td>Penjualan Tiket Masuk Offline (Kasir)</td><td>{reportMetrics.offlineTickets.toLocaleString('id-ID')} Orang</td><td className="font-bold">Rp {reportMetrics.offlineSales.toLocaleString('id-ID')}</td></tr>
+                                                <tr><td>Penjualan Tiket Masuk Online (Mobile App)</td><td>{reportMetrics.onlineTickets.toLocaleString('id-ID')} Orang</td><td className="font-bold">Rp {reportMetrics.onlineSales.toLocaleString('id-ID')}</td></tr>
+                                                <tr className="total-row-highlight"><td><strong>Total Tiket Terjual</strong></td><td><strong>{reportMetrics.totalTickets.toLocaleString('id-ID')} Orang</strong></td><td className="font-bold text-blue"><strong>Rp {reportMetrics.sales.toLocaleString('id-ID')}</strong></td></tr>
                                             </>
                                         )}
                                         {activeTab === 'laporan_layanan' && (
@@ -1443,11 +1417,11 @@ export default function AdminDashboard() {
                                                     </svg>
                                                 </div>
                                                 <div className="rkeu-donut-legend">
-                                                    <div className="rkeu-legend-row"><span style={{ background: '#1a73e8' }}></span><div><div className="rkeu-leg-label">Tiket Masuk Offline</div><div className="rkeu-leg-val">Rp 26.450.000 <span>(47.8%)</span></div></div></div>
-                                                    <div className="rkeu-legend-row"><span style={{ background: '#10b981' }}></span><div><div className="rkeu-leg-label">Tiket Masuk Online</div><div className="rkeu-leg-val">Rp 14.850.000 <span>(26.8%)</span></div></div></div>
-                                                    <div className="rkeu-legend-row"><span style={{ background: '#f59e0b' }}></span><div><div className="rkeu-leg-label">Sewa Ban</div><div className="rkeu-leg-val">Rp {rentals.ban.rev.toLocaleString('id-ID')} <span>(9.5%)</span></div></div></div>
-                                                    <div className="rkeu-legend-row"><span style={{ background: '#6366f1' }}></span><div><div className="rkeu-leg-label">Sewa Gazebo</div><div className="rkeu-leg-val">Rp {rentals.gazebo.rev.toLocaleString('id-ID')} <span>(11.6%)</span></div></div></div>
-                                                    <div className="rkeu-legend-row"><span style={{ background: '#ec4899' }}></span><div><div className="rkeu-leg-label">Sewa Angsa</div><div className="rkeu-leg-val">Rp {rentals.angsa.rev.toLocaleString('id-ID')} <span>(4.3%)</span></div></div></div>
+                                                    <div className="rkeu-legend-row"><span style={{ background: '#1a73e8' }}></span><div><div className="rkeu-leg-label">Tiket Masuk Offline</div><div className="rkeu-leg-val">Rp {reportMetrics.offlineSales.toLocaleString('id-ID')} <span>({reportMetrics.sales > 0 ? ((reportMetrics.offlineSales / reportMetrics.sales) * 100).toFixed(1) : '0.0'}%)</span></div></div></div>
+                                                    <div className="rkeu-legend-row"><span style={{ background: '#10b981' }}></span><div><div className="rkeu-leg-label">Tiket Masuk Online</div><div className="rkeu-leg-val">Rp {reportMetrics.onlineSales.toLocaleString('id-ID')} <span>({reportMetrics.sales > 0 ? ((reportMetrics.onlineSales / reportMetrics.sales) * 100).toFixed(1) : '0.0'}%)</span></div></div></div>
+                                                    <div className="rkeu-legend-row"><span style={{ background: '#f59e0b' }}></span><div><div className="rkeu-leg-label">Sewa Ban</div><div className="rkeu-leg-val">Rp {rentals.ban.rev.toLocaleString('id-ID')} <span>({reportMetrics.sales > 0 ? ((rentals.ban.rev / reportMetrics.sales) * 100).toFixed(1) : '0.0'}%)</span></div></div></div>
+                                                    <div className="rkeu-legend-row"><span style={{ background: '#6366f1' }}></span><div><div className="rkeu-leg-label">Sewa Gazebo</div><div className="rkeu-leg-val">Rp {rentals.gazebo.rev.toLocaleString('id-ID')} <span>({reportMetrics.sales > 0 ? ((rentals.gazebo.rev / reportMetrics.sales) * 100).toFixed(1) : '0.0'}%)</span></div></div></div>
+                                                    <div className="rkeu-legend-row"><span style={{ background: '#ec4899' }}></span><div><div className="rkeu-leg-label">Sewa Angsa</div><div className="rkeu-leg-val">Rp {rentals.angsa.rev.toLocaleString('id-ID')} <span>({reportMetrics.sales > 0 ? ((rentals.angsa.rev / reportMetrics.sales) * 100).toFixed(1) : '0.0'}%)</span></div></div></div>
                                                 </div>
                                             </div>
                                         </div>
@@ -1464,9 +1438,9 @@ export default function AdminDashboard() {
                                                     </svg>
                                                 </div>
                                                 <div className="rkeu-donut-legend">
-                                                    <div className="rkeu-legend-row"><span style={{ background: '#1a73e8' }}></span><div><div className="rkeu-leg-label">Tunai</div><div className="rkeu-leg-val">Rp 29.580.000 <span>(53.4%)</span></div></div></div>
-                                                    <div className="rkeu-legend-row"><span style={{ background: '#10b981' }}></span><div><div className="rkeu-leg-label">QRIS</div><div className="rkeu-leg-val">Rp 23.450.000 <span>(42.4%)</span></div></div></div>
-                                                    <div className="rkeu-legend-row"><span style={{ background: '#f59e0b' }}></span><div><div className="rkeu-leg-label">Transfer</div><div className="rkeu-leg-val">Rp 2.320.000 <span>(4.2%)</span></div></div></div>
+                                                    <div className="rkeu-legend-row"><span style={{ background: '#1a73e8' }}></span><div><div className="rkeu-leg-label">Tunai</div><div className="rkeu-leg-val">Rp {reportMetrics.cashSales.toLocaleString('id-ID')} <span>({reportMetrics.sales > 0 ? ((reportMetrics.cashSales / reportMetrics.sales) * 100).toFixed(1) : '0.0'}%)</span></div></div></div>
+                                                    <div className="rkeu-legend-row"><span style={{ background: '#10b981' }}></span><div><div className="rkeu-leg-label">QRIS</div><div className="rkeu-leg-val">Rp {reportMetrics.qrisSales.toLocaleString('id-ID')} <span>({reportMetrics.sales > 0 ? ((reportMetrics.qrisSales / reportMetrics.sales) * 100).toFixed(1) : '0.0'}%)</span></div></div></div>
+                                                    <div className="rkeu-legend-row"><span style={{ background: '#f59e0b' }}></span><div><div className="rkeu-leg-label">Transfer</div><div className="rkeu-leg-val">Rp {reportMetrics.transferSales.toLocaleString('id-ID')} <span>({reportMetrics.sales > 0 ? ((reportMetrics.transferSales / reportMetrics.sales) * 100).toFixed(1) : '0.0'}%)</span></div></div></div>
                                                 </div>
                                             </div>
                                         </div>
@@ -1477,40 +1451,40 @@ export default function AdminDashboard() {
                                             <div className="rkeu-ticket-icon blue"><i className="fa-solid fa-ticket"></i></div>
                                             <div className="rkeu-ticket-meta">
                                                 <div className="rkeu-ticket-channel">Offline</div>
-                                                <div className="rkeu-ticket-amount">Rp 26.450.000</div>
-                                                <div className="rkeu-ticket-sub">1.452 Tiket</div>
-                                                <div className="rkeu-ticket-bar"><div style={{ width: '57%', background: '#1a73e8' }}></div></div>
-                                                <div className="rkeu-ticket-pct">57%</div>
+                                                <div className="rkeu-ticket-amount">Rp {reportMetrics.offlineSales.toLocaleString('id-ID')}</div>
+                                                <div className="rkeu-ticket-sub">{reportMetrics.offlineTickets} Tiket</div>
+                                                <div className="rkeu-ticket-bar"><div style={{ width: `${reportMetrics.totalTickets > 0 ? Math.round((reportMetrics.offlineTickets / reportMetrics.totalTickets) * 100) : 0}%`, background: '#1a73e8' }}></div></div>
+                                                <div className="rkeu-ticket-pct">{reportMetrics.totalTickets > 0 ? Math.round((reportMetrics.offlineTickets / reportMetrics.totalTickets) * 100) : 0}%</div>
                                             </div>
                                         </div>
                                         <div className="rkeu-card rkeu-ticket-card">
                                             <div className="rkeu-ticket-icon green"><i className="fa-solid fa-ticket"></i></div>
                                             <div className="rkeu-ticket-meta">
                                                 <div className="rkeu-ticket-channel">Online</div>
-                                                <div className="rkeu-ticket-amount">Rp 14.850.000</div>
-                                                <div className="rkeu-ticket-sub">904 Tiket</div>
-                                                <div className="rkeu-ticket-bar"><div style={{ width: '43%', background: '#10b981' }}></div></div>
-                                                <div className="rkeu-ticket-pct">43%</div>
+                                                <div className="rkeu-ticket-amount">Rp {reportMetrics.onlineSales.toLocaleString('id-ID')}</div>
+                                                <div className="rkeu-ticket-sub">{reportMetrics.onlineTickets} Tiket</div>
+                                                <div className="rkeu-ticket-bar"><div style={{ width: `${reportMetrics.totalTickets > 0 ? Math.round((reportMetrics.onlineTickets / reportMetrics.totalTickets) * 100) : 0}%`, background: '#10b981' }}></div></div>
+                                                <div className="rkeu-ticket-pct">{reportMetrics.totalTickets > 0 ? Math.round((reportMetrics.onlineTickets / reportMetrics.totalTickets) * 100) : 0}%</div>
                                             </div>
                                         </div>
                                         <div className="rkeu-card rkeu-ticket-card">
                                             <div className="rkeu-ticket-icon orange"><i className="fa-solid fa-ticket"></i></div>
                                             <div className="rkeu-ticket-meta">
                                                 <div className="rkeu-ticket-channel">Reguler</div>
-                                                <div className="rkeu-ticket-amount">Rp 32.500.000</div>
-                                                <div className="rkeu-ticket-sub">1.300 Tiket</div>
-                                                <div className="rkeu-ticket-bar"><div style={{ width: '78%', background: '#f59e0b' }}></div></div>
-                                                <div className="rkeu-ticket-pct">78%</div>
+                                                <div className="rkeu-ticket-amount">Rp {reportMetrics.regulerSales.toLocaleString('id-ID')}</div>
+                                                <div className="rkeu-ticket-sub">{reportMetrics.regulerTickets} Tiket</div>
+                                                <div className="rkeu-ticket-bar"><div style={{ width: `${reportMetrics.totalTickets > 0 ? Math.round((reportMetrics.regulerTickets / reportMetrics.totalTickets) * 100) : 0}%`, background: '#f59e0b' }}></div></div>
+                                                <div className="rkeu-ticket-pct">{reportMetrics.totalTickets > 0 ? Math.round((reportMetrics.regulerTickets / reportMetrics.totalTickets) * 100) : 0}%</div>
                                             </div>
                                         </div>
                                         <div className="rkeu-card rkeu-ticket-card">
                                             <div className="rkeu-ticket-icon purple"><i className="fa-solid fa-ticket"></i></div>
                                             <div className="rkeu-ticket-meta">
                                                 <div className="rkeu-ticket-channel">Rombongan</div>
-                                                <div className="rkeu-ticket-amount">Rp 8.800.000</div>
-                                                <div className="rkeu-ticket-sub">352 Tiket</div>
-                                                <div className="rkeu-ticket-bar"><div style={{ width: '22%', background: '#8b5cf6' }}></div></div>
-                                                <div className="rkeu-ticket-pct">22%</div>
+                                                <div className="rkeu-ticket-amount">Rp {reportMetrics.rombonganSales.toLocaleString('id-ID')}</div>
+                                                <div className="rkeu-ticket-sub">{reportMetrics.rombonganTickets} Tiket</div>
+                                                <div className="rkeu-ticket-bar"><div style={{ width: `${reportMetrics.totalTickets > 0 ? Math.round((reportMetrics.rombonganTickets / reportMetrics.totalTickets) * 100) : 0}%`, background: '#8b5cf6' }}></div></div>
+                                                <div className="rkeu-ticket-pct">{reportMetrics.totalTickets > 0 ? Math.round((reportMetrics.rombonganTickets / reportMetrics.totalTickets) * 100) : 0}%</div>
                                             </div>
                                         </div>
                                     </div>
@@ -1526,15 +1500,19 @@ export default function AdminDashboard() {
                                         <table className="rkeu-table">
                                             <thead><tr><th>Tanggal</th><th>No. TRX</th><th>Jenis</th><th>Total</th><th>Metode</th></tr></thead>
                                             <tbody>
-                                                {filteredHistory.slice(0, 5).map((item, idx) => (
-                                                    <tr key={idx}>
-                                                        <td>{item.date}</td>
-                                                        <td>{item.code}</td>
-                                                        <td><span className={`rkeu-badge ${item.type === 'Tiket Masuk' ? 'blue' : item.type.includes('Ban') ? 'green' : item.type.includes('Gazebo') ? 'orange' : 'purple'}`}>{item.type}</span></td>
-                                                        <td>Rp {item.total.toLocaleString('id-ID')}</td>
-                                                        <td>{item.method}</td>
-                                                    </tr>
-                                                ))}
+                                                {history.length === 0 ? (
+                                                    <tr><td colSpan="5" style={{ textAlign: 'center', color: '#94a3b8', padding: '16px' }}>Belum ada data penjualan</td></tr>
+                                                ) : (
+                                                    history.slice(0, 5).map((item, idx) => (
+                                                        <tr key={idx}>
+                                                            <td>{item.date}</td>
+                                                            <td>{item.code}</td>
+                                                            <td><span className={`rkeu-badge ${item.type === 'Tiket Masuk' ? 'blue' : 'green'}`}>{item.type}</span></td>
+                                                            <td>Rp {(item.total || 0).toLocaleString('id-ID')}</td>
+                                                            <td>{item.method || 'Tunai'}</td>
+                                                        </tr>
+                                                    ))
+                                                )}
                                             </tbody>
                                         </table>
                                     </div>
@@ -1579,14 +1557,18 @@ export default function AdminDashboard() {
                                         <table className="rkeu-table">
                                             <thead><tr><th>Tanggal</th><th>Kategori</th><th>Deskripsi</th><th>Jumlah</th></tr></thead>
                                             <tbody>
-                                                {expenditures.slice(0, 3).map((item, idx) => (
-                                                    <tr key={idx}>
-                                                        <td>{item.date}</td>
-                                                        <td><span className="rkeu-cat-badge">{item.category}</span></td>
-                                                        <td>{item.desc}</td>
-                                                        <td className="rkeu-red">Rp {item.amount.toLocaleString('id-ID')}</td>
-                                                    </tr>
-                                                ))}
+                                                {expenditures.length === 0 ? (
+                                                    <tr><td colSpan="4" style={{ textAlign: 'center', color: '#94a3b8', padding: '16px' }}>Belum ada data pengeluaran</td></tr>
+                                                ) : (
+                                                    expenditures.slice(0, 5).map((exp, idx) => (
+                                                        <tr key={idx}>
+                                                            <td>{exp.date}</td>
+                                                            <td><span className="rkeu-cat-badge">{exp.category}</span></td>
+                                                            <td>{exp.desc}</td>
+                                                            <td className="rkeu-red">Rp {(exp.amount || 0).toLocaleString('id-ID')}</td>
+                                                        </tr>
+                                                    ))
+                                                )}
                                             </tbody>
                                         </table>
                                     </div>
