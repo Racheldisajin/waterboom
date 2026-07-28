@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import WaveDivider from '../components/WaveDivider';
 
 export default function KontakPage() {
     const [formData, setFormData] = useState({
@@ -44,12 +45,7 @@ export default function KontakPage() {
                     <p className="page-subtitle">
                         Butuh bantuan, ingin memesan paket rombongan, atau menanyakan info promo? Hubungi kami atau kunjungi langsung lokasi kami.
                     </p>
-                    <div style={{ marginTop: '12px' }}>
-                        <svg width="45" height="10" viewBox="0 0 45 10" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M2 3 C 8 0, 10 6, 16 3 C 22 0, 24 6, 30 3 C 36 0, 38 6, 43 3" stroke="var(--color-accent)" strokeWidth="2.5" strokeLinecap="round" />
-                            <path d="M2 7 C 8 4, 10 10, 16 7 C 22 4, 24 10, 30 7 C 36 4, 38 10, 43 7" stroke="#cbd5e1" strokeWidth="1.5" strokeLinecap="round" opacity="0.6" />
-                        </svg>
-                    </div>
+                    <WaveDivider type="accent" />
                 </div>
 
                 {/* Contact Details & Form */}
@@ -161,13 +157,16 @@ export default function KontakPage() {
                                 <h2 style={{ fontSize: '1.3rem', fontWeight: 800, color: 'var(--color-primary)', marginBottom: '16px' }}>
                                     Alamat & Peta Lokasi
                                 </h2>
-                                <p style={{ fontSize: '0.9rem', color: 'var(--color-text-muted)', lineHeight: 1.5, marginBottom: '20px' }}>
-                                    Jl. Cijoho, Tasikmalaya, Jawa Barat, Indonesia
+                                <p style={{ fontSize: '0.9rem', color: 'var(--color-text-muted)', lineHeight: 1.5, marginBottom: '6px' }}>
+                                    Jalan Cijoho, Desa Arjasari, Kecamatan Leuwisari, Kabupaten Tasikmalaya, Jawa Barat 46464
                                 </p>
-                                <div style={{ width: '100%', height: '220px', borderRadius: '16px', overflow: 'hidden' }}>
+                                <small style={{ color: '#0284c7', fontWeight: 800, display: 'block', marginBottom: '16px' }}>
+                                    📍 Kode Plus Google Maps: M473+VRC Arjasari
+                                </small>
+                                <div style={{ width: '100%', height: '240px', borderRadius: '16px', overflow: 'hidden' }}>
                                     <iframe
-                                        title="Peta Lokasi Waterboom Cijoho Indah"
-                                        src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d15827.607421319762!2d108.204561!3d-7.365412!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x0%3A0x0!2zN8KwMjEnNTUuNSJTIDEwOMKwMTInMTYuNCJF!5e0!3m2!1sid!2sid!4v1700000000000!5m2!1sid!2sid"
+                                        title="Peta Lokasi CIJOHO INDAH WATERBOOM"
+                                        src="https://maps.google.com/maps?q=CIJOHO+INDAH+WATERBOOM,+Jl.+Cijoho,+Arjasari,+Kec.+Leuwisari,+Kabupaten+Tasikmalaya,+Jawa+Barat+46464&t=&z=16&ie=UTF8&iwloc=&output=embed"
                                         width="100%"
                                         height="100%"
                                         style={{ border: 0 }}
@@ -176,6 +175,27 @@ export default function KontakPage() {
                                         referrerPolicy="no-referrer-when-downgrade"
                                     ></iframe>
                                 </div>
+                                <a 
+                                    href="https://www.google.com/maps/search/?api=1&query=CIJOHO+INDAH+WATERBOOM,+Jl.+Cijoho,+Arjasari,+Kec.+Leuwisari,+Kabupaten+Tasikmalaya,+Jawa+Barat+46464" 
+                                    target="_blank" 
+                                    rel="noreferrer"
+                                    style={{
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        gap: '8px',
+                                        marginTop: '14px',
+                                        padding: '10px 18px',
+                                        backgroundColor: '#0284c7',
+                                        color: 'white',
+                                        borderRadius: '12px',
+                                        fontWeight: 800,
+                                        fontSize: '0.85rem',
+                                        textDecoration: 'none',
+                                        boxShadow: '0 4px 12px rgba(2, 132, 199, 0.25)'
+                                    }}
+                                >
+                                    <i className="fa-solid fa-map-location-dot"></i> Buka Petunjuk Arah di Google Maps
+                                </a>
                             </div>
 
                             {/* FAQs */}

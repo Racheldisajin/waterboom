@@ -1,5 +1,6 @@
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import WaveDivider from './WaveDivider';
 
 export default function Footer({ onOpenBooking }) {
     const navigate = useNavigate();
@@ -15,26 +16,8 @@ export default function Footer({ onOpenBooking }) {
 
     return (
         <footer id="contact" className="site-footer">
-            {/* Organic Fluid Water Wave Mask Top Divider (True Wave Shape at Top Edge) */}
-            <div className="footer-top-wave-container">
-                <svg viewBox="0 0 1440 120" preserveAspectRatio="none" className="footer-top-wave-svg">
-                    {/* Layer 1: Translucent Blue Wave Accent */}
-                    <path 
-                        d="M0,0 L1440,0 L1440,55 C1300,95 1150,100 980,68 C810,36 670,88 500,72 C330,56 180,98 0,48 Z" 
-                        fill="rgba(56, 189, 248, 0.45)"
-                    ></path>
-                    {/* Layer 2: Translucent White Wave Accent */}
-                    <path 
-                        d="M0,0 L1440,0 L1440,38 C1260,78 1100,85 940,48 C780,12 620,72 450,52 C280,32 140,78 0,32 Z" 
-                        fill="rgba(255, 255, 255, 0.6)"
-                    ></path>
-                    {/* Layer 3: Solid Body Background Cutout (Creates Dramatic Curved Top Border) */}
-                    <path 
-                        d="M0,0 L1440,0 L1440,25 C1280,65 1120,78 960,42 C800,8 640,58 480,38 C320,18 160,62 0,18 Z" 
-                        fill="#f6f9fc"
-                    ></path>
-                </svg>
-            </div>
+            {/* Reusable Organic Fluid Water Wave Divider */}
+            <WaveDivider type="footer" />
 
             <div className="container footer-grid">
                 {/* Brand Column */}
@@ -51,7 +34,7 @@ export default function Footer({ onOpenBooking }) {
                     </div>
 
                     <p className="footer-about-text">
-                        Sensasi seru wahana air tropis tanpa batas untuk seluruh keluarga. Rasakan kesegaran air yang jernih, keceriaan, dan momen tak terlupakan! 🌊✨
+                        Sensasi seru wahana air tropis tanpa batas untuk seluruh keluarga. Rasakan kesegaran air yang jernih, keceriaan, dan momen tak terlupakan!
                     </p>
 
                     <div className="social-links">
@@ -115,7 +98,7 @@ export default function Footer({ onOpenBooking }) {
                 <div className="container footer-bottom-container">
                     <div className="footer-location">
                         <i className="fa-solid fa-location-dot" style={{ color: '#facc15', fontSize: '1rem', flexShrink: 0 }}></i>
-                        <span>Jl. Cijoho, Tasikmalaya, Jawa Barat, Indonesia</span>
+                        <span>Jalan Cijoho, Desa Arjasari, Kecamatan Leuwisari, Kabupaten Tasikmalaya, Jawa Barat</span>
                     </div>
                     <div className="footer-copy">
                         &copy; 2026 Waterboom Cijoho Indah. All rights reserved.

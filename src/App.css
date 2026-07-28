@@ -1269,11 +1269,11 @@ img {
 
 .testimonial-splash-bg {
     position: absolute;
-    bottom: -20px;
-    left: 20%;
-    width: 280px;
-    height: 280px;
-    opacity: 0.75;
+    bottom: 0;
+    right: 45%;
+    width: 260px;
+    height: 260px;
+    opacity: 0.85;
     pointer-events: none;
     z-index: 1;
 }
@@ -1437,7 +1437,7 @@ img {
     position: relative;
     border-radius: 12px;
     overflow: hidden;
-    aspect-ratio: 4/5;
+    aspect-ratio: 4/3;
 }
 
 .gallery-img {
@@ -1449,6 +1449,10 @@ img {
 
 .gallery-card:hover .gallery-img {
     transform: scale(1.06);
+}
+
+.card-hover:hover .gallery-zoom-hover-overlay {
+    opacity: 1 !important;
 }
 
 .gallery-zoom-badge {
@@ -3205,7 +3209,7 @@ img {
     left: 0;
     width: 100%;
     height: 100%;
-    background: linear-gradient(to bottom, rgba(5, 32, 73, 0.2) 0%, rgba(5, 32, 73, 0.85) 100%);
+    background: linear-gradient(to bottom, rgba(0, 0, 0, 0) 30%, rgba(12, 41, 74, 0.65) 100%);
     padding: 40px;
     display: flex;
     flex-direction: column;
@@ -3302,11 +3306,7 @@ img {
 }
 
 .slide-splash-overlay {
-    position: absolute;
-    bottom: 20px;
-    right: 20px;
-    pointer-events: none;
-    z-index: 1;
+    display: none !important;
 }
 
 .slide-dots {
@@ -9339,3 +9339,95 @@ body,
 .visitor-view-content .hero-slider-track-container {
     margin-top: 0 !important;
 }
+
+/* Ensure Bottom Navigation Bar and Checkout Bar Stay 100% Fixed at Bottom in Kasir Mode */
+.mobile-app-bottom-nav {
+    position: fixed !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    width: 100% !important;
+    height: 64px !important;
+    background-color: #ffffff !important;
+    border-top: 1px solid #e2e8f0 !important;
+    display: flex !important;
+    justify-content: space-around !important;
+    align-items: center !important;
+    z-index: 999999 !important;
+    box-shadow: 0 -4px 15px rgba(0, 0, 0, 0.08) !important;
+}
+
+.app-checkout-bar {
+    position: fixed !important;
+    bottom: 64px !important;
+    left: 0 !important;
+    right: 0 !important;
+    width: 100% !important;
+    z-index: 99999 !important;
+    box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.06) !important;
+}
+
+.mobile-app-content {
+    padding-bottom: 150px !important;
+}
+
+/* Ensure All Pop-up Modals Cover Fixed Navbars and Sit on Top Layer */
+.v-modal-backdrop,
+.modal-backdrop {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    background-color: rgba(15, 23, 42, 0.65) !important;
+    z-index: 100000000 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    padding: 20px 10px !important;
+    box-sizing: border-box !important;
+    overflow-y: auto !important;
+}
+
+.v-modal-card,
+.modal-card,
+.modal-content {
+    z-index: 100000001 !important;
+    position: relative !important;
+    max-height: 90vh !important;
+    display: flex !important;
+    flex-direction: column !important;
+    overflow: hidden !important;
+    margin: auto !important;
+}
+
+.v-modal-body,
+.modal-body {
+    overflow-y: auto !important;
+    max-height: calc(90vh - 65px) !important;
+    -webkit-overflow-scrolling: touch !important;
+}
+
+/* Printable Area CSS for E-Tiket PDF and Thermal Receipt */
+@media print {
+    body * {
+        visibility: hidden !important;
+    }
+    #pdf-printable-area, #pdf-printable-area *,
+    #thermal-receipt-printable, #thermal-receipt-printable * {
+        visibility: visible !important;
+    }
+    #pdf-printable-area, #thermal-receipt-printable {
+        position: absolute !important;
+        left: 0 !important;
+        top: 0 !important;
+        width: 100% !important;
+        border: none !important;
+        box-shadow: none !important;
+        margin: 0 !important;
+        padding: 10px !important;
+        background: white !important;
+    }
+}

@@ -6,7 +6,7 @@ export default function Features() {
             {/* Feature 1: Water Slides */}
             <div className="floating-feature-item">
                 <div className="feature-icon-circle">
-                    <img src="assets/pool.png.png?v=1.1" alt="Water Slides" className="feature-img-icon" />
+                    <img src="/assets/pool.png.png" alt="Water Slides" className="feature-img-icon" />
                 </div>
                 <div className="feature-text">
                     <h3 className="feature-title">WATER SLIDES</h3>
@@ -18,7 +18,7 @@ export default function Features() {
             {/* Feature 2: Swimming Pools */}
             <div className="floating-feature-item">
                 <div className="feature-icon-circle">
-                    <img src="assets/kolam.png.png?v=1.1" alt="Swimming Pools" className="feature-img-icon" />
+                    <img src="/assets/kolam.png.png" alt="Swimming Pools" className="feature-img-icon" />
                 </div>
                 <div className="feature-text">
                     <h3 className="feature-title">SWIMMING POOLS</h3>
@@ -30,7 +30,7 @@ export default function Features() {
             {/* Feature 3: Kids Waterplay */}
             <div className="floating-feature-item">
                 <div className="feature-icon-circle">
-                    <img src="assets/kids.png?v=1.1" alt="Kids Waterplay" className="feature-img-icon" />
+                    <img src="/assets/duck.png" alt="Kids Waterplay" className="feature-img-icon" />
                 </div>
                 <div className="feature-text">
                     <h3 className="feature-title">KIDS WATERPLAY</h3>
@@ -42,7 +42,7 @@ export default function Features() {
             {/* Feature 4: Gazebo & Rest Area */}
             <div className="floating-feature-item">
                 <div className="feature-icon-circle">
-                    <img src="assets/saung.png.png?v=1.1" alt="Gazebo & Rest Area" className="feature-img-icon" />
+                    <img src="/assets/saung.png.png" alt="Gazebo & Rest Area" className="feature-img-icon" />
                 </div>
                 <div className="feature-text">
                     <h3 className="feature-title">GAZEBO & REST AREA</h3>

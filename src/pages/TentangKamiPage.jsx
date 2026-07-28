@@ -36,8 +36,8 @@ export default function TentangKamiPage() {
                                 boxShadow: 'var(--shadow-medium)'
                             }}>
                                 <img
-                                    src="assets/bebek.png?v=1.1"
-                                    alt="Waterboom Cijoho Indah Experience"
+                                    src="/assets/bebek.png"
+                                    alt="Sejarah Waterboom Cijoho Indah"
                                     style={{ width: '100%', height: 'auto', display: 'block' }}
                                 />
                                 <div style={{

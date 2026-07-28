@@ -29,12 +29,8 @@ export default function Hero({ onOpenBooking }) {
                     <h4 className="hero-subheading" style={{ color: 'var(--color-primary)', fontWeight: '800', fontSize: '1.25rem', textTransform: 'uppercase', margin: '4px 0 8px 0', letterSpacing: '0.5px' }}>
                         WATERBOOM CIJOHO
                     </h4>
-                    <h1 className="hero-title" style={{ marginBottom: '10px', position: 'relative', display: 'inline-block' }}>
+                    <h1 className="hero-title" style={{ marginBottom: '10px', display: 'inline-block' }}>
                         SENSASI SERU
-                        {/* Three-leaf splash SVG next to title */}
-                        <svg width="28" height="28" viewBox="0 0 24 24" fill="var(--color-accent)" xmlns="http://www.w3.org/2000/svg" style={{ position: 'absolute', top: '-12px', right: '-32px' }}>
-                            <path d="M12 2C12 2 13.5 6 15 7.5C16.5 9 20 9 20 9C20 9 16 10.5 14.5 12C13 13.5 12 17.5 12 17.5C12 17.5 11 13.5 9.5 12C8 10.5 4 9 4 9C4 9 7.5 9 9 7.5C10.5 6 12 2 12 2Z" opacity="0.9" />
-                        </svg>
                     </h1>
                     <h2 className="hero-title-accent text-green">DIMULAI DI SINI!</h2>
                     
@@ -66,7 +62,7 @@ export default function Hero({ onOpenBooking }) {
 
             <div className="hero-media">
                 <div className="hero-img-container">
-                    <img src="assets/dash.jpeg?v=1.1" alt="Waterboom Cijoho Indah Main Attraction" className="hero-img" />
+                    <img src="/assets/dash.jpeg" alt="Waterboom Cijoho Indah Main Attraction" className="hero-img" />
                 </div>
 
                 {/* Circular Double Curves Stroke overlay */}

@@ -1,17 +1,49 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
+import WaveDivider from './WaveDivider';
+
+const folderPath = '/assets/drive-download-20260728T150001Z-1-001/';
+
+const TESTIMONIALS = [
+    {
+        id: 1,
+        quote: "Tempatnya bersih, wahananya seru, karyawan ramah, suasana tropis, dan momen tak terlupakan.",
+        author: "- Rina & Keluarga (Pengunjung Bandung)",
+        image: `${folderPath}WhatsApp Image 2026-05-26 at 11.13.13 (1).jpeg`
+    },
+    {
+        id: 2,
+        quote: "Kolam renang sangat bersih dan aman untuk anak-anak. Saung gazebonya sejuk, pelayanan ramah sekali!",
+        author: "- Budi Santoso (Pengunjung Tasikmalaya)",
+        image: `${folderPath}WhatsApp Image 2026-05-26 at 11.13.14 (1).jpeg`
+    },
+    {
+        id: 3,
+        quote: "Harga tiket sangat bersahabat, tempat parkir luas, dan anak-anak betah main air seharian. Rekomended!",
+        author: "- Maya Indriani (Pengunjung Garut)",
+        image: `${folderPath}WhatsApp Image 2026-05-26 at 11.13.16 (1).jpeg`
+    }
+];
 
 export default function Testimonial() {
+    const [currentIndex, setCurrentIndex] = useState(0);
+
+    // Auto-slide every 5 seconds
+    useEffect(() => {
+        const timer = setInterval(() => {
+            setCurrentIndex((prev) => (prev + 1) % TESTIMONIALS.length);
+        }, 5000);
+
+        return () => clearInterval(timer);
+    }, []);
+
+    const currentSlide = TESTIMONIALS[currentIndex];
+
     return (
         <section id="testimonial" className="testimonial-section">
             <div className="container">
-                <div className="testimonial-card">
-                    {/* Decorative splash overlay */}
-                    <div className="testimonial-splash-bg">
-                        <svg viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M 0,200 Q 50,150 100,160 T 170,80 Q 185,50 200,60 L 200,200 Z" fill="rgba(186, 226, 255, 0.25)" />
-                            <path d="M 30,120 C 25,100 5,90 20,80 C 35,70 45,95 40,110 Z" fill="rgba(186, 226, 255, 0.2)" />
-                        </svg>
-                    </div>
+                <div className="testimonial-card" style={{ position: 'relative', overflow: 'hidden' }}>
+                    {/* Reusable Splash Wave Background Overlay */}
+                    <WaveDivider type="splash" />
 
                     <div className="testimonial-content">
                         {/* Quote Mark Icon "66" */}
@@ -21,31 +53,52 @@ export default function Testimonial() {
                             </svg>
                         </div>
 
-                        <blockquote className="testimonial-quote-text">
-                            Tempatnya bersih, wahananya seru, karyawan ramah, suasana tropis, dan momen tak terlupakan.
-                        </blockquote>
+                        {/* Animated Quote Text Slider */}
+                        <div key={currentSlide.id} className="testimonial-text-slide" style={{ minHeight: '140px', transition: 'all 0.4s ease-in-out' }}>
+                            <blockquote className="testimonial-quote-text" style={{ fontSize: '1.25rem', fontWeight: 800, color: '#0c294a', lineHeight: 1.5, margin: '0 0 16px 0' }}>
+                                "{currentSlide.quote}"
+                            </blockquote>
 
-                        <div className="testimonial-line"></div>
+                            <div className="testimonial-line"></div>
 
-                        <cite className="testimonial-quote-author">
-                            - Pengunjung Waterboom Cijoho Indah
-                        </cite>
+                            <cite className="testimonial-quote-author" style={{ color: '#558b2f', fontWeight: 700, fontStyle: 'italic', display: 'block', marginBottom: '20px' }}>
+                                {currentSlide.author}
+                            </cite>
+                        </div>
 
-                        {/* Pagination dots */}
-                        <div className="testimonial-pagination">
-                            <span className="dot active"></span>
-                            <span className="dot"></span>
-                            <span className="dot"></span>
+                        {/* Interactive Pagination Dots */}
+                        <div className="testimonial-pagination" style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                            {TESTIMONIALS.map((item, idx) => (
+                                <button
+                                    key={item.id}
+                                    onClick={() => setCurrentIndex(idx)}
+                                    className={`dot ${idx === currentIndex ? 'active' : ''}`}
+                                    aria-label={`Go to slide ${idx + 1}`}
+                                    style={{
+                                        border: 'none',
+                                        cursor: 'pointer',
+                                        height: '8px',
+                                        width: idx === currentIndex ? '24px' : '8px',
+                                        borderRadius: '4px',
+                                        backgroundColor: idx === currentIndex ? 'var(--color-accent, #7cc04b)' : '#cbd5e1',
+                                        transition: 'all 0.3s ease'
+                                    }}
+                                />
+                            ))}
                         </div>
                     </div>
 
-                    {/* Smooth curve overlay divider */}
-                    <svg className="testimonial-curve-divider" viewBox="0 0 100 100" preserveAspectRatio="none" fill="#ffffff" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M 0,0 L 80,0 C 70,30 55,70 40,100 L 0,100 Z" />
-                    </svg>
+                    {/* Reusable Smooth Curve Divider */}
+                    <WaveDivider type="curve" />
 
                     <div className="testimonial-image-area">
-                        <div className="testimonial-image" style={{ backgroundImage: "url('assets/1.png?v=1.1')" }}></div>
+                        <div 
+                            className="testimonial-image" 
+                            style={{ 
+                                backgroundImage: `url('${currentSlide.image}')`,
+                                transition: 'background-image 0.5s ease-in-out'
+                            }}
+                        ></div>
                     </div>
                 </div>
             </div>

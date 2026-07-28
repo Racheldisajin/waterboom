@@ -37,15 +37,7 @@ export default function VisitorDashboard() {
     const grandTotal = subtotalTickets + subtotalRentals;
 
     const handleSendWhatsAppOrder = (e) => {
-        e.preventDefault();
-        if (!visitorName.trim()) {
-            alert('Silakan isi Nama Pemesan terlebih dahulu!');
-            return;
-        }
-        if (!visitorPhone.trim()) {
-            alert('Silakan isi Nomor WhatsApp terlebih dahulu!');
-            return;
-        }
+        if (e && e.preventDefault) e.preventDefault();
 
         const ticketName = selectedTicket === 'reguler' ? 'Tiket Reguler' : selectedTicket === 'rombongan' ? 'Tiket Rombongan' : 'Kursus Renang';
         const formattedDate = new Date(visitDate).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
@@ -55,10 +47,64 @@ export default function VisitorDashboard() {
         if (sewaSepeda > 0) rentalsText += `\n• Sewa Sepeda Air: ${sewaSepeda}x (Rp ${(sewaSepeda * RENTAL_PRICES.sepeda).toLocaleString('id-ID')})`;
         if (sewaGazebo > 0) rentalsText += `\n• Sewa Gazebo: ${sewaGazebo}x (Rp ${(sewaGazebo * RENTAL_PRICES.gazebo).toLocaleString('id-ID')})`;
 
-        const message = `Halo Admin Waterboom Cijoho Indah! 👋\nSaya ingin memesan Tiket Online resmi:\n\n👤 *Nama Pemesan:* ${visitorName}\n📱 *No. WA:* ${visitorPhone}\n📅 *Tgl Kunjungan:* ${formattedDate}\n\n🎟️ *Detail Tiket:*\n• ${ticketName} (${ticketQty} Orang) = Rp ${subtotalTickets.toLocaleString('id-ID')}${rentalsText ? `\n\n🚣 *Tambahan Sewa:*${rentalsText}` : ''}\n\n💰 *Total Pembayaran:* Rp ${grandTotal.toLocaleString('id-ID')}\n\nMohon informasi metode pembayaran dan pengiriman Tiket PDF resmi. Terima kasih! 🌊✨`;
+        const bookingCode = 'WCI-' + Math.floor(100000 + Math.random() * 900000);
+        const newTicketObj = {
+            code: bookingCode,
+            date: formattedDate,
+            name: 'Pengunjung Waterboom',
+            phone: '-',
+            type: ticketName,
+            ticketTypeKey: selectedTicket,
+            qty: ticketQty,
+            ticketPrice: ticketUnitPrice,
+            subtotal: subtotalTickets,
+            rentals: { ban: sewaBan, sepeda: sewaSepeda, gazebo: sewaGazebo },
+            total: grandTotal,
+            channel: 'Online',
+            mode: 'online',
+            status: 'Lunas - E-Tiket PDF'
+        };
+
+        const existingHistory = JSON.parse(localStorage.getItem('waterboom_sales_history') || '[]');
+        const updatedHistory = [{
+            code: bookingCode,
+            date: formattedDate,
+            name: 'Pengunjung Waterboom',
+            phone: '-',
+            type: ticketName,
+            qty: ticketQty,
+            total: grandTotal,
+            channel: 'Online',
+            mode: 'online',
+            status: 'Lunas - E-Tiket PDF',
+            details: newTicketObj
+        }, ...existingHistory];
+        localStorage.setItem('waterboom_sales_history', JSON.stringify(updatedHistory));
+
+        let rentalsTextArray = [];
+        if (sewaBan > 0) rentalsTextArray.push(`• ${sewaBan}x Sewa Ban (Rp ${(sewaBan * RENTAL_PRICES.ban).toLocaleString('id-ID')})`);
+        if (sewaSepeda > 0) rentalsTextArray.push(`• ${sewaSepeda}x Sewa Sepeda Air (Rp ${(sewaSepeda * RENTAL_PRICES.sepeda).toLocaleString('id-ID')})`);
+        if (sewaGazebo > 0) rentalsTextArray.push(`• ${sewaGazebo}x Sewa Gazebo (Rp ${(sewaGazebo * RENTAL_PRICES.gazebo).toLocaleString('id-ID')})`);
+        const rentalsFormatted = rentalsTextArray.length > 0 ? rentalsTextArray.join('\n') : '';
+
+        const message = 
+`*PEMESANAN TIKET ONLINE - WATERBOOM CIJOHO INDAH*
+
+Halo Admin, saya telah melakukan pemesanan tiket resmi via online:
+
+*INFORMASI PESANAN*
+• Kode Booking: ${bookingCode}
+• Tanggal Kunjungan: ${formattedDate}
+
+*RINCIAN TIKET & SEWA*
+• ${ticketQty}x ${ticketName} (Rp ${subtotalTickets.toLocaleString('id-ID')})${rentalsFormatted ? `\n${rentalsFormatted}` : ''}
+
+*TOTAL TAGIHAN:* *Rp ${grandTotal.toLocaleString('id-ID')}*
+
+Mohon informasi metode pembayaran dan pengiriman *Tiket Resmi PDF*. Terima kasih!`;
 
         const encodedMsg = encodeURIComponent(message);
-        window.open(`https://wa.me/628123456789?text=${encodedMsg}`, '_blank');
+        window.open(`https://wa.me/6285320132014?text=${encodedMsg}`, '_blank');
     };
 
     return (
@@ -79,25 +125,20 @@ export default function VisitorDashboard() {
                             padding: '30px 40px',
                             color: 'white',
                             display: 'flex',
-                            justify: 'space-between',
+                            justifyContent: 'center',
                             alignItems: 'center',
+                            textAlign: 'center',
                             marginBottom: '32px',
                             boxShadow: '0 15px 35px rgba(12, 41, 74, 0.15)'
                         }}
                     >
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
-                            <img src="assets/logo.png" alt="Logo" style={{ height: '56px', width: 'auto' }} />
-                            <div>
-                                <h1 style={{ color: 'white', margin: 0, fontSize: '1.6rem', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                                    PEMESANAN TIKET ONLINE
-                                </h1>
-                                <p style={{ color: '#93c5fd', margin: '6px 0 0 0', fontSize: '0.95rem', fontWeight: 600 }}>
-                                    Waterboom Cijoho Indah • Dapatkan Tiket PDF Resmi via WhatsApp Admin
-                                </p>
-                            </div>
-                        </div>
-                        <div style={{ backgroundColor: '#25D366', color: 'white', padding: '10px 20px', borderRadius: '30px', fontWeight: 800, fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '8px', boxShadow: '0 4px 15px rgba(37, 211, 102, 0.3)' }}>
-                            <i className="fa-brands fa-whatsapp" style={{ fontSize: '1.2rem' }}></i> FAST RESPONSE ADMIN WA
+                        <div style={{ textAlign: 'center' }}>
+                            <h1 style={{ color: 'white', margin: 0, fontSize: '1.6rem', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                                PEMESANAN TIKET ONLINE
+                            </h1>
+                            <p style={{ color: '#93c5fd', margin: '6px 0 0 0', fontSize: '0.95rem', fontWeight: 600 }}>
+                                Waterboom Cijoho Indah • Dapatkan Tiket PDF Resmi via WhatsApp Admin
+                            </p>
                         </div>
                     </div>
 
@@ -302,36 +343,7 @@ export default function VisitorDashboard() {
                                     </div>
                                 </div>
 
-                                {/* Visitor Contact Form */}
                                 <form onSubmit={handleSendWhatsAppOrder} style={{ marginTop: '20px', paddingTop: '18px', borderTop: '1px solid #e2e8f0' }}>
-                                    <div style={{ marginBottom: '14px' }}>
-                                        <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 800, color: '#334155', marginBottom: '6px' }}>
-                                            NAMA PEMESAN:
-                                        </label>
-                                        <input 
-                                            type="text" 
-                                            placeholder="Contoh: Budi Santoso"
-                                            value={visitorName}
-                                            onChange={(e) => setVisitorName(e.target.value)}
-                                            style={{ width: '100%', padding: '10px 14px', borderRadius: '10px', border: '1px solid #cbd5e1', fontSize: '0.9rem', fontWeight: 600, boxSizing: 'border-box' }}
-                                            required
-                                        />
-                                    </div>
-
-                                    <div style={{ marginBottom: '20px' }}>
-                                        <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 800, color: '#334155', marginBottom: '6px' }}>
-                                            NOMOR WHATSAPP:
-                                        </label>
-                                        <input 
-                                            type="tel" 
-                                            placeholder="Contoh: 081234567890"
-                                            value={visitorPhone}
-                                            onChange={(e) => setVisitorPhone(e.target.value)}
-                                            style={{ width: '100%', padding: '10px 14px', borderRadius: '10px', border: '1px solid #cbd5e1', fontSize: '0.9rem', fontWeight: 600, boxSizing: 'border-box' }}
-                                            required
-                                        />
-                                    </div>
-
                                     <button 
                                         type="submit"
                                         style={{
