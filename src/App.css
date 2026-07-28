@@ -9410,6 +9410,56 @@ body,
     -webkit-overflow-scrolling: touch !important;
 }
 
+/* Login Page Segmented Role Switcher Tab Styling & Active Indicator */
+.login-role-tabs {
+    background-color: #e2e8f0 !important;
+    padding: 6px !important;
+    border-radius: 14px !important;
+    border: 1px solid #cbd5e1 !important;
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    gap: 6px !important;
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.05) !important;
+}
+
+.role-tab-btn {
+    border: none !important;
+    background-color: transparent !important;
+    color: #475569 !important;
+    font-weight: 700 !important;
+    padding: 11px 14px !important;
+    border-radius: 10px !important;
+    cursor: pointer !important;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 8px !important;
+    font-size: 0.85rem !important;
+}
+
+.role-tab-btn i {
+    font-size: 0.95rem !important;
+    transition: color 0.2s ease !important;
+}
+
+.role-tab-btn:hover {
+    color: #0c294a !important;
+    background-color: rgba(255, 255, 255, 0.6) !important;
+}
+
+.role-tab-btn.active {
+    background-color: #0c294a !important;
+    color: #ffffff !important;
+    font-weight: 900 !important;
+    box-shadow: 0 4px 14px rgba(12, 41, 74, 0.3) !important;
+    transform: scale(1.02) !important;
+}
+
+.role-tab-btn.active i {
+    color: #60a5fa !important;
+}
+
 /* Printable Area CSS for E-Tiket PDF and Thermal Receipt */
 @media print {
     body * {

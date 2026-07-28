@@ -140,20 +140,18 @@ export default function LoginPage() {
                 </div>
 
                 {/* Role Switcher Tabs */}
-                <div className="login-role-tabs" style={{ marginBottom: '20px', display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '6px' }}>
+                <div className="login-role-tabs" style={{ marginBottom: '20px' }}>
                     <button 
                         type="button"
-                        className={`role-tab-btn ${loginRole === 'staf' && email.includes('admin') ? 'active' : ''}`}
+                        className={`role-tab-btn ${email.includes('admin') ? 'active' : ''}`}
                         onClick={() => handleRoleSwitch('admin')}
-                        style={{ padding: '10px 8px', fontSize: '0.82rem' }}
                     >
                         <i className="fa-solid fa-user-shield"></i> Portal Admin
                     </button>
                     <button 
                         type="button"
-                        className={`role-tab-btn ${loginRole === 'staf' && email.includes('kasir') ? 'active' : ''}`}
+                        className={`role-tab-btn ${email.includes('kasir') ? 'active' : ''}`}
                         onClick={() => handleRoleSwitch('kasir')}
-                        style={{ padding: '10px 8px', fontSize: '0.82rem' }}
                     >
                         <i className="fa-solid fa-cash-register"></i> Portal Kasir
                     </button>
