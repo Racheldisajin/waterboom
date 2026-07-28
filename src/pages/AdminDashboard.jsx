@@ -560,8 +560,7 @@ export default function AdminDashboard() {
             {/* 1. LEFT SIDEBAR */}
             <aside className="superadmin-sidebar">
                 <div className="sidebar-brand-header">
-                    <img src="assets/logo.png" alt="Logo" className="brand-logo" />
-                    <div className="brand-title-wrap">
+                    <div className="brand-title-wrap" style={{ marginLeft: 0 }}>
                         <span className="brand-name">{systemSettings.businessName}</span>
                         <span className="brand-loc">PORTAL UTAMA</span>
                     </div>
