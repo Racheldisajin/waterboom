@@ -130,11 +130,6 @@ export default function LoginPage() {
             
             <div className="login-glass-card fade-in" style={{ maxWidth: '440px' }}>
                 <div className="login-header">
-                    <img 
-                        src="assets/logo.png" 
-                        alt="Waterboom Logo" 
-                        className="login-logo-img"
-                    />
                     <h2>PORTAL MASUK STAF & ADMIN</h2>
                     <p>Waterboom Cijoho Indah</p>
                 </div>
