@@ -6,6 +6,53 @@ export default function AdminDashboard() {
     const [history, setHistory] = useState([]);
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedFilter, setSelectedFilter] = useState('all');
+    
+    const [transactions, setTransactions] = useState([]);
+    const [loading, setLoading] = useState(false);
+
+    const fetchTransactions = async () => {
+      setLoading(true);
+      try {
+        const { data, error } = await supabase
+          .from('transactions')
+          .select('*')
+          .order('created_at', { ascending: false });
+
+        if (error) {
+          console.error('Error fetching transactions:', error);
+          setLoading(false);
+          return;
+        }
+
+        // Mapping ke format yang digunakan di dashboard
+        const historyData = data.map(tx => ({
+          code: tx.booking_code,
+          date: new Date(tx.created_at).toLocaleDateString('id-ID'),
+          type: tx.ticket_type === 'regular' ? 'Tiket Masuk' :
+                tx.ticket_type === 'rombongan' ? 'Tiket Rombongan' :
+                tx.ticket_type === 'kursus' ? 'Kursus Renang' : 'Sewa',
+          product: tx.ticket_type,
+          qty: tx.quantity,
+          total: tx.total_price,
+          channel: tx.channel === 'online' ? 'Online' : 'Offline',
+          method: tx.payment_method === 'tunai' ? 'Tunai' :
+                  tx.payment_method === 'qris' ? 'QRIS' : 'Transfer',
+          customer: tx.customer_name,
+          status: tx.status
+        }));
+
+        setHistory(historyData);
+        // Simpan ke localStorage sebagai cache
+        localStorage.setItem('waterboom_sales_history', JSON.stringify(historyData));
+      } catch (err) {
+        console.error('Error:', err);
+        // Fallback ke localStorage
+        const saved = localStorage.getItem('waterboom_sales_history');
+        if (saved) setHistory(JSON.parse(saved));
+      } finally {
+        setLoading(false);
+      }
+    };
 
     // Active Tab state
     const [activeTab, setActiveTab] = useState('dashboard');
@@ -252,8 +299,12 @@ export default function AdminDashboard() {
         };
         
         loadAllData();
+        fetchTransactions();
+        // Refresh data setiap 30 detik
+        const interval = setInterval(fetchTransactions, 30000);
         window.addEventListener('storage', loadAllData);
         return () => window.removeEventListener('storage', loadAllData);
+        clearInterval(interval);
     }, []);
 
     // --- Hitung KPI setiap kali history atau expenditures berubah ---
@@ -969,6 +1020,7 @@ export default function AdminDashboard() {
                 <div className="superadmin-content-wrapper">
                     {/* KPI stats bar displayed globally across main pages */}
                     {(activeTab === 'dashboard' || activeTab === 'transaksi' || activeTab === 'pemasukan' || activeTab === 'pengeluaran') && (
+                        
                         <div className="superadmin-kpi-grid">
                             <div className="kpi-card-card blue">
                                 <div className="kpi-icon-square"><i className="fa-solid fa-ticket"></i></div>
