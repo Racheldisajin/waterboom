@@ -44,7 +44,7 @@ export default function MobileAppView({ onOpenBooking, isCashierMode = false }) 
     const [cashChange, setCashChange] = useState(0);
 
     // --- Fungsi bantu untuk menyimpan transaksi ke Supabase ---
-    const saveTransactionToSupabase = async (bookingCode, items, paymentMethod, cashierName, customerName, status = 'lunas') => {
+    const saveTransactionToSupabase = async (bookingCode, items, paymentMethod, cashierName, customerName, status = 'lunas', channel = 'offline') => {
         try {
             const rows = items.map(item => ({
                 booking_code: bookingCode,
@@ -54,17 +54,21 @@ export default function MobileAppView({ onOpenBooking, isCashierMode = false }) 
                 customer_name: customerName || 'Pengunjung',
                 status: status,
                 payment_method: paymentMethod,
-                cashier_name: cashierName || 'Petugas Kasir'
+                channel: channel,
+                cashier_name: cashierName || 'Petugas Kasir',
+                created_at: new Date().toISOString()
             }));
 
-            const { error } = await supabase.from('transactions').insert(rows);
+            const { data, error } = await supabase.from('transactions').insert(rows);
             if (error) {
                 console.error('Gagal menyimpan ke Supabase:', error);
+                alert('Gagal Menyimpan Transaksi: ${error.message}');
                 return false;
             }
             return true;
         } catch (err) {
             console.error('Error Supabase:', err);
+            alert('Terjadi Kesalahan: ${err.message}');
             return false;
         }
     };
@@ -117,7 +121,8 @@ export default function MobileAppView({ onOpenBooking, isCashierMode = false }) 
             paymentMethodStr,
             'Petugas Kasir 1', // bisa diganti sesuai login nanti
             'Pengunjung Offline',
-            'lunas'
+            'lunas',
+            'offline'
         );
 
         // Simpan juga ke localStorage untuk history lokal
@@ -195,7 +200,8 @@ export default function MobileAppView({ onOpenBooking, isCashierMode = false }) 
             'transfer', // metode pembayaran dianggap transfer karena online
             'Admin Online',
             buyerName,
-            'pending'
+            'pending',
+            'online'
         );
 
         // WhatsApp message
