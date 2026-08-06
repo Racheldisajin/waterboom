@@ -6,6 +6,7 @@ import Footer from './components/Footer';
 import BookingModal from './components/BookingModal';
 import SuccessModal from './components/SuccessModal';
 import ScrollToTop from './components/ScrollToTop';
+import { keepAlive } from './supabase';
 
 // Import Pages
 import Home from './pages/Home';
@@ -53,6 +54,14 @@ function AppContent() {
       window.location.href = window.location.origin + '/#/' + cleanPath + search;
     }
   }, [location]);
+
+  React.useEffect(() => {
+    // Jalankan sekali saat pertama kali mount
+    keepAlive();
+    const interval = setInterval(keepAlive, 240000);
+    // Bersihkan saat komponen unmount
+    return () => clearInterval(interval);
+  }, []);
 
   const handleOpenBooking = (ticketType = 'reguler') => {
     setSelectedTicket(ticketType);
