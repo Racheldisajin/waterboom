@@ -88,7 +88,7 @@ export default function LoginPage() {
                         src="assets/logo.png" 
                         alt="Waterboom Cijoho Indah" 
                         className="login-logo-img" 
-                        style={{ height: '44px', width: 'auto', marginBottom: '4px', objectFit: 'contain', display: 'block', margin: '0 auto 4px auto' }} 
+                        style={{ height: '44px', width: 'auto', objectFit: 'contain', display: 'block', margin: '0 auto 2px auto' }} 
                     />
                     <span style={{ fontSize: '0.88rem', fontWeight: 600, color: '#1d4ed8', letterSpacing: '0.2px', display: 'block', marginBottom: '0px' }}>
                         Waterboom
