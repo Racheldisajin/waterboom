@@ -5493,8 +5493,8 @@ img {
     grid-template-columns: 2fr 1.3fr 1.2fr;
     gap: 10px;
     align-items: stretch;
-    width: 120%;
-    min-width: 120%;
+    width: 100%;
+    max-width: 100%;
     box-sizing: border-box;
 }
 
@@ -5777,8 +5777,8 @@ img {
     grid-template-columns: 2fr 1.1fr;
     gap: 10px;
     align-items: stretch;
-    width: 120%;
-    min-width: 120%;
+    width: 100%;
+    max-width: 100%;
     box-sizing: border-box;
 }
 
@@ -5796,8 +5796,9 @@ img {
 .tab-content-grid-120,
 .superadmin-content-wrapper>.data-table-card:only-child,
 .transaksi-table-card {
-    width: 120%;
-    min-width: 120%;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
     box-sizing: border-box;
 }
 
@@ -5996,8 +5997,8 @@ img {
     grid-template-columns: 1fr 1fr 1.3fr;
     gap: 10px;
     align-items: stretch;
-    width: 120%;
-    min-width: 120%;
+    width: 100%;
+    max-width: 100%;
     box-sizing: border-box;
 }
 
@@ -6144,8 +6145,8 @@ img {
     display: flex;
     flex-direction: column;
     gap: 20px;
-    width: 120%;
-    min-width: 120%;
+    width: 100%;
+    max-width: 100%;
     box-sizing: border-box;
     font-family: 'Roboto', sans-serif;
 }
