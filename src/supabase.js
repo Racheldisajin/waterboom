@@ -1,13 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
-const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
-
-// Validasi: pastikan environment variables tersedia
-if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
-  console.error('Supabase credentials tidak ditemukan di .env!');
-  console.error('Pastikan VITE_SUPABASE_URL dan VITE_SUPABASE_ANON_KEY sudah di-set.');
-}
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 'https://cijoho-waterboom.supabase.co';
+const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNpam9oby13YXRlcmJvb20iLCJyb2xlIjoiYW5vbiIsImlhdCI6MTYwMDAwMDAwMCwiZXhwIjoyMDAwMDAwMDAwfQ.placeholder';
 
 export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
