@@ -4413,8 +4413,12 @@ img {
 
 .input-with-icon i:first-of-type {
     color: #2563eb;
-    margin-right: 12px;
-    font-size: 1.15rem;
+    margin: 0;
+    font-size: 0.85rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
 }
 
 .input-with-icon input {

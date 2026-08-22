@@ -166,11 +166,11 @@ export default function LoginPage() {
 
                 <form onSubmit={handleLogin} className="login-form" autoComplete="off">
                     {/* Username Input */}
-                    <div className="input-group-field" style={{ display: 'flex', flexDirection: 'column', gap: '3px', marginBottom: '10px' }}>
+                    <div className="input-group-field" style={{ display: 'flex', flexDirection: 'column', gap: '3px', marginBottom: '6px' }}>
                         <label htmlFor="username" style={{ fontSize: '0.8rem', fontWeight: 800, color: '#334155' }}>Username</label>
                         <div className="input-with-icon" style={{ display: 'flex', alignItems: 'center', backgroundColor: '#ffffff', border: '1.5px solid #cbd5e1', borderRadius: '10px', padding: '0 8px', height: '42px' }}>
-                            <div style={{ backgroundColor: '#eff6ff', borderRadius: '6px', width: '28px', height: '28px', display: 'flex', alignItems: 'center', justifyContent: 'center', marginRight: '6px', flexShrink: 0 }}>
-                                <i className="fa-solid fa-user" style={{ color: '#2563eb', fontSize: '0.8rem' }}></i>
+                            <div style={{ backgroundColor: '#eff6ff', borderRadius: '6px', width: '28px', height: '28px', display: 'flex', alignItems: 'center', justifyContent: 'center', marginRight: '8px', flexShrink: 0 }}>
+                                <i className="fa-solid fa-user" style={{ color: '#2563eb', fontSize: '0.82rem', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1, margin: 0 }}></i>
                             </div>
                             <input 
                                 type="text" 
@@ -186,11 +186,11 @@ export default function LoginPage() {
                     </div>
 
                     {/* Kata Sandi Input */}
-                    <div className="input-group-field" style={{ display: 'flex', flexDirection: 'column', gap: '3px', marginBottom: '8px' }}>
+                    <div className="input-group-field" style={{ display: 'flex', flexDirection: 'column', gap: '3px', marginBottom: '6px' }}>
                         <label htmlFor="password" style={{ fontSize: '0.8rem', fontWeight: 800, color: '#334155' }}>Kata Sandi</label>
                         <div className="input-with-icon" style={{ display: 'flex', alignItems: 'center', backgroundColor: '#ffffff', border: '1.5px solid #cbd5e1', borderRadius: '10px', padding: '0 8px', height: '42px' }}>
-                            <div style={{ backgroundColor: '#eff6ff', borderRadius: '6px', width: '28px', height: '28px', display: 'flex', alignItems: 'center', justifyContent: 'center', marginRight: '6px', flexShrink: 0 }}>
-                                <i className="fa-solid fa-lock" style={{ color: '#2563eb', fontSize: '0.8rem' }}></i>
+                            <div style={{ backgroundColor: '#eff6ff', borderRadius: '6px', width: '28px', height: '28px', display: 'flex', alignItems: 'center', justifyContent: 'center', marginRight: '8px', flexShrink: 0 }}>
+                                <i className="fa-solid fa-lock" style={{ color: '#2563eb', fontSize: '0.82rem', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1, margin: 0 }}></i>
                             </div>
                             <input 
                                 type={showPassword ? "text" : "password"} 
@@ -207,9 +207,9 @@ export default function LoginPage() {
                                 className="password-toggle-btn"
                                 onClick={() => setShowPassword(!showPassword)}
                                 aria-label="Toggle Password Visibility"
-                                style={{ background: 'none', border: 'none', color: '#64748b', cursor: 'pointer', fontSize: '0.9rem', padding: '2px', marginLeft: '4px' }}
+                                style={{ background: 'none', border: 'none', color: '#2563eb', cursor: 'pointer', fontSize: '0.95rem', padding: '2px', marginLeft: '4px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
                             >
-                                <i className={showPassword ? "fa-regular fa-eye-slash" : "fa-regular fa-eye"}></i>
+                                <i className={showPassword ? "fa-regular fa-eye-slash" : "fa-regular fa-eye"} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}></i>
                             </button>
                         </div>
                     </div>
