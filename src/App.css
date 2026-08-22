@@ -10051,22 +10051,23 @@ body,
 
 @media (max-width: 576px) {
     .superadmin-kpi-grid {
-        grid-template-columns: repeat(2, 1fr) !important;
-        gap: 8px !important;
+        display: flex !important;
+        flex-direction: column !important;
+        grid-template-columns: 1fr !important;
+        gap: 10px !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
     }
 
-    .kpi-card-box {
-        padding: 10px 8px !important;
+    .kpi-card-card {
+        width: 100% !important;
+        padding: 12px 14px !important;
+        border-radius: 12px !important;
+        box-sizing: border-box !important;
     }
 
-    .kpi-card-box .kpi-value {
-        font-size: 1.05rem !important;
-    }
-
-    .kpi-card-box .kpi-icon-wrap {
-        width: 32px !important;
-        height: 32px !important;
-        font-size: 0.9rem !important;
+    .kpi-card-card h3 {
+        font-size: 1.18rem !important;
     }
 
     .rentals-summary-grid,
@@ -10076,9 +10077,71 @@ body,
         gap: 8px !important;
     }
 
+    .v-modal-card,
+    .modal-card {
+        max-width: 96vw !important;
+        padding: 16px 12px !important;
+        border-radius: 16px !important;
+    }
+
     .v-modal-body button,
     .pdf-modal-actions {
         flex-direction: column !important;
         width: 100% !important;
+        gap: 8px !important;
+    }
+
+    .mobile-admin-brand span {
+        font-size: 0.86rem !important;
+    }
+}
+
+/* Extra Compact Phones (iPhone SE, Galaxy Mini, 320px - 380px) */
+@media (max-width: 380px) {
+    .mobile-admin-topbar {
+        padding: 8px 10px !important;
+    }
+
+    .mobile-admin-brand span {
+        font-size: 0.78rem !important;
+    }
+
+    .superadmin-header {
+        padding: 12px 10px !important;
+    }
+
+    .superadmin-header h1 {
+        font-size: 1.15rem !important;
+    }
+
+    .date-range-selector {
+        font-size: 0.74rem !important;
+        padding: 6px 10px !important;
+        height: 36px !important;
+    }
+
+    .kpi-card-card {
+        padding: 10px 12px !important;
+        gap: 10px !important;
+    }
+
+    .kpi-card-card h3 {
+        font-size: 1.08rem !important;
+    }
+
+    .kpi-icon-square {
+        width: 38px !important;
+        height: 38px !important;
+        font-size: 1rem !important;
+    }
+
+    .superadmin-table {
+        min-width: 580px !important;
+        font-size: 0.76rem !important;
+    }
+
+    .superadmin-table th,
+    .superadmin-table td {
+        padding: 6px 8px !important;
     }
 }
