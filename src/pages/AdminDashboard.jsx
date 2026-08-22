@@ -1,6 +1,39 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../supabase'; // Pastikan path ini sesuai dengan struktur folder Anda
+
+// Helper date range parser & comparator for Indonesian & ISO formats
+const parseDateToTimestamp = (str) => {
+    if (!str) return null;
+    const d = new Date(str);
+    if (!isNaN(d.getTime())) return d.getTime();
+    const monthsIndo = {
+        januari: 0, februari: 1, maret: 2, april: 3, mei: 4, juni: 5,
+        juli: 6, agustus: 7, september: 8, oktober: 9, november: 10, desember: 11,
+        jan: 0, feb: 1, mar: 2, apr: 3, jun: 5, jul: 6, agt: 7, sep: 8, okt: 9, nov: 10, des: 11
+    };
+    const parts = String(str).toLowerCase().split(' ');
+    if (parts.length >= 3) {
+        const day = parseInt(parts[0]);
+        const month = monthsIndo[parts[1]];
+        const year = parseInt(parts[2]);
+        if (!isNaN(day) && month !== undefined && !isNaN(year)) {
+            return new Date(year, month, day).getTime();
+        }
+    }
+    return null;
+};
+
+const isDateInRange = (itemDateStr, startISO, endISO) => {
+    if (!startISO || !endISO) return true;
+    const itemTimestamp = parseDateToTimestamp(itemDateStr);
+    if (!itemTimestamp) return true;
+
+    const startTimestamp = new Date(startISO + 'T00:00:00').getTime();
+    const endTimestamp = new Date(endISO + 'T23:59:59').getTime();
+
+    return itemTimestamp >= startTimestamp && itemTimestamp <= endTimestamp;
+};
 
 export default function AdminDashboard() {
     const [history, setHistory] = useState([]);
@@ -79,8 +112,89 @@ export default function AdminDashboard() {
         }));
     };
 
-    // Date range filter
-    const [dateRange, setDateRange] = useState('15 Mei 2025 - 21 Mei 2025');
+    // --- Interactive Date Range Filter State ---
+    const getISOString = (d) => d.toISOString().split('T')[0];
+    const formatShortIndoDate = (dateObj) => {
+        if (!dateObj || isNaN(dateObj.getTime())) return '';
+        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agt', 'Sep', 'Okt', 'Nov', 'Des'];
+        return `${dateObj.getDate()} ${months[dateObj.getMonth()]} ${dateObj.getFullYear()}`;
+    };
+
+    const [datePreset, setDatePreset] = useState('7days');
+    const [customStartDate, setCustomStartDate] = useState(() => {
+        const d = new Date();
+        d.setDate(d.getDate() - 6);
+        return getISOString(d);
+    });
+    const [customEndDate, setCustomEndDate] = useState(() => getISOString(new Date()));
+    const [dateRangeLabel, setDateRangeLabel] = useState(() => {
+        const d = new Date();
+        const start = new Date();
+        start.setDate(d.getDate() - 6);
+        return `${formatShortIndoDate(start)} - ${formatShortIndoDate(d)}`;
+    });
+    const [dateRange, setDateRange] = useState(() => {
+        const d = new Date();
+        const start = new Date();
+        start.setDate(d.getDate() - 6);
+        return `${formatShortIndoDate(start)} - ${formatShortIndoDate(d)}`;
+    });
+    const [showDateRangeDropdown, setShowDateRangeDropdown] = useState(false);
+
+    const applyDatePreset = (presetKey, customStart = null, customEnd = null) => {
+        const today = new Date();
+        let start = new Date();
+        let end = new Date();
+        let label = '';
+
+        if (presetKey === 'today') {
+            start = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+            end = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+            label = `Hari Ini (${formatShortIndoDate(start)})`;
+        } else if (presetKey === '7days') {
+            start = new Date();
+            start.setDate(today.getDate() - 6);
+            end = today;
+            label = `${formatShortIndoDate(start)} - ${formatShortIndoDate(end)}`;
+        } else if (presetKey === '30days') {
+            start = new Date();
+            start.setDate(today.getDate() - 29);
+            end = today;
+            label = `${formatShortIndoDate(start)} - ${formatShortIndoDate(end)}`;
+        } else if (presetKey === 'month') {
+            start = new Date(today.getFullYear(), today.getMonth(), 1);
+            end = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+            label = `Bulan Ini (${formatShortIndoDate(start)} - ${formatShortIndoDate(end)})`;
+        } else if (presetKey === 'last_month') {
+            start = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+            end = new Date(today.getFullYear(), today.getMonth(), 0);
+            label = `Bulan Lalu (${formatShortIndoDate(start)} - ${formatShortIndoDate(end)})`;
+        } else if (presetKey === 'year') {
+            start = new Date(today.getFullYear(), 0, 1);
+            end = new Date(today.getFullYear(), 11, 31);
+            label = `Tahun ${today.getFullYear()}`;
+        } else if (presetKey === 'all') {
+            start = null;
+            end = null;
+            label = 'Semua Waktu (All Time)';
+        } else if (presetKey === 'custom') {
+            const s = customStart ? new Date(customStart) : new Date(customStartDate);
+            const e = customEnd ? new Date(customEnd) : new Date(customEndDate);
+            start = s;
+            end = e;
+            label = `${formatShortIndoDate(s)} - ${formatShortIndoDate(e)}`;
+        }
+
+        setDatePreset(presetKey);
+        setDateRangeLabel(label);
+        setDateRange(label);
+        if (start && end) {
+            setCustomStartDate(getISOString(start));
+            setCustomEndDate(getISOString(end));
+        }
+        setShowDateRangeDropdown(false);
+    };
+
     const [showProfileDropdown, setShowProfileDropdown] = useState(false);
     const [showNotifDropdown, setShowNotifDropdown] = useState(false);
     const [selectedPDFTicket, setSelectedPDFTicket] = useState(null);
@@ -173,6 +287,17 @@ export default function AdminDashboard() {
 
     const [expenditures, setExpenditures] = useState([]);
     const [staffUsers, setStaffUsers] = useState([]);
+
+    // Dynamic Filtered Datasets based on Date Range Selector
+    const dateFilteredHistory = useMemo(() => {
+        if (datePreset === 'all' || !customStartDate || !customEndDate) return history;
+        return history.filter(item => isDateInRange(item.date || item.created_at, customStartDate, customEndDate));
+    }, [history, datePreset, customStartDate, customEndDate]);
+
+    const dateFilteredExpenditures = useMemo(() => {
+        if (datePreset === 'all' || !customStartDate || !customEndDate) return expenditures;
+        return expenditures.filter(item => isDateInRange(item.date || item.created_at, customStartDate, customEndDate));
+    }, [expenditures, datePreset, customStartDate, customEndDate]);
     const [systemSettings, setSystemSettings] = useState({
         businessName: 'Waterboom Cijoho Indah',
         whatsapp: '628123456789',
@@ -307,31 +432,29 @@ export default function AdminDashboard() {
         clearInterval(interval);
     }, []);
 
-    // --- Hitung KPI setiap kali history atau expenditures berubah ---
+    // --- Hitung KPI setiap kali dateFilteredHistory atau dateFilteredExpenditures berubah ---
     useEffect(() => {
         let totalSales = 0;
         let totalTransactions = 0;
-        history.forEach(item => {
-            if (item.code.startsWith('WCI-')) {
-                totalSales += item.total || 0;
-                totalTransactions += 1;
-            }
+        dateFilteredHistory.forEach(item => {
+            totalSales += Number(item.total) || 0;
+            totalTransactions += 1;
         });
         
         let totalOutflow = 0;
-        expenditures.forEach(e => totalOutflow += e.amount || 0);
+        dateFilteredExpenditures.forEach(e => totalOutflow += Number(e.amount) || 0);
 
-        const ticketRows = history.filter(i => i.type === 'Tiket Masuk');
-        const visitors = ticketRows.reduce((sum, r) => sum + (r.qty || 0), 0);
+        const ticketRows = dateFilteredHistory.filter(i => (i.type && i.type.includes('Tiket')) || (i.qty && i.qty > 0));
+        const visitors = ticketRows.reduce((sum, r) => sum + (Number(r.qty) || 0), 0);
 
         setKpis({
-            sales: 48750000 + totalSales,
-            inflow: 55350000 + totalSales,
+            sales: totalSales,
+            inflow: totalSales,
             outflow: totalOutflow,
-            visitors: 2356 + visitors,
-            transactions: 1024 + totalTransactions
+            visitors: visitors,
+            transactions: totalTransactions
         });
-    }, [history, expenditures]);
+    }, [dateFilteredHistory, dateFilteredExpenditures]);
 
     const toggleSubmenu = (menu) => {
         setMenuOpen(prev => ({
@@ -345,13 +468,13 @@ export default function AdminDashboard() {
         navigate('/login');
     };
 
-    // Calculate aggregated rental items sold starting from 0
+    // Calculate aggregated rental items sold based on date range
     const getRentalTotals = () => {
         let banQty = 0;
         let gazeboQty = 0;
         let angsaQty = 0;
 
-        history.forEach(item => {
+        dateFilteredHistory.forEach(item => {
             const qty = Number(item.qty) || 1;
             const prod = (item.product || item.type || '').toLowerCase();
 
@@ -389,7 +512,7 @@ export default function AdminDashboard() {
 
     const rentals = getRentalTotals();
 
-    // Compute dynamic metrics for Laporan and Rekap Keuangan
+    // Compute dynamic metrics for Laporan and Rekap Keuangan based on date range
     const getReportMetrics = () => {
         let sales = 0;
         let offlineSales = 0;
@@ -406,7 +529,7 @@ export default function AdminDashboard() {
         let qrisSales = 0;
         let transferSales = 0;
 
-        history.forEach(item => {
+        dateFilteredHistory.forEach(item => {
             const itemTotal = Number(item.total) || 0;
             const qty = Number(item.qty) || 1;
             sales += itemTotal;
@@ -594,15 +717,15 @@ export default function AdminDashboard() {
         }
     };
 
-    // Filter log list
-    const filteredHistory = history.filter(item => {
-        const matchesSearch = item.code.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            item.product?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            item.type.toLowerCase().includes(searchQuery.toLowerCase());
+    // Filter log list (combining Date Range Filter + Search Query & Offline/Online Filter)
+    const filteredHistory = dateFilteredHistory.filter(item => {
+        const matchesSearch = (item.code || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+            (item.product || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+            (item.type || '').toLowerCase().includes(searchQuery.toLowerCase());
 
         if (selectedFilter === 'all') return matchesSearch;
-        if (selectedFilter === 'offline') return matchesSearch && item.channel === 'Offline';
-        if (selectedFilter === 'online') return matchesSearch && item.channel === 'Online';
+        if (selectedFilter === 'offline') return matchesSearch && (item.channel === 'Offline' || !item.code.startsWith('WCI-'));
+        if (selectedFilter === 'online') return matchesSearch && (item.channel === 'Online' || item.code.startsWith('WCI-'));
         return matchesSearch;
     });
 
@@ -805,15 +928,147 @@ export default function AdminDashboard() {
                             {activeTab === 'produk_harga' && 'Sesuaikan harga jual tiket dan sewa barang secara langsung'}
                             {activeTab === 'pengguna' && 'Atur hak akses akun administrator dan petugas kasir'}
                             {activeTab === 'pengeluaran' && 'Kelola arus kas keluar operasional waterboom'}
-                            {activeTab === 'rekap_keuangan' && 'Periode Laporan: 15–21 Mei 2025'}
+                            {activeTab === 'rekap_keuangan' && `Periode Laporan: ${dateRangeLabel || dateRange}`}
                             {activeTab !== 'dashboard' && activeTab !== 'transaksi' && activeTab !== 'produk_harga' && activeTab !== 'pengguna' && activeTab !== 'pengeluaran' && activeTab !== 'rekap_keuangan' && 'Manajemen master data dan laporan operasional'}
                         </p>
                     </div>
                     <div className="header-controls-column">
-                        <div className="date-range-selector">
-                            <i className="fa-regular fa-calendar-days"></i>
-                            <span>{dateRange}</span>
-                            <i className="fa-solid fa-chevron-down caret"></i>
+                        <div className="date-range-selector-wrapper" style={{ position: 'relative' }}>
+                            <button
+                                type="button"
+                                className="date-range-selector"
+                                onClick={() => {
+                                    setShowDateRangeDropdown(!showDateRangeDropdown);
+                                    setShowNotifDropdown(false);
+                                    setShowProfileDropdown(false);
+                                }}
+                                style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '10px',
+                                    backgroundColor: '#ffffff',
+                                    border: '1.5px solid #cbd5e1',
+                                    borderRadius: '50px',
+                                    padding: '8px 16px',
+                                    color: '#0c294a',
+                                    fontSize: '0.85rem',
+                                    fontWeight: 800,
+                                    cursor: 'pointer',
+                                    boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
+                                    transition: 'all 0.2s ease'
+                                }}
+                            >
+                                <i className="fa-regular fa-calendar-days" style={{ color: '#2563eb', fontSize: '0.95rem' }}></i>
+                                <span>{dateRangeLabel || dateRange}</span>
+                                <i className={`fa-solid fa-chevron-${showDateRangeDropdown ? 'up' : 'down'} caret`} style={{ fontSize: '0.75rem', color: '#64748b' }}></i>
+                            </button>
+
+                            {showDateRangeDropdown && (
+                                <div className="date-range-dropdown-menu fade-in" style={{
+                                    position: 'absolute',
+                                    top: 'calc(100% + 8px)',
+                                    right: 0,
+                                    width: '360px',
+                                    backgroundColor: '#ffffff',
+                                    borderRadius: '20px',
+                                    boxShadow: '0 16px 36px rgba(15, 23, 42, 0.2)',
+                                    border: '1px solid #e2e8f0',
+                                    zIndex: 1000,
+                                    padding: '16px',
+                                    fontFamily: "'Inter', sans-serif"
+                                }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid #f1f5f9', paddingBottom: '10px', marginBottom: '12px' }}>
+                                        <strong style={{ fontSize: '0.88rem', color: '#0c294a', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                            <i className="fa-solid fa-filter" style={{ color: '#2563eb' }}></i> Filter Periode Laporan
+                                        </strong>
+                                        <button onClick={() => setShowDateRangeDropdown(false)} style={{ background: 'none', border: 'none', color: '#94a3b8', fontSize: '1.1rem', cursor: 'pointer' }}>&times;</button>
+                                    </div>
+
+                                    {/* PRESETS GRID */}
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px', marginBottom: '14px' }}>
+                                        {[
+                                            { key: 'today', label: 'Hari Ini', icon: 'fa-sun' },
+                                            { key: '7days', label: '7 Hari Terakhir', icon: 'fa-calendar-week' },
+                                            { key: '30days', label: '30 Hari Terakhir', icon: 'fa-calendar-days' },
+                                            { key: 'month', label: 'Bulan Ini', icon: 'fa-calendar' },
+                                            { key: 'last_month', label: 'Bulan Lalu', icon: 'fa-history' },
+                                            { key: 'year', label: 'Tahun Ini', icon: 'fa-chart-line' },
+                                            { key: 'all', label: 'Semua Waktu', icon: 'fa-database' }
+                                        ].map(preset => (
+                                            <button
+                                                key={preset.key}
+                                                type="button"
+                                                onClick={() => applyDatePreset(preset.key)}
+                                                style={{
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    gap: '6px',
+                                                    padding: '8px 10px',
+                                                    borderRadius: '10px',
+                                                    border: datePreset === preset.key ? '1.5px solid #2563eb' : '1px solid #e2e8f0',
+                                                    backgroundColor: datePreset === preset.key ? '#eff6ff' : '#f8fafc',
+                                                    color: datePreset === preset.key ? '#1d4ed8' : '#334155',
+                                                    fontSize: '0.76rem',
+                                                    fontWeight: datePreset === preset.key ? 900 : 700,
+                                                    cursor: 'pointer',
+                                                    textAlign: 'left'
+                                                }}
+                                            >
+                                                <i className={`fa-solid ${preset.icon}`} style={{ color: datePreset === preset.key ? '#2563eb' : '#94a3b8', fontSize: '0.75rem' }}></i>
+                                                {preset.label}
+                                            </button>
+                                        ))}
+                                    </div>
+
+                                    {/* CUSTOM DATE RANGE PICKER FORM */}
+                                    <div style={{ borderTop: '1px dashed #cbd5e1', paddingTop: '12px' }}>
+                                        <label style={{ fontSize: '0.74rem', fontWeight: 800, color: '#64748b', display: 'block', marginBottom: '8px' }}>
+                                            ⚙️ RENTANG TANGGAL KUSTOM:
+                                        </label>
+                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '10px' }}>
+                                            <div>
+                                                <span style={{ fontSize: '0.68rem', color: '#64748b', fontWeight: 700, display: 'block', marginBottom: '2px' }}>Dari Tanggal:</span>
+                                                <input
+                                                    type="date"
+                                                    value={customStartDate}
+                                                    onChange={(e) => setCustomStartDate(e.target.value)}
+                                                    style={{ width: '100%', padding: '6px 8px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.75rem', fontWeight: 700 }}
+                                                />
+                                            </div>
+                                            <div>
+                                                <span style={{ fontSize: '0.68rem', color: '#64748b', fontWeight: 700, display: 'block', marginBottom: '2px' }}>Sampai Tanggal:</span>
+                                                <input
+                                                    type="date"
+                                                    value={customEndDate}
+                                                    onChange={(e) => setCustomEndDate(e.target.value)}
+                                                    style={{ width: '100%', padding: '6px 8px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.75rem', fontWeight: 700 }}
+                                                />
+                                            </div>
+                                        </div>
+                                        <button
+                                            type="button"
+                                            onClick={() => applyDatePreset('custom')}
+                                            style={{
+                                                width: '100%',
+                                                backgroundColor: '#0c294a',
+                                                color: 'white',
+                                                border: 'none',
+                                                padding: '9px',
+                                                borderRadius: '10px',
+                                                fontSize: '0.78rem',
+                                                fontWeight: 900,
+                                                cursor: 'pointer',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
+                                                gap: '6px'
+                                            }}
+                                        >
+                                            <i className="fa-solid fa-check"></i> Terapkan Rentang Tanggal
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
                         </div>
 
                         <div className="notif-wrapper" style={{ position: 'relative' }}>
@@ -1426,7 +1681,7 @@ export default function AdminDashboard() {
                                             </tr>
                                         </thead>
                                         <tbody>
-                                            {history.map((item, idx) => (
+                                            {filteredHistory.map((item, idx) => (
                                                 <tr key={idx}>
                                                     <td className="text-secondary">{item.date}</td>
                                                     <td className="font-bold">{item.code}</td>
@@ -1518,7 +1773,7 @@ export default function AdminDashboard() {
                                             </tr>
                                         </thead>
                                         <tbody>
-                                            {expenditures.map((item, idx) => (
+                                            {filteredExpenditures.map((item, idx) => (
                                                 <tr key={idx}>
                                                     <td>{item.date}</td>
                                                     <td><span className="category-badge-simple">{item.category}</span></td>
