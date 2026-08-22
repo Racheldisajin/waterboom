@@ -164,7 +164,7 @@ export default function LoginPage() {
                     </div>
                 )}
 
-                <form onSubmit={handleLogin} className="login-form" autoComplete="off">
+                <form onSubmit={handleLogin} className="login-form" autoComplete="off" style={{ display: 'flex', flexDirection: 'column', gap: '0px' }}>
                     {/* Username Input */}
                     <div className="input-group-field" style={{ display: 'flex', flexDirection: 'column', gap: '3px', marginBottom: '6px' }}>
                         <label htmlFor="username" style={{ fontSize: '0.8rem', fontWeight: 800, color: '#334155' }}>Username</label>
