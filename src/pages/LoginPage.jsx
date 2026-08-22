@@ -8,6 +8,7 @@ export default function LoginPage() {
     const [loginRole, setLoginRole] = useState('admin'); // 'admin' | 'kasir'
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+    const [rememberMe, setRememberMe] = useState(true);
     const [showPassword, setShowPassword] = useState(false);
     const [error, setError] = useState('');
     const [isLoading, setIsLoading] = useState(false);
@@ -88,12 +89,13 @@ export default function LoginPage() {
                         src="assets/logo.png" 
                         alt="Waterboom Cijoho Indah" 
                         className="login-logo-img" 
-                        style={{ height: '84px', width: 'auto', marginBottom: '14px', objectFit: 'contain', display: 'block', margin: '0 auto 14px auto' }} 
+                        style={{ height: '76px', width: 'auto', marginBottom: '16px', objectFit: 'contain', display: 'block', margin: '0 auto 16px auto' }} 
                     />
-                    <h2 style={{ fontSize: 'clamp(1.15rem, 4.5vw, 1.45rem)', fontWeight: 900, color: '#0c294a', margin: 0, textTransform: 'uppercase', letterSpacing: '0.5px', textAlign: 'center' }}>
-                        PORTAL MASUK STAF &amp; ADMIN
+                    <h2 style={{ fontSize: '1.65rem', fontWeight: 900, color: '#0f172a', margin: 0, textTransform: 'uppercase', letterSpacing: '-0.3px', textAlign: 'center', lineHeight: 1.25 }}>
+                        PORTAL MASUK<br />
+                        <span style={{ color: '#2563eb' }}>STAF &amp; ADMIN</span>
                     </h2>
-                    <p style={{ fontSize: '0.88rem', color: '#64748b', fontWeight: 600, marginTop: '4px', marginBottom: 0, textAlign: 'center' }}>
+                    <p style={{ fontSize: '0.92rem', color: '#64748b', fontWeight: 600, marginTop: '6px', marginBottom: 0, textAlign: 'center' }}>
                         Waterboom Cijoho Indah
                     </p>
                 </div>
@@ -126,13 +128,13 @@ export default function LoginPage() {
 
                 <form onSubmit={handleLogin} className="login-form" autoComplete="off">
                     <div className="input-group-field">
-                        <label htmlFor="email">Email Akses {loginRole === 'admin' ? 'Admin' : 'Kasir'}</label>
+                        <label htmlFor="email">Email Akses Staf / Admin</label>
                         <div className="input-with-icon">
                             <i className="fa-regular fa-envelope"></i>
                             <input 
                                 type="email" 
                                 id="email" 
-                                placeholder={loginRole === 'admin' ? "admin@cijoho.com" : "kasir@cijoho.com"} 
+                                placeholder="admin@cijoho.com" 
                                 value={email}
                                 onChange={(e) => setEmail(e.target.value)}
                                 autoComplete="off"
@@ -148,7 +150,7 @@ export default function LoginPage() {
                             <input 
                                 type={showPassword ? "text" : "password"} 
                                 id="password" 
-                                placeholder="Masukkan password" 
+                                placeholder="••••••••" 
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
                                 autoComplete="off"
@@ -165,7 +167,27 @@ export default function LoginPage() {
                         </div>
                     </div>
 
-                    <button type="submit" className="btn-login-submit" disabled={isLoading} style={{ minHeight: '48px', fontSize: '0.92rem', fontWeight: 900 }}>
+                    {/* Remember me & Forgot password row */}
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '4px', marginBottom: '8px' }}>
+                        <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '0.88rem', fontWeight: 700, color: '#334155' }}>
+                            <input
+                                type="checkbox"
+                                checked={rememberMe}
+                                onChange={(e) => setRememberMe(e.target.checked)}
+                                style={{ width: '16px', height: '16px', accentColor: '#2563eb', cursor: 'pointer' }}
+                            />
+                            Ingat saya
+                        </label>
+                        <button
+                            type="button"
+                            onClick={() => alert('Silakan hubungi Administrator Utama untuk reset kata sandi staf.')}
+                            style={{ background: 'none', border: 'none', color: '#2563eb', fontSize: '0.88rem', fontWeight: 700, cursor: 'pointer', padding: 0 }}
+                        >
+                            Lupa kata sandi?
+                        </button>
+                    </div>
+
+                    <button type="submit" className="btn-login-submit" disabled={isLoading} style={{ minHeight: '52px', fontSize: '1rem', fontWeight: 900 }}>
                         {isLoading ? (
                             <>
                                 <span className="login-spinner"></span> Memproses Masuk...
@@ -178,10 +200,14 @@ export default function LoginPage() {
                     </button>
                 </form>
 
-                <div className="login-footer-links" style={{ marginTop: '20px' }}>
-                    <Link to="/" className="back-to-home-link">
-                        <i className="fa-solid fa-arrow-left"></i> Kembali ke Beranda Utama
-                    </Link>
+                <div style={{ marginTop: '28px', width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', width: '100%' }}>
+                        <div style={{ flex: 1, height: '1px', backgroundColor: '#e2e8f0' }}></div>
+                        <Link to="/" style={{ color: '#475569', fontSize: '0.88rem', fontWeight: 800, textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '6px', whiteSpace: 'nowrap' }}>
+                            <i className="fa-solid fa-arrow-left"></i> Kembali ke Beranda Utama
+                        </Link>
+                        <div style={{ flex: 1, height: '1px', backgroundColor: '#e2e8f0' }}></div>
+                    </div>
                 </div>
             </div>
         </div>

@@ -4317,17 +4317,15 @@ img {
 }
 
 .login-glass-card {
-    background: rgba(255, 255, 255, 0.85);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    border: 1px solid rgba(255, 255, 255, 0.3);
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
     border-radius: 28px;
-    padding: 40px;
+    padding: 40px 36px;
     width: 100%;
     max-width: 440px;
-    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3);
+    box-shadow: 0 20px 45px rgba(15, 23, 42, 0.08);
     z-index: 10;
-    color: #1b2a4a;
+    color: #0f172a;
 }
 
 .login-header {
@@ -4395,25 +4393,25 @@ img {
 .input-with-icon {
     display: flex;
     align-items: center;
-    background-color: #f8fafc;
+    background-color: #ffffff;
     border: 1.5px solid #e2e8f0;
-    border-radius: 12px;
+    border-radius: 14px;
     padding: 0 16px;
-    height: 48px;
+    height: 52px;
     position: relative;
     transition: all 0.2s;
 }
 
 .input-with-icon:focus-within {
-    border-color: #1a73e8;
-    background-color: white;
-    box-shadow: 0 0 0 4px rgba(26, 115, 232, 0.15);
+    border-color: #2563eb;
+    background-color: #ffffff;
+    box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.12);
 }
 
 .input-with-icon i:first-of-type {
-    color: #94a3b8;
+    color: #2563eb;
     margin-right: 12px;
-    font-size: 1.1rem;
+    font-size: 1.15rem;
 }
 
 .input-with-icon input {
@@ -4424,7 +4422,7 @@ img {
     height: 100%;
     font-size: 0.95rem;
     font-weight: 700;
-    color: #1b2a4a;
+    color: #0f172a;
 }
 
 .password-toggle-btn {
@@ -4442,26 +4440,26 @@ img {
 }
 
 .btn-login-submit {
-    background-color: #0f3c8a;
+    background-color: #2563eb;
     color: white;
     border: none;
     border-radius: 14px;
-    height: 50px;
-    font-size: 0.98rem;
-    font-weight: 800;
+    height: 52px;
+    font-size: 1rem;
+    font-weight: 900;
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
     gap: 10px;
-    transition: all 0.2s;
-    box-shadow: 0 4px 15px rgba(15, 60, 138, 0.25);
+    transition: all 0.2s ease;
+    box-shadow: 0 6px 18px rgba(37, 99, 235, 0.35);
     margin-top: 10px;
 }
 
 .btn-login-submit:hover {
-    background-color: #0c294a;
-    box-shadow: 0 6px 20px rgba(12, 41, 74, 0.3);
+    background-color: #1d4ed8;
+    box-shadow: 0 8px 24px rgba(29, 78, 216, 0.4);
 }
 
 .btn-login-submit:disabled {
@@ -7146,34 +7144,45 @@ img {
 /* Login Role Tabs */
 .login-role-tabs {
     display: flex;
-    gap: 8px;
-    background-color: #f1f5f9;
-    padding: 4px;
-    border-radius: 12px;
-    margin-bottom: 20px;
+    gap: 6px;
+    background-color: #f8fafc;
+    border: 1px solid #e2e8f0;
+    padding: 5px;
+    border-radius: 16px;
+    margin-bottom: 24px;
 }
 
 .role-tab-btn {
     flex: 1;
-    padding: 10px;
-    border: none;
-    background: none;
-    border-radius: 8px;
+    padding: 12px 14px;
+    border: 1px solid #e2e8f0;
+    background-color: #ffffff;
+    border-radius: 12px;
     font-weight: 700;
-    font-size: 0.85rem;
-    color: #64748b;
+    font-size: 0.9rem;
+    color: #0f172a;
     cursor: pointer;
     transition: all 0.2s ease;
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 6px;
+    gap: 8px;
+}
+
+.role-tab-btn i {
+    font-size: 1rem;
+    color: #475569;
 }
 
 .role-tab-btn.active {
-    background-color: white;
-    color: var(--color-primary, #0c294a);
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    background-color: #2563eb;
+    color: #ffffff;
+    border-color: #2563eb;
+    box-shadow: 0 4px 14px rgba(37, 99, 235, 0.35);
+}
+
+.role-tab-btn.active i {
+    color: #ffffff !important;
 }
 
 /* Full Dashboard Main Layout */
