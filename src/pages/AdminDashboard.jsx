@@ -764,6 +764,55 @@ export default function AdminDashboard() {
                     <img src="assets/logo.png" alt="Logo" style={{ height: '26px' }} />
                     <span>{systemSettings.businessName}</span>
                 </div>
+                <div className="mobile-admin-notif-wrapper" style={{ position: 'relative' }}>
+                    <button
+                        type="button"
+                        className="mobile-notif-bell-btn"
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            setShowNotifDropdown(!showNotifDropdown);
+                            setShowDateRangeDropdown(false);
+                            setShowProfileDropdown(false);
+                        }}
+                        aria-label="Notifikasi Sistem"
+                        style={{
+                            background: 'rgba(255, 255, 255, 0.15)',
+                            border: 'none',
+                            color: '#ffffff',
+                            width: '38px',
+                            height: '38px',
+                            borderRadius: '10px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontSize: '1.1rem',
+                            cursor: 'pointer',
+                            position: 'relative'
+                        }}
+                    >
+                        <i className="fa-solid fa-bell"></i>
+                        {notifications.filter(n => !n.read).length > 0 && (
+                            <span className="notif-count-badge" style={{
+                                position: 'absolute',
+                                top: '-2px',
+                                right: '-2px',
+                                backgroundColor: '#ef4444',
+                                color: '#ffffff',
+                                fontSize: '0.65rem',
+                                fontWeight: 800,
+                                width: '18px',
+                                height: '18px',
+                                borderRadius: '50%',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                border: '2px solid #0c294a'
+                            }}>
+                                {notifications.filter(n => !n.read).length}
+                            </span>
+                        )}
+                    </button>
+                </div>
             </div>
 
             {/* 1. LEFT SIDEBAR */}
