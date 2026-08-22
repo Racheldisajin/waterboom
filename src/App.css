@@ -9822,8 +9822,8 @@ body,
         align-items: center !important;
         justify-content: center !important;
         text-align: center !important;
-        gap: 12px !important;
-        padding: 16px 12px !important;
+        gap: 10px !important;
+        padding: 16px 14px !important;
         border-radius: 16px !important;
         width: 100% !important;
         box-sizing: border-box !important;
@@ -9835,14 +9835,17 @@ body,
     }
 
     .superadmin-header h1 {
-        font-size: 1.35rem !important;
+        font-size: 1.3rem !important;
+        font-weight: 900 !important;
         text-align: center !important;
-        margin-bottom: 2px !important;
+        margin-bottom: 4px !important;
+        color: #0c294a !important;
     }
 
     .superadmin-header p {
-        font-size: 0.8rem !important;
+        font-size: 0.82rem !important;
         text-align: center !important;
+        color: #64748b !important;
     }
 
     .header-controls-column {
@@ -9862,53 +9865,25 @@ body,
     }
 
     .date-range-selector {
-        border-radius: 14px !important;
-        padding: 8px 12px !important;
-        font-size: 0.78rem !important;
+        border-radius: 12px !important;
+        padding: 8px 14px !important;
+        font-size: 0.8rem !important;
+        font-weight: 800 !important;
         white-space: nowrap !important;
         max-width: 100% !important;
         box-sizing: border-box !important;
         flex-shrink: 0 !important;
-        height: 42px !important;
+        height: 40px !important;
         box-shadow: 0 2px 8px rgba(0,0,0,0.06) !important;
     }
 
     .date-range-selector span {
         white-space: nowrap !important;
-        font-size: 0.78rem !important;
-    }
-
-    .avatar-capsule {
-        border-radius: 14px !important;
-        padding: 4px 12px 4px 6px !important;
-        white-space: nowrap !important;
-        max-width: 100% !important;
-        box-sizing: border-box !important;
-        flex-shrink: 0 !important;
-        height: 42px !important;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.06) !important;
-    }
-
-    .user-avatar-text .name {
-        white-space: nowrap !important;
-        font-size: 0.78rem !important;
-    }
-
-    .user-avatar-text .role {
-        white-space: nowrap !important;
-        font-size: 0.68rem !important;
-    }
-
-    .notif-bell-btn {
-        width: 42px !important;
-        height: 42px !important;
-        border-radius: 12px !important;
-        flex-shrink: 0 !important;
+        font-size: 0.8rem !important;
     }
 
     .date-range-dropdown-menu,
-    .notif-dropdown-menu,
-    .account-switcher-dropdown {
+    .notif-dropdown-menu {
         position: fixed !important;
         top: 70px !important;
         left: 12px !important;
@@ -9942,6 +9917,16 @@ body,
         box-sizing: border-box !important;
     }
 
+    .kpi-card-card h3 {
+        font-size: 1.22rem !important;
+        font-weight: 900 !important;
+    }
+
+    .kpi-card-card .label {
+        font-size: 0.76rem !important;
+        font-weight: 700 !important;
+    }
+
     .kpi-icon-square {
         width: 44px !important;
         height: 44px !important;
@@ -9953,19 +9938,6 @@ body,
         justify-content: center !important;
     }
 
-    .kpi-card-box {
-        padding: 14px 12px !important;
-        border-radius: 12px !important;
-    }
-
-    .kpi-card-box .kpi-value {
-        font-size: 1.2rem !important;
-    }
-
-    .kpi-card-box .kpi-label {
-        font-size: 0.72rem !important;
-    }
-
     .data-table-card {
         padding: 14px 12px !important;
         border-radius: 14px !important;
@@ -9975,16 +9947,24 @@ body,
     .superadmin-table-wrapper {
         overflow-x: auto !important;
         -webkit-overflow-scrolling: touch !important;
+        border-radius: 10px !important;
     }
 
     .superadmin-table {
-        min-width: 600px !important;
-        font-size: 0.8rem !important;
+        min-width: 660px !important;
+        font-size: 0.82rem !important;
     }
 
-    .superadmin-table th,
+    .superadmin-table th {
+        font-size: 0.78rem !important;
+        font-weight: 800 !important;
+        padding: 10px 12px !important;
+        white-space: nowrap !important;
+    }
+
     .superadmin-table td {
-        padding: 8px 10px !important;
+        padding: 10px 12px !important;
+        font-size: 0.82rem !important;
         white-space: nowrap !important;
     }
 }
