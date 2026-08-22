@@ -9775,15 +9775,105 @@ body,
 
     .superadmin-header {
         flex-direction: column !important;
-        align-items: stretch !important;
+        align-items: center !important;
+        justify-content: center !important;
+        text-align: center !important;
         gap: 12px !important;
-        padding: 14px !important;
-        border-radius: 14px !important;
+        padding: 16px 12px !important;
+        border-radius: 16px !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
+    }
+
+    .header-title-column {
+        text-align: center !important;
+        width: 100% !important;
     }
 
     .superadmin-header h1 {
-        font-size: 1.25rem !important;
+        font-size: 1.35rem !important;
         text-align: center !important;
+        margin-bottom: 2px !important;
+    }
+
+    .superadmin-header p {
+        font-size: 0.8rem !important;
+        text-align: center !important;
+    }
+
+    .header-controls-column {
+        display: flex !important;
+        flex-direction: row !important;
+        flex-wrap: wrap !important;
+        align-items: center !important;
+        justify-content: center !important;
+        gap: 8px !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
+    }
+
+    .date-range-selector-wrapper {
+        width: auto !important;
+        max-width: 100% !important;
+    }
+
+    .date-range-selector {
+        border-radius: 14px !important;
+        padding: 8px 12px !important;
+        font-size: 0.78rem !important;
+        white-space: nowrap !important;
+        max-width: 100% !important;
+        box-sizing: border-box !important;
+        flex-shrink: 0 !important;
+        height: 42px !important;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.06) !important;
+    }
+
+    .date-range-selector span {
+        white-space: nowrap !important;
+        font-size: 0.78rem !important;
+    }
+
+    .avatar-capsule {
+        border-radius: 14px !important;
+        padding: 4px 12px 4px 6px !important;
+        white-space: nowrap !important;
+        max-width: 100% !important;
+        box-sizing: border-box !important;
+        flex-shrink: 0 !important;
+        height: 42px !important;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.06) !important;
+    }
+
+    .user-avatar-text .name {
+        white-space: nowrap !important;
+        font-size: 0.78rem !important;
+    }
+
+    .user-avatar-text .role {
+        white-space: nowrap !important;
+        font-size: 0.68rem !important;
+    }
+
+    .notif-bell-btn {
+        width: 42px !important;
+        height: 42px !important;
+        border-radius: 12px !important;
+        flex-shrink: 0 !important;
+    }
+
+    .date-range-dropdown-menu,
+    .notif-dropdown-menu,
+    .account-switcher-dropdown {
+        position: fixed !important;
+        top: 70px !important;
+        left: 12px !important;
+        right: 12px !important;
+        width: auto !important;
+        max-width: calc(100vw - 24px) !important;
+        box-shadow: 0 16px 40px rgba(15, 23, 42, 0.3) !important;
+        z-index: 1000 !important;
+        box-sizing: border-box !important;
     }
 
     .superadmin-kpi-grid {
