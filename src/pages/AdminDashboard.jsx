@@ -754,9 +754,32 @@ export default function AdminDashboard() {
                     <img src="assets/logo.png" alt="Logo" style={{ height: '26px' }} />
                     <span>{systemSettings.businessName}</span>
                 </div>
-                <div className="mobile-admin-badge" style={{ backgroundColor: currentAccount.badgeColor }}>
-                    <i className={`fa-solid ${currentAccount.avatarIcon}`}></i>
-                </div>
+                <button 
+                    type="button" 
+                    className="three-dots-menu-btn"
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        setShowProfileDropdown(!showProfileDropdown);
+                        setShowDateRangeDropdown(false);
+                        setShowNotifDropdown(false);
+                    }}
+                    aria-label="Account Switcher Menu"
+                    style={{
+                        background: 'rgba(255, 255, 255, 0.15)',
+                        border: 'none',
+                        color: '#ffffff',
+                        width: '38px',
+                        height: '38px',
+                        borderRadius: '10px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: '1.15rem',
+                        cursor: 'pointer'
+                    }}
+                >
+                    <i className="fa-solid fa-ellipsis-vertical"></i>
+                </button>
             </div>
 
             {/* 1. LEFT SIDEBAR */}
@@ -1244,16 +1267,36 @@ export default function AdminDashboard() {
                             )}
                         </div>
                         <div className="user-profile-dropdown-container">
-                            <div className="avatar-capsule" onClick={() => setShowProfileDropdown(!showProfileDropdown)}>
-                                <div className="profile-avatar-circle" style={{ width: '32px', height: '32px', fontSize: '0.85rem', backgroundColor: currentAccount.badgeColor, flexShrink: 0 }}>
-                                    <i className={`fa-solid ${currentAccount.avatarIcon}`}></i>
-                                </div>
-                                <div className="user-avatar-text">
-                                    <span className="name">{currentAccount.name}</span>
-                                    <span className="role">{currentAccount.role}</span>
-                                </div>
-                                <i className={`fa-solid fa-chevron-${showProfileDropdown ? 'up' : 'down'} caret`}></i>
-                            </div>
+                            <button
+                                type="button"
+                                className="three-dots-menu-btn"
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    setShowProfileDropdown(!showProfileDropdown);
+                                    setShowDateRangeDropdown(false);
+                                    setShowNotifDropdown(false);
+                                }}
+                                title="Beralih Akun (Account Switcher)"
+                                aria-label="Account Switcher Menu"
+                                style={{
+                                    backgroundColor: '#ffffff',
+                                    border: '1.5px solid #cbd5e1',
+                                    borderRadius: '12px',
+                                    width: '42px',
+                                    height: '42px',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    color: '#0c294a',
+                                    fontSize: '1.1rem',
+                                    cursor: 'pointer',
+                                    boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
+                                    transition: 'all 0.2s ease',
+                                    flexShrink: 0
+                                }}
+                            >
+                                <i className="fa-solid fa-ellipsis-vertical"></i>
+                            </button>
                             {showProfileDropdown && (
                                 <div className="account-switcher-dropdown">
                                     <div className="account-switcher-header">
