@@ -764,32 +764,6 @@ export default function AdminDashboard() {
                     <img src="assets/logo.png" alt="Logo" style={{ height: '26px' }} />
                     <span>{systemSettings.businessName}</span>
                 </div>
-                <button 
-                    type="button" 
-                    className="three-dots-menu-btn"
-                    onClick={(e) => {
-                        e.stopPropagation();
-                        setShowProfileDropdown(!showProfileDropdown);
-                        setShowDateRangeDropdown(false);
-                        setShowNotifDropdown(false);
-                    }}
-                    aria-label="Account Switcher Menu"
-                    style={{
-                        background: 'rgba(255, 255, 255, 0.15)',
-                        border: 'none',
-                        color: '#ffffff',
-                        width: '38px',
-                        height: '38px',
-                        borderRadius: '10px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        fontSize: '1.15rem',
-                        cursor: 'pointer'
-                    }}
-                >
-                    <i className="fa-solid fa-ellipsis-vertical"></i>
-                </button>
             </div>
 
             {/* 1. LEFT SIDEBAR */}
@@ -808,15 +782,135 @@ export default function AdminDashboard() {
                         <i className="fa-solid fa-xmark"></i>
                     </button>
                 </div>
-                <div className="sidebar-profile-card">
-                    <div className="profile-avatar-circle" style={{ backgroundColor: currentAccount.badgeColor }}>
-                        <i className={`fa-solid ${currentAccount.avatarIcon}`}></i>
+                <div 
+                    className="sidebar-profile-card"
+                    onClick={() => setShowProfileDropdown(!showProfileDropdown)}
+                    style={{
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        padding: '12px 14px',
+                        backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                        border: '1px solid rgba(255, 255, 255, 0.1)',
+                        borderRadius: '16px',
+                        margin: '12px 16px 16px 16px',
+                        transition: 'all 0.2s ease'
+                    }}
+                    title="Klik untuk Beralih Akun (Account Switcher)"
+                >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        <div className="profile-avatar-circle" style={{ backgroundColor: currentAccount.badgeColor, flexShrink: 0 }}>
+                            <i className={`fa-solid ${currentAccount.avatarIcon}`}></i>
+                        </div>
+                        <div className="profile-meta" style={{ display: 'flex', flexDirection: 'column' }}>
+                            <strong style={{ fontSize: '0.88rem', color: '#ffffff', lineHeight: '1.2' }}>{currentAccount.name}</strong>
+                            <span style={{ fontSize: '0.72rem', color: '#94a3b8' }}>{currentAccount.role}</span>
+                        </div>
                     </div>
-                    <div className="profile-meta">
-                        <strong>{currentAccount.name}</strong>
-                        <span>{currentAccount.role}</span>
+                    <div style={{ color: '#94a3b8', fontSize: '0.85rem', padding: '2px' }}>
+                        <i className={`fa-solid fa-chevron-${showProfileDropdown ? 'up' : 'down'}`}></i>
                     </div>
                 </div>
+
+                {/* SIDEBAR ACCOUNT SWITCHER DROPDOWN */}
+                {showProfileDropdown && (
+                    <div className="sidebar-account-switcher fade-in" style={{
+                        margin: '-8px 16px 16px 16px',
+                        padding: '12px',
+                        backgroundColor: 'rgba(15, 23, 42, 0.95)',
+                        border: '1.5px solid rgba(59, 130, 246, 0.3)',
+                        borderRadius: '14px',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '8px',
+                        boxShadow: '0 12px 30px rgba(0,0,0,0.3)'
+                    }}>
+                        <div style={{ fontSize: '0.7rem', fontWeight: 800, color: '#94a3b8', letterSpacing: '0.5px', marginBottom: '2px', textTransform: 'uppercase' }}>
+                            Beralih Akun (Account Switcher)
+                        </div>
+                        {accounts.map(acc => (
+                            <div
+                                key={acc.id}
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleSwitchAccount(acc);
+                                    setShowProfileDropdown(false);
+                                }}
+                                style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'space-between',
+                                    padding: '8px 10px',
+                                    borderRadius: '10px',
+                                    backgroundColor: acc.id === currentAccount.id ? 'rgba(37, 99, 235, 0.3)' : 'rgba(255,255,255,0.04)',
+                                    border: acc.id === currentAccount.id ? '1px solid #3b82f6' : '1px solid transparent',
+                                    cursor: 'pointer',
+                                    transition: 'all 0.2s ease'
+                                }}
+                            >
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                    <div style={{ width: '28px', height: '28px', borderRadius: '50%', backgroundColor: acc.badgeColor, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: '0.78rem', flexShrink: 0 }}>
+                                        <i className={`fa-solid ${acc.avatarIcon}`}></i>
+                                    </div>
+                                    <div>
+                                        <div style={{ fontSize: '0.8rem', fontWeight: 700, color: '#ffffff' }}>{acc.name}</div>
+                                        <div style={{ fontSize: '0.68rem', color: '#94a3b8' }}>{acc.role}</div>
+                                    </div>
+                                </div>
+                                {acc.id === currentAccount.id && <i className="fa-solid fa-circle-check" style={{ color: '#60a5fa', fontSize: '0.85rem' }}></i>}
+                            </div>
+                        ))}
+
+                        <div style={{ borderTop: '1px solid rgba(255, 255, 255, 0.1)', paddingTop: '8px', marginTop: '4px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                            <button
+                                type="button"
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    setShowProfileDropdown(false);
+                                    setActiveTab('pengguna');
+                                }}
+                                style={{
+                                    background: 'none',
+                                    border: 'none',
+                                    color: '#60a5fa',
+                                    fontSize: '0.76rem',
+                                    fontWeight: 700,
+                                    textAlign: 'left',
+                                    cursor: 'pointer',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '6px',
+                                    padding: '4px 6px'
+                                }}
+                            >
+                                <i className="fa-solid fa-user-plus"></i> Tambah Akun Staf Baru
+                            </button>
+                            <button
+                                type="button"
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleLogout();
+                                }}
+                                style={{
+                                    background: 'none',
+                                    border: 'none',
+                                    color: '#f87171',
+                                    fontSize: '0.76rem',
+                                    fontWeight: 700,
+                                    textAlign: 'left',
+                                    cursor: 'pointer',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '6px',
+                                    padding: '4px 6px'
+                                }}
+                            >
+                                <i className="fa-solid fa-right-from-bracket"></i> Keluar (Logout)
+                            </button>
+                        </div>
+                    </div>
+                )}
                 <nav className="sidebar-navigation">
                     <div className={`nav-menu-item ${activeTab === 'dashboard' ? 'active' : ''}`}>
                         <a href="#/admin" onClick={(e) => { e.preventDefault(); setActiveTab('dashboard'); }}><i className="fa-solid fa-chart-pie"></i> Dashboard</a>
@@ -1271,87 +1365,6 @@ export default function AdminDashboard() {
                                             }}
                                         >
                                             Lihat Semua Log Transaksi <i className="fa-solid fa-arrow-right" style={{ fontSize: '0.75rem', marginLeft: '4px' }}></i>
-                                        </button>
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-                        <div className="user-profile-dropdown-container">
-                            <button
-                                type="button"
-                                className="three-dots-menu-btn"
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    setShowProfileDropdown(!showProfileDropdown);
-                                    setShowDateRangeDropdown(false);
-                                    setShowNotifDropdown(false);
-                                }}
-                                title="Beralih Akun (Account Switcher)"
-                                aria-label="Account Switcher Menu"
-                                style={{
-                                    backgroundColor: '#ffffff',
-                                    border: '1.5px solid #cbd5e1',
-                                    borderRadius: '12px',
-                                    width: '42px',
-                                    height: '42px',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    color: '#0c294a',
-                                    fontSize: '1.1rem',
-                                    cursor: 'pointer',
-                                    boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
-                                    transition: 'all 0.2s ease',
-                                    flexShrink: 0
-                                }}
-                            >
-                                <i className="fa-solid fa-ellipsis-vertical"></i>
-                            </button>
-                            {showProfileDropdown && (
-                                <div className="account-switcher-dropdown">
-                                    <div className="account-switcher-header">
-                                        <span className="switcher-title">Beralih Akun (Account Switcher)</span>
-                                    </div>
-                                    <div className="account-switcher-list">
-                                        {accounts.map(acc => (
-                                            <div
-                                                key={acc.id}
-                                                className={`account-switcher-item ${acc.id === currentAccount.id ? 'active-account' : ''}`}
-                                                onClick={() => handleSwitchAccount(acc)}
-                                            >
-                                                <div className="account-item-left">
-                                                    <div className="account-avatar-wrapper">
-                                                        <div className="account-avatar-icon" style={{ backgroundColor: acc.badgeColor }}>
-                                                            <i className={`fa-solid ${acc.avatarIcon}`}></i>
-                                                        </div>
-                                                        {acc.isOnline && <span className="account-online-dot"></span>}
-                                                    </div>
-                                                    <div className="account-item-info">
-                                                        <span className="acc-name">{acc.name}</span>
-                                                        <span className="acc-role">{acc.role}</span>
-                                                    </div>
-                                                </div>
-                                                {acc.id === currentAccount.id && (
-                                                    <i className="fa-solid fa-circle-check account-check-badge"></i>
-                                                )}
-                                            </div>
-                                        ))}
-                                    </div>
-                                    <div className="account-switcher-actions">
-                                        <button
-                                            className="account-action-btn"
-                                            onClick={() => {
-                                                setShowProfileDropdown(false);
-                                                setActiveTab('pengguna');
-                                            }}
-                                        >
-                                            <i className="fa-solid fa-user-plus"></i> Tambah Akun Staf Baru
-                                        </button>
-                                        <button
-                                            className="account-action-btn logout"
-                                            onClick={handleLogout}
-                                        >
-                                            <i className="fa-solid fa-right-from-bracket"></i> Keluar (Logout)
                                         </button>
                                     </div>
                                 </div>
