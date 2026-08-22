@@ -4344,7 +4344,7 @@ img {
     height: 44px;
     width: auto;
     object-fit: contain;
-    margin: 0 auto 2px auto;
+    margin: 0 auto -4px auto;
     display: block;
 }
 
