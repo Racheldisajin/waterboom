@@ -5,10 +5,9 @@ export default function LoginPage() {
     const location = useLocation();
     const navigate = useNavigate();
 
-    const [loginRole, setLoginRole] = useState('staf'); // Default to staf when accessing portal
-    const [showStaffOption, setShowStaffOption] = useState(true);
-    const [email, setEmail] = useState('admin@cijoho.com');
-    const [password, setPassword] = useState('admin123');
+    const [loginRole, setLoginRole] = useState('admin'); // 'admin' | 'kasir'
+    const [email, setEmail] = useState('');
+    const [password, setPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
     const [error, setError] = useState('');
     const [isLoading, setIsLoading] = useState(false);
@@ -17,36 +16,22 @@ export default function LoginPage() {
         const queryParams = new URLSearchParams(location.search);
         const role = queryParams.get('role');
         if (role === 'kasir') {
-            setLoginRole('staf');
-            setEmail('kasir@cijoho.com');
-            setPassword('kasir123');
+            setLoginRole('kasir');
         } else if (role === 'admin') {
-            setLoginRole('staf');
-            setEmail('admin@cijoho.com');
-            setPassword('admin123');
+            setLoginRole('admin');
         }
     }, [location.search]);
 
     const handleRoleSwitch = (role) => {
         setLoginRole(role);
         setError('');
-        if (role === 'pengunjung') {
-            setEmail('pengunjung@cijoho.com');
-            setPassword('user123');
-        } else if (role === 'kasir') {
-            setEmail('kasir@cijoho.com');
-            setPassword('kasir123');
-        } else {
-            setEmail('admin@cijoho.com');
-            setPassword('admin123');
-        }
     };
 
     const handleLogin = (e) => {
         e.preventDefault();
         setError('');
 
-        if (!email || !password) {
+        if (!email.trim() || !password) {
             setError('Email dan password wajib diisi.');
             return;
         }
@@ -84,41 +69,10 @@ export default function LoginPage() {
                 return;
             }
 
-            // 3. Visitor Login
-            if (loginRole === 'pengunjung' || cleanEmail.includes('pengunjung')) {
-                const visitorData = {
-                    email: email,
-                    role: 'visitor',
-                    name: 'Budi Santoso',
-                    phone: '0812-3456-7890',
-                    loginTime: new Date().toISOString()
-                };
-                localStorage.setItem('visitorSession', JSON.stringify(visitorData));
-                setIsLoading(false);
-                navigate('/dashboard');
-                return;
-            }
-
             // Fallback for custom staff logins
             setIsLoading(false);
-            setError('Email atau password tidak dikenali. Gunakan admin@cijoho.com / admin123 atau kasir@cijoho.com / kasir123');
+            setError('Email atau password tidak dikenali. Silakan masukkan kredensial yang valid.');
         }, 500);
-    };
-
-    const quickFill = (type) => {
-        if (type === 'admin') {
-            setLoginRole('staf');
-            setEmail('admin@cijoho.com');
-            setPassword('admin123');
-        } else if (type === 'kasir') {
-            setLoginRole('staf');
-            setEmail('kasir@cijoho.com');
-            setPassword('kasir123');
-        } else if (type === 'pengunjung') {
-            setLoginRole('pengunjung');
-            setEmail('pengunjung@cijoho.com');
-            setPassword('user123');
-        }
     };
 
     return (
@@ -129,12 +83,17 @@ export default function LoginPage() {
             </div>
             
             <div className="login-glass-card fade-in">
-                <div className="login-header">
-                    <img src="assets/logo.png" alt="Waterboom Cijoho Indah" className="login-logo-img" style={{ height: '48px', width: 'auto', marginBottom: '8px', objectFit: 'contain' }} />
-                    <h2 style={{ fontSize: 'clamp(1.15rem, 4.5vw, 1.45rem)', fontWeight: 900, color: '#0c294a', margin: 0, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                        PORTAL MASUK STAF & ADMIN
+                <div className="login-header" style={{ textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', marginBottom: '24px' }}>
+                    <img 
+                        src="assets/logo.png" 
+                        alt="Waterboom Cijoho Indah" 
+                        className="login-logo-img" 
+                        style={{ height: '84px', width: 'auto', marginBottom: '14px', objectFit: 'contain', display: 'block', margin: '0 auto 14px auto' }} 
+                    />
+                    <h2 style={{ fontSize: 'clamp(1.15rem, 4.5vw, 1.45rem)', fontWeight: 900, color: '#0c294a', margin: 0, textTransform: 'uppercase', letterSpacing: '0.5px', textAlign: 'center' }}>
+                        PORTAL MASUK STAF &amp; ADMIN
                     </h2>
-                    <p style={{ fontSize: '0.85rem', color: '#64748b', fontWeight: 600, marginTop: '2px', marginBottom: 0 }}>
+                    <p style={{ fontSize: '0.88rem', color: '#64748b', fontWeight: 600, marginTop: '4px', marginBottom: 0, textAlign: 'center' }}>
                         Waterboom Cijoho Indah
                     </p>
                 </div>
@@ -143,7 +102,7 @@ export default function LoginPage() {
                 <div className="login-role-tabs">
                     <button 
                         type="button"
-                        className={`role-tab-btn ${email.includes('admin') ? 'active' : ''}`}
+                        className={`role-tab-btn ${loginRole === 'admin' ? 'active' : ''}`}
                         onClick={() => handleRoleSwitch('admin')}
                     >
                         <i className="fa-solid fa-user-shield"></i>
@@ -151,7 +110,7 @@ export default function LoginPage() {
                     </button>
                     <button 
                         type="button"
-                        className={`role-tab-btn ${email.includes('kasir') ? 'active' : ''}`}
+                        className={`role-tab-btn ${loginRole === 'kasir' ? 'active' : ''}`}
                         onClick={() => handleRoleSwitch('kasir')}
                     >
                         <i className="fa-solid fa-cash-register"></i>
@@ -165,17 +124,18 @@ export default function LoginPage() {
                     </div>
                 )}
 
-                <form onSubmit={handleLogin} className="login-form">
+                <form onSubmit={handleLogin} className="login-form" autoComplete="off">
                     <div className="input-group-field">
-                        <label htmlFor="email">Email Akses Staf / Admin</label>
+                        <label htmlFor="email">Email Akses {loginRole === 'admin' ? 'Admin' : 'Kasir'}</label>
                         <div className="input-with-icon">
                             <i className="fa-regular fa-envelope"></i>
                             <input 
                                 type="email" 
                                 id="email" 
-                                placeholder="nama@cijoho.com" 
+                                placeholder={loginRole === 'admin' ? "admin@cijoho.com" : "kasir@cijoho.com"} 
                                 value={email}
                                 onChange={(e) => setEmail(e.target.value)}
+                                autoComplete="off"
                                 required 
                             />
                         </div>
@@ -191,6 +151,7 @@ export default function LoginPage() {
                                 placeholder="Masukkan password" 
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
+                                autoComplete="off"
                                 required 
                             />
                             <button 
@@ -217,24 +178,7 @@ export default function LoginPage() {
                     </button>
                 </form>
 
-                <div className="quick-login-divider">
-                    <span>Opsi Auto-Fill Cepat (Klik &amp; Masuk)</span>
-                </div>
-
-                <div className="quick-login-buttons">
-                    <button type="button" className="btn-quick-fill admin" onClick={() => quickFill('admin')}>
-                        <i className="fa-solid fa-user-shield"></i>
-                        <span className="btn-quick-label">Fill Admin</span>
-                        <small className="btn-quick-email">(admin@cijoho.com)</small>
-                    </button>
-                    <button type="button" className="btn-quick-fill kasir" onClick={() => quickFill('kasir')}>
-                        <i className="fa-solid fa-cash-register"></i>
-                        <span className="btn-quick-label">Fill Kasir</span>
-                        <small className="btn-quick-email">(kasir@cijoho.com)</small>
-                    </button>
-                </div>
-
-                <div className="login-footer-links">
+                <div className="login-footer-links" style={{ marginTop: '20px' }}>
                     <Link to="/" className="back-to-home-link">
                         <i className="fa-solid fa-arrow-left"></i> Kembali ke Beranda Utama
                     </Link>
