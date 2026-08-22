@@ -58,22 +58,32 @@ export default function AdminDashboard() {
           return;
         }
 
-        // Mapping ke format yang digunakan di dashboard
-        const historyData = data.map(tx => ({
-          code: tx.booking_code,
-          date: new Date(tx.created_at).toLocaleDateString('id-ID'),
-          type: tx.ticket_type === 'regular' ? 'Tiket Masuk' :
-                tx.ticket_type === 'rombongan' ? 'Tiket Rombongan' :
-                tx.ticket_type === 'kursus' ? 'Kursus Renang' : 'Sewa',
-          product: tx.ticket_type,
-          qty: tx.quantity,
-          total: tx.total_price,
-          channel: tx.channel === 'online' ? 'Online' : 'Offline',
-          method: tx.payment_method === 'tunai' ? 'Tunai' :
-                  tx.payment_method === 'qris' ? 'QRIS' : 'Transfer',
-          customer: tx.customer_name,
-          status: tx.status
-        }));
+        // Mapping ke format yang digunakan di dashboard dengan Jam Booking & Kategori (Beli vs Sewa)
+        const historyData = data.map(tx => {
+          const txDate = new Date(tx.created_at || Date.now());
+          const dateFormatted = txDate.toLocaleDateString('id-ID');
+          const timeFormatted = txDate.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) + ' WIB';
+          const isRental = (tx.ticket_type && (tx.ticket_type.toLowerCase().includes('sewa') || tx.ticket_type.toLowerCase().includes('ban') || tx.ticket_type.toLowerCase().includes('gazebo') || tx.ticket_type.toLowerCase().includes('angsa')));
+          const categoryType = isRental ? 'Sewa' : 'Beli';
+
+          return {
+            code: tx.booking_code,
+            date: dateFormatted,
+            time: timeFormatted,
+            category: categoryType,
+            type: tx.ticket_type === 'regular' ? 'Tiket Masuk' :
+                  tx.ticket_type === 'rombongan' ? 'Tiket Rombongan' :
+                  tx.ticket_type === 'kursus' ? 'Kursus Renang' : (isRental ? 'Sewa Layanan' : tx.ticket_type),
+            product: tx.ticket_type,
+            qty: tx.quantity,
+            total: tx.total_price,
+            channel: tx.channel === 'online' ? 'Online' : 'Offline',
+            method: tx.payment_method === 'tunai' ? 'Tunai' :
+                    tx.payment_method === 'qris' ? 'QRIS' : 'Transfer',
+            customer: tx.customer_name,
+            status: tx.status
+          };
+        });
 
         setHistory(historyData);
         // Simpan ke localStorage sebagai cache
@@ -1534,20 +1544,39 @@ export default function AdminDashboard() {
                                         <table className="superadmin-table">
                                             <thead>
                                                 <tr>
-                                                    <th>Tanggal</th><th>No. Transaksi</th><th>Jenis</th><th>Channel</th><th>Produk</th><th>Jumlah</th><th>Total</th><th>Metode</th>
+                                                    <th>Tanggal & Jam</th><th>No. Transaksi</th><th>Kategori</th><th>Jenis</th><th>Channel</th><th>Produk</th><th>Jumlah</th><th>Total</th><th>Metode</th>
                                                 </tr>
                                             </thead>
                                             <tbody>
                                                 {filteredHistory.length === 0 ? (
                                                     <tr>
-                                                        <td colSpan="8" style={{ textAlign: 'center', color: '#94a3b8', padding: '24px' }}>Belum ada data penjualan.</td>
+                                                        <td colSpan="9" style={{ textAlign: 'center', color: '#94a3b8', padding: '24px' }}>Belum ada data penjualan.</td>
                                                     </tr>
                                                 ) : (
                                                     filteredHistory.slice(0, 5).map((item, idx) => (
                                                         <tr key={idx}>
-                                                            <td className="text-secondary">{item.date}</td>
+                                                            <td className="text-secondary">
+                                                                <div style={{ fontWeight: 700, color: '#0f172a' }}>{item.date}</div>
+                                                                <div style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: 600 }}>⏰ {item.time || '08:30 WIB'}</div>
+                                                            </td>
                                                             <td className="font-bold">{item.code}</td>
-                                                            <td><span className={`type-badge ${item.type === 'Tiket Masuk' ? 'ticket' : 'rental'}`}><i className={`fa-solid ${item.type === 'Tiket Masuk' ? 'fa-ticket' : 'fa-parachute-box'}`}></i> {item.type}</span></td>
+                                                            <td>
+                                                                <span style={{
+                                                                    padding: '3px 8px',
+                                                                    borderRadius: '6px',
+                                                                    fontSize: '0.72rem',
+                                                                    fontWeight: 800,
+                                                                    backgroundColor: item.category === 'Sewa' ? '#fef3c7' : '#dbeafe',
+                                                                    color: item.category === 'Sewa' ? '#92400e' : '#1e40af',
+                                                                    display: 'inline-flex',
+                                                                    alignItems: 'center',
+                                                                    gap: '4px'
+                                                                }}>
+                                                                    <i className={`fa-solid ${item.category === 'Sewa' ? 'fa-key' : 'fa-cart-shopping'}`}></i>
+                                                                    {item.category || 'Beli'}
+                                                                </span>
+                                                            </td>
+                                                            <td><span className={`type-badge ${item.type.includes('Tiket') ? 'ticket' : 'rental'}`}><i className={`fa-solid ${item.type.includes('Tiket') ? 'fa-ticket' : 'fa-parachute-box'}`}></i> {item.type}</span></td>
                                                             <td><span className={`channel-badge ${item.channel === 'Offline' ? 'offline' : 'online'}`}>{item.channel}</span></td>
                                                             <td>{item.product}</td>
                                                             <td>{item.qty}</td>
@@ -1690,9 +1719,28 @@ export default function AdminDashboard() {
                                         {filteredHistory.length > 0 ? (
                                             filteredHistory.map((item, idx) => (
                                                 <tr key={idx}>
-                                                    <td>{item.date}</td>
+                                                    <td className="text-secondary">
+                                                        <div style={{ fontWeight: 700, color: '#0f172a' }}>{item.date}</div>
+                                                        <div style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: 600 }}>⏰ {item.time || '08:30 WIB'}</div>
+                                                    </td>
                                                     <td className="font-bold">{item.code}</td>
-                                                    <td><span className={`type-badge ${item.type === 'Tiket Masuk' ? 'ticket' : 'rental'}`}>{item.type}</span></td>
+                                                    <td>
+                                                        <span style={{
+                                                            padding: '3px 8px',
+                                                            borderRadius: '6px',
+                                                            fontSize: '0.72rem',
+                                                            fontWeight: 800,
+                                                            backgroundColor: item.category === 'Sewa' ? '#fef3c7' : '#dbeafe',
+                                                            color: item.category === 'Sewa' ? '#92400e' : '#1e40af',
+                                                            display: 'inline-flex',
+                                                            alignItems: 'center',
+                                                            gap: '4px'
+                                                        }}>
+                                                            <i className={`fa-solid ${item.category === 'Sewa' ? 'fa-key' : 'fa-cart-shopping'}`}></i>
+                                                            {item.category || 'Beli'}
+                                                        </span>
+                                                    </td>
+                                                    <td><span className={`type-badge ${item.type.includes('Tiket') ? 'ticket' : 'rental'}`}>{item.type}</span></td>
                                                     <td><span className={`channel-badge ${item.channel === 'Offline' ? 'offline' : 'online'}`}>{item.channel}</span></td>
                                                     <td>{item.product || item.type}</td>
                                                     <td>{item.qty} Pcs</td>

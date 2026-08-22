@@ -2367,7 +2367,7 @@ img {
 
 /* Slider Hero */
 .app-hero-slider {
-    margin: 16px;
+    margin: 8px 16px 16px 16px;
     height: 150px;
     border-radius: 20px;
     overflow: hidden;
@@ -8997,10 +8997,53 @@ img {
     }
 }
 
+@media (max-width: 768px) {
+    .site-footer {
+        padding-top: 20px !important;
+        padding-bottom: 24px !important;
+    }
+
+    .footer-grid {
+        grid-template-columns: repeat(2, 1fr) !important;
+        gap: 24px 16px !important;
+        padding-left: 16px !important;
+        padding-right: 16px !important;
+    }
+
+    .brand-col {
+        grid-column: 1 / -1 !important;
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: center !important;
+        text-align: center !important;
+        margin-bottom: 8px !important;
+    }
+
+    .footer-brand-card {
+        margin: 0 auto 12px auto !important;
+    }
+
+    .footer-about-text {
+        text-align: center !important;
+        max-width: 90% !important;
+        margin: 0 auto 14px auto !important;
+    }
+
+    .social-links {
+        justify-content: center !important;
+    }
+
+    .footer-bottom-container {
+        flex-direction: column !important;
+        gap: 10px !important;
+        text-align: center !important;
+    }
+}
+
 @media (max-width: 480px) {
     .footer-grid {
-        grid-template-columns: 1fr 1fr !important;
-        gap: 20px 10px !important;
+        grid-template-columns: repeat(2, 1fr) !important;
+        gap: 20px 12px !important;
         padding-left: 12px !important;
         padding-right: 12px !important;
     }
@@ -9616,8 +9659,8 @@ body,
         top: 0 !important;
         transform: none !important;
         margin: 6px auto !important;
-        width: 76mm !important;
-        max-width: 76mm !important;
+        width: 80mm !important;
+        max-width: 80mm !important;
     }
 
     body.print-mode-rental #printable-addon-only,
@@ -9627,8 +9670,8 @@ body,
         top: 0 !important;
         transform: none !important;
         margin: 6px auto !important;
-        width: 76mm !important;
-        max-width: 76mm !important;
+        width: 80mm !important;
+        max-width: 80mm !important;
         border: none !important;
         background: transparent !important;
     }
