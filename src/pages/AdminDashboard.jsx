@@ -2002,8 +2002,16 @@ export default function AdminDashboard() {
                                                         </button>
                                                         <button
                                                             onClick={() => {
-                                                                const waText = `Halo kak ${t.name || ''}, berikut Tiket Resmi PDF Waterboom Cijoho Indah untuk Kode Booking: *${t.code}*.\nTanggal: ${t.date}\nTotal: Rp ${t.total?.toLocaleString('id-ID')}\nE-Tiket PDF siap digunakan di pintu masuk. Terima kasih!`;
-                                                                window.open(`https://wa.me/${(t.phone || '6281234567890').replace(/[^0-9]/g, '')}?text=${encodeURIComponent(waText)}`, '_blank');
+                                                                let targetPhone = t.phone || t.buyerPhone || '';
+                                                                if (!targetPhone || targetPhone === '-' || targetPhone.trim() === '') {
+                                                                    targetPhone = prompt('Masukkan Nomor WhatsApp Pembeli (contoh: 081234567890):', '');
+                                                                }
+                                                                if (!targetPhone || targetPhone.trim() === '') return;
+
+                                                                const cleanPhone = targetPhone.replace(/[^0-9]/g, '');
+                                                                const formattedPhone = cleanPhone.startsWith('0') ? '62' + cleanPhone.slice(1) : cleanPhone;
+                                                                const waText = `Halo kak *${t.name || 'Pengunjung'}*! 👋\nBerikut Tiket Resmi PDF Waterboom Cijoho Indah:\n\n📌 *Kode Booking:* ${t.code}\n📅 *Tanggal:* ${t.date}\n🎟️ *Detail:* ${t.type} (${t.qty || 1}x)\n💰 *Total:* Rp ${t.total?.toLocaleString('id-ID')}\n\nE-Tiket PDF siap digunakan di pintu masuk. Terima kasih!`;
+                                                                window.open(`https://wa.me/${formattedPhone}?text=${encodeURIComponent(waText)}`, '_blank');
                                                             }}
                                                             style={{ backgroundColor: '#25D366', color: 'white', border: 'none', padding: '6px 10px', borderRadius: '8px', fontSize: '0.78rem', fontWeight: 800, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
                                                         >
@@ -2188,7 +2196,7 @@ export default function AdminDashboard() {
                             <button onClick={() => setSelectedPDFTicket(null)} style={{ color: 'white' }}>&times;</button>
                         </div>
                         <div className="v-modal-body" style={{ padding: '24px', backgroundColor: '#fff' }}>
-                            <div id="pdf-printable-area" style={{ border: '2px solid #0c294a', borderRadius: '16px', padding: '20px', backgroundColor: '#f8fafc' }}>
+                            <div id="pdf-printable-area" style={{ border: '3px solid #0c294a', borderRadius: '18px', padding: '24px', backgroundColor: '#f8fafc' }}>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '2px solid #0c294a', paddingBottom: '12px', marginBottom: '16px' }}>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                                         <img src="assets/logo.png" alt="Logo" style={{ height: '42px' }} />
@@ -2221,9 +2229,33 @@ export default function AdminDashboard() {
                                 </div>
                                 <div style={{ borderTop: '1px dashed #cbd5e1', paddingTop: '10px', marginBottom: '16px' }}>
                                     <span style={{ color: '#64748b', fontSize: '0.72rem', display: 'block', marginBottom: '6px' }}>RINCIAN ITEM & TOTAL:</span>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
-                                        <span>{selectedPDFTicket.type} ({selectedPDFTicket.qty || 1}x)</span>
-                                        <strong>Rp {selectedPDFTicket.total?.toLocaleString('id-ID')}</strong>
+                                    {selectedPDFTicket.qty > 0 && (
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', marginBottom: '4px' }}>
+                                            <span>{selectedPDFTicket.type} ({selectedPDFTicket.qty || 1}x)</span>
+                                            <strong>Rp {(selectedPDFTicket.subtotal || (selectedPDFTicket.ticketPrice ? selectedPDFTicket.ticketPrice * selectedPDFTicket.qty : selectedPDFTicket.total))?.toLocaleString('id-ID')}</strong>
+                                        </div>
+                                    )}
+                                    {(selectedPDFTicket.rentals?.ban > 0 || selectedPDFTicket.details?.rentals?.ban > 0) && (
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.82rem', color: '#475569', marginBottom: '2px' }}>
+                                            <span>• Sewa Ban Renang ({(selectedPDFTicket.rentals?.ban || selectedPDFTicket.details?.rentals?.ban)}x)</span>
+                                            <span>Rp {((selectedPDFTicket.rentals?.ban || selectedPDFTicket.details?.rentals?.ban) * 5000).toLocaleString('id-ID')}</span>
+                                        </div>
+                                    )}
+                                    {(selectedPDFTicket.rentals?.sepeda > 0 || selectedPDFTicket.details?.rentals?.sepeda > 0) && (
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.82rem', color: '#475569', marginBottom: '2px' }}>
+                                            <span>• Sewa Sepeda Air ({(selectedPDFTicket.rentals?.sepeda || selectedPDFTicket.details?.rentals?.sepeda)}x)</span>
+                                            <span>Rp {((selectedPDFTicket.rentals?.sepeda || selectedPDFTicket.details?.rentals?.sepeda) * 20000).toLocaleString('id-ID')}</span>
+                                        </div>
+                                    )}
+                                    {(selectedPDFTicket.rentals?.gazebo > 0 || selectedPDFTicket.details?.rentals?.gazebo > 0) && (
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.82rem', color: '#475569', marginBottom: '2px' }}>
+                                            <span>• Sewa Gazebo Santai ({(selectedPDFTicket.rentals?.gazebo || selectedPDFTicket.details?.rentals?.gazebo)}x)</span>
+                                            <span>Rp {((selectedPDFTicket.rentals?.gazebo || selectedPDFTicket.details?.rentals?.gazebo) * 20000).toLocaleString('id-ID')}</span>
+                                        </div>
+                                    )}
+                                    <div style={{ borderTop: '1px solid #cbd5e1', paddingTop: '6px', marginTop: '6px', display: 'flex', justifyContent: 'space-between', fontSize: '0.9rem', fontWeight: 900, color: '#0c294a' }}>
+                                        <span>TOTAL BAYAR</span>
+                                        <span>Rp {selectedPDFTicket.total?.toLocaleString('id-ID')}</span>
                                     </div>
                                 </div>
                                 <div style={{ backgroundColor: 'white', border: '1px solid #cbd5e1', borderRadius: '12px', padding: '16px', textAlign: 'center' }}>
@@ -2238,19 +2270,46 @@ export default function AdminDashboard() {
                             </div>
                             <div style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
                                 <button
-                                    onClick={() => window.print()}
+                                    onClick={() => {
+                                        document.body.className = 'print-mode-pdf-card';
+                                        setTimeout(() => {
+                                            window.print();
+                                            setTimeout(() => {
+                                                document.body.className = '';
+                                            }, 1000);
+                                        }, 120);
+                                    }}
                                     style={{ flex: 1, backgroundColor: '#1a73e8', color: 'white', border: 'none', padding: '12px', borderRadius: '10px', fontWeight: 800, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
                                 >
                                     <i className="fa-solid fa-print"></i> Cetak / Simpan Ke PDF
                                 </button>
                                 <button
                                     onClick={() => {
-                                        const waText = `Halo kak ${selectedPDFTicket.name || ''}, berikut Tiket Resmi PDF Waterboom Cijoho Indah untuk Kode Booking: *${selectedPDFTicket.code}*.\nTanggal: ${selectedPDFTicket.date}\nTotal: Rp ${selectedPDFTicket.total?.toLocaleString('id-ID')}\nE-Tiket PDF siap digunakan di pintu masuk. Terima kasih!`;
-                                        window.open(`https://wa.me/${(selectedPDFTicket.phone || '6281234567890').replace(/[^0-9]/g, '')}?text=${encodeURIComponent(waText)}`, '_blank');
+                                        let targetPhone = selectedPDFTicket.phone || selectedPDFTicket.buyerPhone || '';
+                                        if (!targetPhone || targetPhone === '-' || targetPhone.trim() === '') {
+                                            targetPhone = prompt('Masukkan Nomor WhatsApp Pembeli (contoh: 081234567890):', '');
+                                        }
+                                        if (!targetPhone || targetPhone.trim() === '') return;
+
+                                        const cleanPhone = targetPhone.replace(/[^0-9]/g, '');
+                                        const formattedPhone = cleanPhone.startsWith('0') ? '62' + cleanPhone.slice(1) : cleanPhone;
+                                        const waText = `Halo kak *${selectedPDFTicket.name || 'Pengunjung'}*! 👋\nBerikut Tiket Resmi PDF Waterboom Cijoho Indah:\n\n📌 *Kode Booking:* ${selectedPDFTicket.code}\n📅 *Tanggal:* ${selectedPDFTicket.date}\n🎟️ *Detail:* ${selectedPDFTicket.type} (${selectedPDFTicket.qty || 1}x)\n💰 *Total:* Rp ${selectedPDFTicket.total?.toLocaleString('id-ID')}\n\nE-Tiket PDF siap digunakan di pintu masuk. Terima kasih!`;
+                                        window.open(`https://wa.me/${formattedPhone}?text=${encodeURIComponent(waText)}`, '_blank');
                                     }}
                                     style={{ flex: 1, backgroundColor: '#25D366', color: 'white', border: 'none', padding: '12px', borderRadius: '10px', fontWeight: 800, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
                                 >
                                     <i className="fa-brands fa-whatsapp"></i> Kirim WA Ke Pemesan
+                                </button>
+                                <button
+                                    onClick={() => {
+                                        const waText = `Halo kak *${selectedPDFTicket.name || 'Pengunjung'}*! 👋\nBerikut Tiket Resmi PDF Waterboom Cijoho Indah:\n\n📌 *Kode Booking:* ${selectedPDFTicket.code}\n📅 *Tanggal:* ${selectedPDFTicket.date}\n🎟️ *Detail:* ${selectedPDFTicket.type} (${selectedPDFTicket.qty || 1}x)\n💰 *Total:* Rp ${selectedPDFTicket.total?.toLocaleString('id-ID')}\n\nE-Tiket PDF siap digunakan di pintu masuk. Terima kasih!`;
+                                        navigator.clipboard.writeText(waText);
+                                        setSwitchToast('Teks WA Berhasil Disalin!');
+                                        setTimeout(() => setSwitchToast(''), 3000);
+                                    }}
+                                    style={{ flex: 1, backgroundColor: '#0c294a', color: 'white', border: 'none', padding: '12px', borderRadius: '10px', fontWeight: 800, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
+                                >
+                                    <i className="fa-solid fa-copy"></i> Salin Teks WA
                                 </button>
                             </div>
                         </div>

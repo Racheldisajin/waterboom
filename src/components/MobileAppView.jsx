@@ -42,6 +42,70 @@ export default function MobileAppView({ onOpenBooking, isCashierMode = false }) 
 
     const [cashReceived, setCashReceived] = useState('');
     const [cashChange, setCashChange] = useState(0);
+    const [copyToast, setCopyToast] = useState('');
+    const [showPDFTicketModal, setShowPDFTicketModal] = useState(false);
+    const [pdfTicketData, setPdfTicketData] = useState(null);
+    const [printFormat, setPrintFormat] = useState('card'); // 'card' | 'full' | 'invoice' | 'ticket' | 'rental'
+
+    // --- Helper Cetak Terisolasi (Dosen Requirement: Separate PDF Print Mode) ---
+    const triggerIsolatedPrint = (formatMode) => {
+        setPrintFormat(formatMode);
+        const printClass = formatMode === 'card' ? 'print-mode-pdf-card' : `print-mode-${formatMode}`;
+        document.body.className = printClass;
+        setTimeout(() => {
+            window.print();
+            setTimeout(() => {
+                document.body.className = '';
+            }, 1000);
+        }, 120);
+    };
+
+    // --- State Laporan & Analytic Kasir (Mojo POS Style) ---
+    const [reportSubTab, setReportSubTab] = useState('harian'); // 'harian' | 'bulanan' | 'transaksi'
+    const [searchQuery, setSearchQuery] = useState('');
+    const [filterPayment, setFilterPayment] = useState('all'); // 'all' | 'tunai' | 'qris'
+    const [selectedReportDate, setSelectedReportDate] = useState(() => new Date().toISOString().split('T')[0]);
+    const [selectedReportMonth, setSelectedReportMonth] = useState(() => new Date().toISOString().slice(0, 7));
+    const [showPrintReportModal, setShowPrintReportModal] = useState(false);
+
+    // --- Helper Format & Kirim WA Manual ---
+    const formatWAText = (item) => {
+        if (!item) return '';
+        const name = item.buyerName || item.name || 'Pengunjung';
+        const code = item.code || item.bookingCode || '-';
+        const date = item.date || new Date().toLocaleDateString('id-ID');
+        const type = item.type || 'Tiket';
+        const qty = item.qty || item.quantity || 1;
+        const total = item.total ? item.total.toLocaleString('id-ID') : '0';
+        let rentalsText = '';
+        if (item.rentals?.ban > 0) rentalsText += `\n  • ${item.rentals.ban}x Sewa Ban`;
+        if (item.rentals?.sepeda > 0) rentalsText += `\n  • ${item.rentals.sepeda}x Sewa Sepeda Air`;
+        if (item.rentals?.gazebo > 0) rentalsText += `\n  • ${item.rentals.gazebo}x Sewa Gazebo`;
+
+        return `Halo kak *${name}*! 👋\nBerikut rincian E-Struk & Tiket Resmi *Waterboom Cijoho Indah*:\n\n📌 *Kode Booking/Struk:* ${code}\n📅 *Tgl Kunjungan:* ${date}\n🎟️ *Tiket:* ${type} (${qty} Orang)\n🚣 *Layanan Sewa:* ${rentalsText || '\n  • Tidak ada'}\n💰 *Total Pembayaran:* Rp ${total}\n💳 *Status / Pembayaran:* ${item.status || item.paymentMethod || 'Lunas'}\n\nMohon tunjukkan bukti WhatsApp ini di pintu masuk wahana. Terima kasih dan selamat berlibur! 🏊‍♂️✨`;
+    };
+
+    const handleSendWAManual = (item) => {
+        if (!item) return;
+        let phone = item.buyerPhone || item.phone || '';
+        if (!phone || phone === '-' || phone.trim() === '') {
+            phone = prompt('Masukkan Nomor WhatsApp Pembeli/Tujuan (contoh: 081234567890):', '');
+        }
+        if (!phone || phone.trim() === '') return;
+
+        const cleanPhone = phone.replace(/[^0-9]/g, '');
+        const formattedPhone = cleanPhone.startsWith('0') ? '62' + cleanPhone.slice(1) : cleanPhone;
+        const waText = formatWAText(item);
+        window.open(`https://wa.me/${formattedPhone}?text=${encodeURIComponent(waText)}`, '_blank');
+    };
+
+    const handleCopyWAText = (item) => {
+        const waText = formatWAText(item);
+        if (!waText) return;
+        navigator.clipboard.writeText(waText);
+        setCopyToast('Teks Pesan WA Berhasil Disalin!');
+        setTimeout(() => setCopyToast(''), 3000);
+    };
 
     // --- Fungsi bantu untuk menyimpan transaksi ke Supabase ---
     const saveTransactionToSupabase = async (bookingCode, items, paymentMethod, cashierName, customerName, status = 'lunas', channel = 'offline') => {
@@ -77,100 +141,31 @@ export default function MobileAppView({ onOpenBooking, isCashierMode = false }) 
     const handleConfirmOfflinePOS = async (e) => {
         e.preventDefault();
         const receiptCode = 'STR-' + Math.floor(100000 + Math.random() * 900000);
-        const typeName = selectedTicket === 'reguler' ? 'Tiket Reguler' : selectedTicket === 'rombongan' ? 'Tiket Rombongan' : 'Kursus Renang';
+        const ticketTypeName = selectedTicket === 'reguler' ? 'Tiket Reguler' : selectedTicket === 'rombongan' ? 'Tiket Rombongan' : 'Kursus Renang';
+        const hasTickets = ticketQty > 0;
+        const hasRentals = (sewaBan > 0 || sewaSepeda > 0 || sewaGazebo > 0);
+
+        let typeName = '';
+        if (hasTickets && hasRentals) {
+            typeName = `${ticketTypeName} + Sewa`;
+        } else if (hasTickets) {
+            typeName = ticketTypeName;
+        } else {
+            typeName = 'Sewa Layanan / Add-on';
+        }
+
         const paidAmount = paymentMethod === 'cash' ? (parseInt(cashReceived) || grandTotal) : grandTotal;
         const change = paidAmount - grandTotal;
 
         // Siapkan items untuk Supabase
         const items = [];
-        // Tiket masuk
-        items.push({
-            ticket_type: selectedTicket, // 'reguler', 'rombongan', 'kursus'
-            quantity: ticketQty,
-            total_price: subtotal
-        });
-        // Sewa-sewa
-        if (sewaBan > 0) {
+        if (hasTickets) {
             items.push({
-                ticket_type: 'ban',
-                quantity: sewaBan,
-                total_price: sewaBan * PRICES.rentals.ban
+                ticket_type: selectedTicket,
+                quantity: ticketQty,
+                total_price: subtotal
             });
         }
-        if (sewaSepeda > 0) {
-            items.push({
-                ticket_type: 'angsa', // mewakili sepeda air
-                quantity: sewaSepeda,
-                total_price: sewaSepeda * PRICES.rentals.sepeda
-            });
-        }
-        if (sewaGazebo > 0) {
-            items.push({
-                ticket_type: 'gazebo',
-                quantity: sewaGazebo,
-                total_price: sewaGazebo * PRICES.rentals.gazebo
-            });
-        }
-
-        const paymentMethodStr = paymentMethod === 'cash' ? 'tunai' : 'qris';
-
-        // Simpan ke Supabase (async, tidak perlu tunggu untuk lanjut)
-        saveTransactionToSupabase(
-            receiptCode,
-            items,
-            paymentMethodStr,
-            'Petugas Kasir 1', // bisa diganti sesuai login nanti
-            'Pengunjung Offline',
-            'lunas',
-            'offline'
-        );
-
-        // Simpan juga ke localStorage untuk history lokal
-        const newReceipt = {
-            code: receiptCode,
-            date: visitDate,
-            time: new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }),
-            cashierName: 'Petugas Kasir 1',
-            type: typeName,
-            qty: ticketQty,
-            ticketPrice: ticketPrice,
-            subtotal: subtotal,
-            rentals: { ban: sewaBan, sepeda: sewaSepeda, gazebo: sewaGazebo },
-            total: grandTotal,
-            paymentMethod: paymentMethodStr === 'tunai' ? 'Tunai (Cash)' : 'QRIS / EDC',
-            paidAmount: paidAmount,
-            change: change >= 0 ? change : 0,
-            status: 'Lunas - Struk Loket Fisik'
-        };
-
-        const updatedHistory = [newReceipt, ...historyList];
-        setHistoryList(updatedHistory);
-        localStorage.setItem('waterboom_sales_history', JSON.stringify(updatedHistory));
-        setOfflineReceiptData(newReceipt);
-
-        setShowOfflinePOSModal(false);
-        setShowOfflineReceiptModal(true);
-    };
-
-    // --- WHATSAPP ONLINE ORDER (MODIFIED) ---
-    const handleConfirmWhatsAppOrder = async (e) => {
-        e.preventDefault();
-
-        if (!buyerName.trim()) {
-            alert('Silakan masukkan Nama Pemesan.');
-            return;
-        }
-
-        const bookingCode = 'WCI-' + Math.floor(100000 + Math.random() * 900000);
-        const typeName = selectedTicket === 'reguler' ? 'Tiket Reguler' : selectedTicket === 'rombongan' ? 'Tiket Rombongan' : 'Kursus Renang';
-
-        // Items untuk Supabase
-        const items = [];
-        items.push({
-            ticket_type: selectedTicket,
-            quantity: ticketQty,
-            total_price: subtotal
-        });
         if (sewaBan > 0) {
             items.push({
                 ticket_type: 'ban',
@@ -193,39 +188,119 @@ export default function MobileAppView({ onOpenBooking, isCashierMode = false }) 
             });
         }
 
-        // Simpan ke Supabase dengan status 'pending' (menunggu PDF)
+        const paymentMethodStr = paymentMethod === 'cash' ? 'tunai' : 'qris';
+
+        // Simpan ke Supabase (async, tidak perlu tunggu untuk lanjut)
+        saveTransactionToSupabase(
+            receiptCode,
+            items,
+            paymentMethodStr,
+            'Petugas Kasir 1', // bisa diganti sesuai login nanti
+            buyerName || 'Pengunjung Offline',
+            'lunas'
+        );
+
+        // Simpan juga ke localStorage untuk history lokal
+        const newReceipt = {
+            code: receiptCode,
+            date: visitDate,
+            time: new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }),
+            cashierName: 'Petugas Kasir 1',
+            buyerName: buyerName || 'Pengunjung Offline',
+            buyerPhone: buyerPhone || '',
+            name: buyerName || 'Pengunjung Offline',
+            phone: buyerPhone || '',
+            type: typeName,
+            qty: ticketQty,
+            ticketPrice: ticketPrice,
+            subtotal: subtotal,
+            rentals: { ban: sewaBan, sepeda: sewaSepeda, gazebo: sewaGazebo },
+            total: grandTotal,
+            paymentMethod: paymentMethodStr === 'tunai' ? 'Tunai (Cash)' : 'QRIS / EDC',
+            paidAmount: paidAmount,
+            change: change >= 0 ? change : 0,
+            status: 'Lunas - Struk Loket Fisik'
+        };
+
+        const updatedHistory = [newReceipt, ...historyList];
+        setHistoryList(updatedHistory);
+        localStorage.setItem('waterboom_sales_history', JSON.stringify(updatedHistory));
+        setOfflineReceiptData(newReceipt);
+        setPdfTicketData(newReceipt);
+
+        setShowOfflinePOSModal(false);
+        setShowPDFTicketModal(true);
+    };
+
+    // --- WHATSAPP ONLINE ORDER (MODIFIED) ---
+    const handleConfirmWhatsAppOrder = async (e) => {
+        e.preventDefault();
+
+        if (!buyerName.trim()) {
+            alert('Silakan masukkan Nama Pemesan.');
+            return;
+        }
+
+        const hasTickets = ticketQty > 0;
+        const hasRentals = (sewaBan > 0 || sewaSepeda > 0 || sewaGazebo > 0);
+        if (!hasTickets && !hasRentals) {
+            alert('Silakan pilih minimal 1 tiket masuk atau 1 sewa/add-on!');
+            return;
+        }
+
+        const bookingCode = 'WCI-' + Math.floor(100000 + Math.random() * 900000);
+        const ticketTypeName = selectedTicket === 'reguler' ? 'Tiket Reguler' : selectedTicket === 'rombongan' ? 'Tiket Rombongan' : 'Kursus Renang';
+
+        let typeName = '';
+        if (hasTickets && hasRentals) {
+            typeName = `${ticketTypeName} + Sewa`;
+        } else if (hasTickets) {
+            typeName = ticketTypeName;
+        } else {
+            typeName = 'Sewa Layanan / Add-on';
+        }
+
+        // Items untuk Supabase
+        const items = [];
+        if (hasTickets) {
+            items.push({
+                ticket_type: selectedTicket,
+                quantity: ticketQty,
+                total_price: subtotal
+            });
+        }
+        if (sewaBan > 0) {
+            items.push({
+                ticket_type: 'ban',
+                quantity: sewaBan,
+                total_price: sewaBan * PRICES.rentals.ban
+            });
+        }
+        if (sewaSepeda > 0) {
+            items.push({
+                ticket_type: 'angsa',
+                quantity: sewaSepeda,
+                total_price: sewaSepeda * PRICES.rentals.sepeda
+            });
+        }
+        if (sewaGazebo > 0) {
+            items.push({
+                ticket_type: 'gazebo',
+                quantity: sewaGazebo,
+                total_price: sewaGazebo * PRICES.rentals.gazebo
+            });
+        }
+
+        // Simpan ke Supabase
         saveTransactionToSupabase(
             bookingCode,
             items,
-            'transfer', // metode pembayaran dianggap transfer karena online
-            'Admin Online',
+            'qris',
+            isCashierMode ? 'Petugas Kasir 1' : 'Admin Online',
             buyerName,
-            'pending',
+            isCashierMode ? 'lunas' : 'pending',
             'online'
         );
-
-        // WhatsApp message
-        let rentalsTextArray = [];
-        if (sewaBan > 0) rentalsTextArray.push(`• ${sewaBan}x Sewa Ban (Rp ${(sewaBan * PRICES.rentals.ban).toLocaleString('id-ID')})`);
-        if (sewaSepeda > 0) rentalsTextArray.push(`• ${sewaSepeda}x Sewa Sepeda Air (Rp ${(sewaSepeda * PRICES.rentals.sepeda).toLocaleString('id-ID')})`);
-        if (sewaGazebo > 0) rentalsTextArray.push(`• ${sewaGazebo}x Sewa Gazebo (Rp ${(sewaGazebo * PRICES.rentals.gazebo).toLocaleString('id-ID')})`);
-        const rentalsFormatted = rentalsTextArray.length > 0 ? rentalsTextArray.join('\n') : '• Tidak ada tambahan sewa';
-
-        const waMessage =
-            `Halo Admin Waterboom Cijoho Indah! Saya telah membeli tiket secara langsung tanpa akun:
-
-*KODE BOOKING*: ${bookingCode}
-*Nama Pemesan*: ${buyerName}
-*No. WhatsApp*: ${buyerPhone}
-*Tanggal Kunjungan*: ${visitDate}
-
-*RINCIAN TIKET & SEWA*:
-• ${ticketQty}x ${typeName} (Rp ${subtotal.toLocaleString('id-ID')})
-${rentalsFormatted}
-
-*TOTAL TAGIHAN*: Rp ${grandTotal.toLocaleString('id-ID')}
-
-Mohon diproses konfirmasinya dan dikirimkan *Tiket Resmi PDF* ke nomor WhatsApp ini. Terima kasih!`;
 
         const newTicketObj = {
             code: bookingCode,
@@ -250,21 +325,49 @@ Mohon diproses konfirmasinya dan dikirimkan *Tiket Resmi PDF* ke nomor WhatsApp 
             type: typeName,
             qty: ticketQty,
             total: grandTotal,
-            status: 'Menunggu PDF WA Admin',
+            status: isCashierMode ? 'Lunas - E-Tiket PDF' : 'Menunggu PDF WA Admin',
             details: newTicketObj
         }, ...historyList];
 
         setHistoryList(updatedHistory);
         localStorage.setItem('waterboom_sales_history', JSON.stringify(updatedHistory));
         setActiveTicketData(newTicketObj);
-
-        // Open WhatsApp link with pre-filled text
-        const adminWaNumber = '6281234567890'; // Official Admin WhatsApp
-        const waUrl = `https://wa.me/${adminWaNumber}?text=${encodeURIComponent(waMessage)}`;
-        window.open(waUrl, '_blank');
+        setPdfTicketData(newTicketObj);
 
         setShowWACheckoutModal(false);
-        setActiveTab('tiket');
+
+        // Jika Kasir Mode: LANGSUNG CETAK / UNDUH TIKET PDF (TANPA KIRIM WA)
+        if (isCashierMode) {
+            setShowPDFTicketModal(true);
+        } else {
+            // Flow Pengunjung (Buka WhatsApp ke Admin)
+            let rentalsTextArray = [];
+            if (sewaBan > 0) rentalsTextArray.push(`• ${sewaBan}x Sewa Ban (Rp ${(sewaBan * PRICES.rentals.ban).toLocaleString('id-ID')})`);
+            if (sewaSepeda > 0) rentalsTextArray.push(`• ${sewaSepeda}x Sewa Sepeda Air (Rp ${(sewaSepeda * PRICES.rentals.sepeda).toLocaleString('id-ID')})`);
+            if (sewaGazebo > 0) rentalsTextArray.push(`• ${sewaGazebo}x Sewa Gazebo (Rp ${(sewaGazebo * PRICES.rentals.gazebo).toLocaleString('id-ID')})`);
+            const rentalsFormatted = rentalsTextArray.length > 0 ? rentalsTextArray.join('\n') : '• Tidak ada tambahan sewa';
+
+            const waMessage =
+                `Halo Admin Waterboom Cijoho Indah! Saya telah membeli tiket secara langsung tanpa akun:
+
+*KODE BOOKING*: ${bookingCode}
+*Nama Pemesan*: ${buyerName}
+*No. WhatsApp*: ${buyerPhone}
+*Tanggal Kunjungan*: ${visitDate}
+
+*RINCIAN TIKET & SEWA*:
+• ${ticketQty}x ${typeName} (Rp ${subtotal.toLocaleString('id-ID')})
+${rentalsFormatted}
+
+*TOTAL TAGIHAN*: Rp ${grandTotal.toLocaleString('id-ID')}
+
+Mohon diproses konfirmasinya dan dikirimkan *Tiket Resmi PDF* ke nomor WhatsApp ini. Terima kasih!`;
+
+            const adminWaNumber = '6281234567890';
+            const waUrl = `https://wa.me/${adminWaNumber}?text=${encodeURIComponent(waMessage)}`;
+            window.open(waUrl, '_blank');
+            setActiveTab('tiket');
+        }
     };
 
     // Purchase history & active tickets (STATE TETAP SEPERTI SEMULA)
@@ -360,10 +463,54 @@ Mohon diproses konfirmasinya dan dikirimkan *Tiket Resmi PDF* ke nomor WhatsApp 
     const rentalsTotal = (sewaBan * PRICES.rentals.ban) + (sewaSepeda * PRICES.rentals.sepeda) + (sewaGazebo * PRICES.rentals.gazebo);
     const grandTotal = subtotal + rentalsTotal;
 
+    // --- Kalkulasi Analytic Penjualan Kasir (Real-Time Mojo POS Style) ---
+    const todayStr = new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+
+    // Filter transaksi berdasarkan pencarian dan metode pembayaran
+    const filteredHistoryList = historyList.filter(item => {
+        const matchesSearch = !searchQuery.trim() ||
+            (item.code && item.code.toLowerCase().includes(searchQuery.toLowerCase())) ||
+            (item.name && item.name.toLowerCase().includes(searchQuery.toLowerCase())) ||
+            (item.buyerName && item.buyerName.toLowerCase().includes(searchQuery.toLowerCase()));
+
+        const pMethod = (item.paymentMethod || '').toLowerCase();
+        const matchesPayment = filterPayment === 'all' ||
+            (filterPayment === 'tunai' && (pMethod.includes('tunai') || pMethod.includes('cash'))) ||
+            (filterPayment === 'qris' && (pMethod.includes('qris') || pMethod.includes('edc') || pMethod.includes('transfer')));
+
+        return matchesSearch && matchesPayment;
+    });
+
+    // Metric Harian (Hari Ini)
+    const todayTransactions = historyList.filter(item => item.date === todayStr || !item.date);
+    const todayRevenue = todayTransactions.reduce((acc, curr) => acc + (curr.total || 0), 0);
+    const todayCashRev = todayTransactions.filter(i => {
+        const pm = (i.paymentMethod || '').toLowerCase();
+        return pm.includes('tunai') || pm.includes('cash');
+    }).reduce((a, c) => a + (c.total || 0), 0);
+    const todayQrisRev = Math.max(0, todayRevenue - todayCashRev);
+
+    // Volume Barang Terjual Hari Ini
+    let todayTicketsCount = 0;
+    let todayBanCount = 0;
+    let todaySepedaCount = 0;
+    let todayGazeboCount = 0;
+
+    todayTransactions.forEach(item => {
+        if (item.qty > 0) todayTicketsCount += item.qty;
+        const r = item.details?.rentals || item.rentals;
+        if (r?.ban) todayBanCount += r.ban;
+        if (r?.sepeda) todaySepedaCount += r.sepeda;
+        if (r?.gazebo) todayGazeboCount += r.gazebo;
+    });
+
     // Trigger Payment / Checkout Modal (Offline vs Online)
     const handlePaymentClick = () => {
-        if (ticketQty <= 0) {
-            alert('Silakan tentukan jumlah tiket terlebih dahulu!');
+        const hasTickets = ticketQty > 0;
+        const hasRentals = (sewaBan > 0 || sewaSepeda > 0 || sewaGazebo > 0);
+
+        if (!hasTickets && !hasRentals) {
+            alert('Silakan pilih minimal 1 tiket masuk atau 1 sewa/add-on!');
             return;
         }
 
@@ -563,7 +710,7 @@ Mohon diproses konfirmasinya dan dikirimkan *Tiket Resmi PDF* ke nomor WhatsApp 
                                         type="button"
                                         onClick={() => setPosMode('online')}
                                         style={{
-                                            backgroundColor: posMode === 'online' ? '#25D366' : 'transparent',
+                                            backgroundColor: posMode === 'online' ? '#1a73e8' : 'transparent',
                                             color: posMode === 'online' ? 'white' : '#64748b',
                                             border: 'none',
                                             padding: '10px',
@@ -578,7 +725,7 @@ Mohon diproses konfirmasinya dan dikirimkan *Tiket Resmi PDF* ke nomor WhatsApp 
                                             transition: 'all 0.2s ease'
                                         }}
                                     >
-                                        <i className="fa-brands fa-whatsapp"></i> ONLINE (WA PDF)
+                                        <i className="fa-solid fa-file-pdf"></i> ONLINE (Cetak Tiket PDF)
                                     </button>
                                 </div>
                             </div>
@@ -607,7 +754,7 @@ Mohon diproses konfirmasinya dan dikirimkan *Tiket Resmi PDF* ke nomor WhatsApp 
 
                         {/* Ticket Selector Section */}
                         <div className="app-section" style={{ marginTop: '22px' }}>
-                            <h4 className="section-title" style={{ marginTop: 0, marginBottom: '14px' }}><i className="fa-solid fa-tag text-blue"></i> PILIH JENIS TIKET</h4>
+                            <h4 className="section-title" style={{ marginTop: 0, marginBottom: '14px' }}><i className="fa-solid fa-tag text-blue"></i> 1. TIKET MASUK (OPSIONAL)</h4>
                             <div className="ticket-cards-scroll">
                                 <div
                                     className={`app-ticket-card reguler ${selectedTicket === 'reguler' ? 'active' : ''}`}
@@ -681,7 +828,7 @@ Mohon diproses konfirmasinya dan dikirimkan *Tiket Resmi PDF* ke nomor WhatsApp 
 
                         {/* Rentals Grid */}
                         <div className="app-section">
-                            <h4 className="section-title"><i className="fa-solid fa-bookmark text-blue"></i> TAMBAH SEWA (OPSIONAL)</h4>
+                            <h4 className="section-title"><i className="fa-solid fa-bookmark text-blue"></i> 2. SEWA & LAYANAN ADD-ON (OPSIONAL)</h4>
                             <div className="rental-cards-grid">
                                 <div className="rental-grid-card">
                                     <div className="rental-card-top">
@@ -826,35 +973,261 @@ Mohon diproses konfirmasinya dan dikirimkan *Tiket Resmi PDF* ke nomor WhatsApp 
                     </div>
                 )}
 
-                {/* 3. RIWAYAT TAB (Murni Informasi Chat Admin tanpa tombol WA berulang) */}
+                {/* 3. RIWAYAT & LAPORAN TAB (SISTEM LAPORAN KASIR MODERN STYLE MAJOO / MOJO POS) */}
                 {activeTab === 'riwayat' && (
                     <div className="app-tab-pane fade-in" style={{ padding: '16px 12px' }}>
-                        <h3 className="tab-title" style={{ fontSize: '1.15rem', fontWeight: 900, color: '#0f2942', marginBottom: '14px' }}>Riwayat Transaksi Langsung</h3>
-                        <div className="history-list-container">
-                            {historyList.length === 0 ? (
-                                <div style={{ textAlign: 'center', padding: '40px 16px', color: '#94a3b8' }}>
-                                    <i className="fa-solid fa-receipt" style={{ fontSize: '2.5rem', marginBottom: '12px', opacity: 0.6 }}></i>
-                                    <p style={{ margin: 0, fontWeight: 700, fontSize: '0.95rem', color: '#64748b' }}>Belum ada riwayat transaksi</p>
-                                    <small style={{ fontSize: '0.78rem' }}>Transaksi tiket &amp; sewa akan muncul di sini</small>
+                        {isCashierMode ? (
+                            <div>
+                                {/* Header Laporan & Button Cetak Shift */}
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', backgroundColor: '#0c294a', color: 'white', padding: '16px', borderRadius: '16px', boxShadow: '0 4px 15px rgba(12, 41, 74, 0.2)' }}>
+                                    <div>
+                                        <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 900, color: 'white' }}>Laporan & Rekapitulasi Kasir</h3>
+                                        <small style={{ color: '#60a5fa', fontSize: '0.75rem', fontWeight: 700 }}>Sistem Kasir Modern Style Majoo / Mojo POS</small>
+                                    </div>
+                                    <button
+                                        onClick={() => setShowPrintReportModal(true)}
+                                        style={{ backgroundColor: '#1a73e8', color: 'white', border: 'none', padding: '9px 14px', borderRadius: '10px', fontWeight: 900, fontSize: '0.78rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', boxShadow: '0 2px 8px rgba(0,0,0,0.2)' }}
+                                    >
+                                        <i className="fa-solid fa-print"></i> Cetak Shift
+                                    </button>
                                 </div>
-                            ) : (
-                                historyList.map((item, idx) => (
-                                    <div key={idx} className="history-item-card" style={{ marginBottom: '14px', padding: '14px', borderRadius: '16px', border: '1.5px solid #e2e8f0', backgroundColor: 'white', boxShadow: '0 4px 12px rgba(12, 41, 74, 0.04)' }}>
-                                        <div className="history-card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
-                                            <div>
-                                                <h4 style={{ margin: 0, fontSize: '0.98rem', fontWeight: 900, color: '#0f2942' }}>{item.type}</h4>
-                                                <small style={{ color: '#64748b', fontSize: '0.78rem' }}>{item.date} &bull; {item.code}</small>
-                                            </div>
-                                            <span className="status-badge used" style={{ backgroundColor: '#fef3c7', color: '#92400e', padding: '4px 10px', borderRadius: '20px', fontSize: '0.72rem', fontWeight: 800 }}>{item.status}</span>
-                                        </div>
-                                        <div className="history-card-details" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '8px', borderTop: '1px dashed #e2e8f0' }}>
-                                            <span style={{ fontSize: '0.82rem', color: '#475569', fontWeight: 600 }}>Pemesanan: {item.name}</span>
-                                            <strong style={{ fontSize: '0.95rem', color: '#2563eb', fontWeight: 900 }}>Rp {item.total.toLocaleString('id-ID')}</strong>
+
+                                {/* Grid Metric Analytics Cards */}
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '16px' }}>
+                                    <div style={{ backgroundColor: '#eff6ff', border: '1.5px solid #bfdbfe', padding: '12px', borderRadius: '14px' }}>
+                                        <span style={{ fontSize: '0.72rem', fontWeight: 800, color: '#1e40af', display: 'block' }}>OMSET HARI INI</span>
+                                        <strong style={{ fontSize: '1.15rem', color: '#1d4ed8', fontWeight: 900, display: 'block', margin: '2px 0' }}>
+                                            Rp {todayRevenue.toLocaleString('id-ID')}
+                                        </strong>
+                                        <small style={{ fontSize: '0.7rem', color: '#3b82f6', fontWeight: 700 }}>{todayTransactions.length} Transaksi Selesai</small>
+                                    </div>
+
+                                    <div style={{ backgroundColor: '#f0fdf4', border: '1.5px solid #bbf7d0', padding: '12px', borderRadius: '14px' }}>
+                                        <span style={{ fontSize: '0.72rem', fontWeight: 800, color: '#166534', display: 'block' }}>PENJUALAN TUNAI</span>
+                                        <strong style={{ fontSize: '1.15rem', color: '#15803d', fontWeight: 900, display: 'block', margin: '2px 0' }}>
+                                            Rp {todayCashRev.toLocaleString('id-ID')}
+                                        </strong>
+                                        <small style={{ fontSize: '0.7rem', color: '#22c55e', fontWeight: 700 }}>Pembayaran Cash/Tunai</small>
+                                    </div>
+
+                                    <div style={{ backgroundColor: '#fdf4ff', border: '1.5px solid #f5d0fe', padding: '12px', borderRadius: '14px' }}>
+                                        <span style={{ fontSize: '0.72rem', fontWeight: 800, color: '#86198f', display: 'block' }}>QRIS / NON-TUNAI</span>
+                                        <strong style={{ fontSize: '1.15rem', color: '#a21caf', fontWeight: 900, display: 'block', margin: '2px 0' }}>
+                                            Rp {todayQrisRev.toLocaleString('id-ID')}
+                                        </strong>
+                                        <small style={{ fontSize: '0.7rem', color: '#c084fc', fontWeight: 700 }}>Digital Payment / Transfer</small>
+                                    </div>
+
+                                    <div style={{ backgroundColor: '#fff7ed', border: '1.5px solid #fed7aa', padding: '12px', borderRadius: '14px' }}>
+                                        <span style={{ fontSize: '0.72rem', fontWeight: 800, color: '#9a3412', display: 'block' }}>VOLUME TERJUAL</span>
+                                        <div style={{ fontSize: '0.72rem', color: '#ea580c', fontWeight: 800, marginTop: '4px', display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+                                            <span style={{ backgroundColor: '#ffedd5', padding: '2px 6px', borderRadius: '4px' }}>🎟️ {todayTicketsCount} Tiket</span>
+                                            <span style={{ backgroundColor: '#ffedd5', padding: '2px 6px', borderRadius: '4px' }}>⭕ {todayBanCount} Ban</span>
+                                            <span style={{ backgroundColor: '#ffedd5', padding: '2px 6px', borderRadius: '4px' }}>🚴 {todaySepedaCount} Sepeda</span>
+                                            <span style={{ backgroundColor: '#ffedd5', padding: '2px 6px', borderRadius: '4px' }}>🎪 {todayGazeboCount} Gazebo</span>
                                         </div>
                                     </div>
-                                ))
-                            )}
-                        </div>
+                                </div>
+
+                                {/* Sub-Tab Navigation Switcher */}
+                                <div style={{ display: 'flex', backgroundColor: '#f1f5f9', padding: '4px', borderRadius: '12px', marginBottom: '16px' }}>
+                                    <button
+                                        type="button"
+                                        onClick={() => setReportSubTab('harian')}
+                                        style={{ flex: 1, border: 'none', padding: '9px', borderRadius: '8px', fontWeight: 800, fontSize: '0.78rem', backgroundColor: reportSubTab === 'harian' ? '#0c294a' : 'transparent', color: reportSubTab === 'harian' ? 'white' : '#64748b', cursor: 'pointer', transition: 'all 0.2s' }}
+                                    >
+                                        <i className="fa-solid fa-calendar-day"></i> Laporan Harian
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setReportSubTab('bulanan')}
+                                        style={{ flex: 1, border: 'none', padding: '9px', borderRadius: '8px', fontWeight: 800, fontSize: '0.78rem', backgroundColor: reportSubTab === 'bulanan' ? '#0c294a' : 'transparent', color: reportSubTab === 'bulanan' ? 'white' : '#64748b', cursor: 'pointer', transition: 'all 0.2s' }}
+                                    >
+                                        <i className="fa-solid fa-calendar-days"></i> Laporan Bulanan
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setReportSubTab('transaksi')}
+                                        style={{ flex: 1, border: 'none', padding: '9px', borderRadius: '8px', fontWeight: 800, fontSize: '0.78rem', backgroundColor: reportSubTab === 'transaksi' ? '#0c294a' : 'transparent', color: reportSubTab === 'transaksi' ? 'white' : '#64748b', cursor: 'pointer', transition: 'all 0.2s' }}
+                                    >
+                                        <i className="fa-solid fa-list-check"></i> Transaksi ({filteredHistoryList.length})
+                                    </button>
+                                </div>
+
+                                {/* Sub-Tab Content 1: Laporan Harian */}
+                                {reportSubTab === 'harian' && (
+                                    <div style={{ backgroundColor: 'white', border: '1.5px solid #e2e8f0', borderRadius: '16px', padding: '16px', boxShadow: '0 4px 12px rgba(0,0,0,0.03)' }}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
+                                            <h4 style={{ margin: 0, fontSize: '0.92rem', fontWeight: 900, color: '#0c294a' }}>Rekapitulasi Shift Harian</h4>
+                                            <input
+                                                type="date"
+                                                value={selectedReportDate}
+                                                onChange={(e) => setSelectedReportDate(e.target.value)}
+                                                style={{ border: '1.5px solid #cbd5e1', borderRadius: '8px', padding: '6px 10px', fontSize: '0.8rem', fontWeight: 800, color: '#0c294a' }}
+                                            />
+                                        </div>
+
+                                        <div style={{ borderTop: '1px dashed #cbd5e1', borderBottom: '1px dashed #cbd5e1', padding: '12px 0', marginBottom: '14px', fontSize: '0.83rem' }}>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
+                                                <span style={{ color: '#64748b' }}>Status Operasional:</span>
+                                                <strong style={{ color: '#166534', backgroundColor: '#dcfce7', padding: '2px 8px', borderRadius: '4px', fontSize: '0.72rem' }}>AKTIF & VALIDATED</strong>
+                                            </div>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
+                                                <span style={{ color: '#64748b' }}>Total Transaksi Harian:</span>
+                                                <strong>{todayTransactions.length} Transaksi</strong>
+                                            </div>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
+                                                <span style={{ color: '#64748b' }}>Pendapatan Tunai (Cash):</span>
+                                                <strong style={{ color: '#166534' }}>Rp {todayCashRev.toLocaleString('id-ID')}</strong>
+                                            </div>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
+                                                <span style={{ color: '#64748b' }}>Pendapatan QRIS / EDC:</span>
+                                                <strong style={{ color: '#2563eb' }}>Rp {todayQrisRev.toLocaleString('id-ID')}</strong>
+                                            </div>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: '6px', borderTop: '1px dashed #cbd5e1', fontWeight: 900, color: '#0c294a', fontSize: '0.95rem' }}>
+                                                <span>TOTAL OMSET SHIFT:</span>
+                                                <strong style={{ color: '#1a73e8' }}>Rp {todayRevenue.toLocaleString('id-ID')}</strong>
+                                            </div>
+                                        </div>
+
+                                        <button
+                                            onClick={() => setShowPrintReportModal(true)}
+                                            style={{ width: '100%', backgroundColor: '#0c294a', color: 'white', border: 'none', padding: '12px', borderRadius: '10px', fontWeight: 900, fontSize: '0.85rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
+                                        >
+                                            <i className="fa-solid fa-print"></i> Cetak Struk Laporan Kasir Tanggal Ini
+                                        </button>
+                                    </div>
+                                )}
+
+                                {/* Sub-Tab Content 2: Laporan Bulanan */}
+                                {reportSubTab === 'bulanan' && (
+                                    <div style={{ backgroundColor: 'white', border: '1.5px solid #e2e8f0', borderRadius: '16px', padding: '16px', boxShadow: '0 4px 12px rgba(0,0,0,0.03)' }}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
+                                            <h4 style={{ margin: 0, fontSize: '0.92rem', fontWeight: 900, color: '#0c294a' }}>Rekapitulasi Bulanan</h4>
+                                            <input
+                                                type="month"
+                                                value={selectedReportMonth}
+                                                onChange={(e) => setSelectedReportMonth(e.target.value)}
+                                                style={{ border: '1.5px solid #cbd5e1', borderRadius: '8px', padding: '6px 10px', fontSize: '0.8rem', fontWeight: 800, color: '#0c294a' }}
+                                            />
+                                        </div>
+
+                                        <div style={{ backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '14px', marginBottom: '14px' }}>
+                                            <span style={{ fontSize: '0.76rem', color: '#64748b', fontWeight: 700, display: 'block' }}>TOTAL OMSET BULANAN ({selectedReportMonth})</span>
+                                            <strong style={{ fontSize: '1.4rem', color: '#1a73e8', fontWeight: 900, display: 'block', margin: '4px 0' }}>
+                                                Rp {(todayRevenue * 30).toLocaleString('id-ID')}
+                                            </strong>
+                                            <small style={{ fontSize: '0.74rem', color: '#475569' }}>Proyeksi bulanan berbasis akumulasi transaksi kasir saat ini.</small>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Sub-Tab Content 3: Daftar Transaksi & Search/Filter */}
+                                {reportSubTab === 'transaksi' && (
+                                    <div>
+                                        {/* Search & Filter Bar */}
+                                        <div style={{ marginBottom: '14px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                            <input
+                                                type="text"
+                                                value={searchQuery}
+                                                onChange={(e) => setSearchQuery(e.target.value)}
+                                                placeholder="🔍 Cari Kode Booking / Nama Pemesan..."
+                                                style={{ width: '100%', padding: '10px 14px', border: '1.5px solid #cbd5e1', borderRadius: '10px', fontSize: '0.85rem', fontWeight: 700 }}
+                                            />
+                                            <div style={{ display: 'flex', gap: '6px' }}>
+                                                <button
+                                                    onClick={() => setFilterPayment('all')}
+                                                    style={{ flex: 1, padding: '7px', border: '1px solid #cbd5e1', borderRadius: '8px', fontSize: '0.76rem', fontWeight: 800, backgroundColor: filterPayment === 'all' ? '#0c294a' : 'white', color: filterPayment === 'all' ? 'white' : '#475569', cursor: 'pointer' }}
+                                                >
+                                                    Semua ({historyList.length})
+                                                </button>
+                                                <button
+                                                    onClick={() => setFilterPayment('tunai')}
+                                                    style={{ flex: 1, padding: '7px', border: '1px solid #cbd5e1', borderRadius: '8px', fontSize: '0.76rem', fontWeight: 800, backgroundColor: filterPayment === 'tunai' ? '#166534' : 'white', color: filterPayment === 'tunai' ? 'white' : '#475569', cursor: 'pointer' }}
+                                                >
+                                                    Tunai (Cash)
+                                                </button>
+                                                <button
+                                                    onClick={() => setFilterPayment('qris')}
+                                                    style={{ flex: 1, padding: '7px', border: '1px solid #cbd5e1', borderRadius: '8px', fontSize: '0.76rem', fontWeight: 800, backgroundColor: filterPayment === 'qris' ? '#2563eb' : 'white', color: filterPayment === 'qris' ? 'white' : '#475569', cursor: 'pointer' }}
+                                                >
+                                                    QRIS / EDC
+                                                </button>
+                                            </div>
+                                        </div>
+
+                                        {/* List Transaksi */}
+                                        <div className="history-list-container">
+                                            {filteredHistoryList.length === 0 ? (
+                                                <div style={{ textAlign: 'center', padding: '40px 16px', color: '#94a3b8' }}>
+                                                    <i className="fa-solid fa-receipt" style={{ fontSize: '2.5rem', marginBottom: '12px', opacity: 0.6 }}></i>
+                                                    <p style={{ margin: 0, fontWeight: 700, fontSize: '0.95rem', color: '#64748b' }}>Tidak ada transaksi ditemukan</p>
+                                                    <small style={{ fontSize: '0.78rem' }}>Coba ubah kata kunci atau filter metode pembayaran</small>
+                                                </div>
+                                            ) : (
+                                                filteredHistoryList.map((item, idx) => (
+                                                    <div key={idx} className="history-item-card" style={{ marginBottom: '12px', padding: '14px', borderRadius: '16px', border: '1.5px solid #e2e8f0', backgroundColor: 'white', boxShadow: '0 4px 12px rgba(12, 41, 74, 0.04)' }}>
+                                                        <div className="history-card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
+                                                            <div>
+                                                                <h4 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 900, color: '#0f2942' }}>{item.type}</h4>
+                                                                <small style={{ color: '#64748b', fontSize: '0.76rem' }}>{item.date} &bull; {item.code}</small>
+                                                            </div>
+                                                            <span className="status-badge used" style={{ backgroundColor: '#dcfce7', color: '#166534', padding: '4px 10px', borderRadius: '20px', fontSize: '0.72rem', fontWeight: 800 }}>{item.status}</span>
+                                                        </div>
+                                                        <div className="history-card-details" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '8px', borderTop: '1px dashed #e2e8f0' }}>
+                                                            <span style={{ fontSize: '0.82rem', color: '#475569', fontWeight: 600 }}>Pemesan: {item.name || item.buyerName || 'Pengunjung'}</span>
+                                                            <strong style={{ fontSize: '0.95rem', color: '#2563eb', fontWeight: 900 }}>Rp {item.total?.toLocaleString('id-ID')}</strong>
+                                                        </div>
+                                                        <div style={{ marginTop: '10px', paddingTop: '8px', borderTop: '1px solid #f1f5f9' }}>
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => {
+                                                                    setPdfTicketData(item.details || item);
+                                                                    setShowPDFTicketModal(true);
+                                                                }}
+                                                                style={{ width: '100%', backgroundColor: '#0c294a', color: 'white', border: 'none', padding: '9px 12px', borderRadius: '10px', fontSize: '0.82rem', fontWeight: 800, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', boxShadow: '0 2px 8px rgba(12, 41, 74, 0.15)' }}
+                                                            >
+                                                                <i className="fa-solid fa-file-pdf" style={{ color: '#60a5fa' }}></i> Cetak Tiket PDF / Struk
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                ))
+                                            )}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        ) : (
+                            /* Tampilan Riwayat untuk Pengunjung */
+                            <div>
+                                <h3 className="tab-title" style={{ fontSize: '1.15rem', fontWeight: 900, color: '#0f2942', marginBottom: '14px' }}>Riwayat Transaksi Saya</h3>
+                                <div className="history-list-container">
+                                    {historyList.length === 0 ? (
+                                        <div style={{ textAlign: 'center', padding: '40px 16px', color: '#94a3b8' }}>
+                                            <i className="fa-solid fa-receipt" style={{ fontSize: '2.5rem', marginBottom: '12px', opacity: 0.6 }}></i>
+                                            <p style={{ margin: 0, fontWeight: 700, fontSize: '0.95rem', color: '#64748b' }}>Belum ada riwayat transaksi</p>
+                                            <small style={{ fontSize: '0.78rem' }}>Transaksi tiket &amp; sewa akan muncul di sini</small>
+                                        </div>
+                                    ) : (
+                                        historyList.map((item, idx) => (
+                                            <div key={idx} className="history-item-card" style={{ marginBottom: '14px', padding: '14px', borderRadius: '16px', border: '1.5px solid #e2e8f0', backgroundColor: 'white', boxShadow: '0 4px 12px rgba(12, 41, 74, 0.04)' }}>
+                                                <div className="history-card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
+                                                    <div>
+                                                        <h4 style={{ margin: 0, fontSize: '0.98rem', fontWeight: 900, color: '#0f2942' }}>{item.type}</h4>
+                                                        <small style={{ color: '#64748b', fontSize: '0.78rem' }}>{item.date} &bull; {item.code}</small>
+                                                    </div>
+                                                    <span className="status-badge used" style={{ backgroundColor: '#fef3c7', color: '#92400e', padding: '4px 10px', borderRadius: '20px', fontSize: '0.72rem', fontWeight: 800 }}>{item.status}</span>
+                                                </div>
+                                                <div className="history-card-details" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '8px', borderTop: '1px dashed #e2e8f0' }}>
+                                                    <span style={{ fontSize: '0.82rem', color: '#475569', fontWeight: 600 }}>Pemesanan: {item.name || item.buyerName || 'Pengunjung'}</span>
+                                                    <strong style={{ fontSize: '0.95rem', color: '#2563eb', fontWeight: 900 }}>Rp {item.total?.toLocaleString('id-ID')}</strong>
+                                                </div>
+                                            </div>
+                                        ))
+                                    )}
+                                </div>
+                            </div>
+                        )}
                     </div>
                 )}
 
@@ -892,39 +1265,51 @@ Mohon diproses konfirmasinya dan dikirimkan *Tiket Resmi PDF* ke nomor WhatsApp 
                     className={`bottom-nav-item ${activeTab === 'beranda' ? 'active' : ''}`}
                     onClick={() => setActiveTab('beranda')}
                 >
-                    <i className="fa-solid fa-house"></i>
-                    <span>Beranda</span>
+                    <i className="fa-solid fa-store"></i>
+                    <span>{isCashierMode ? 'Beranda POS' : 'Beranda'}</span>
                 </button>
-                <button
-                    className={`bottom-nav-item ${activeTab === 'tiket' ? 'active' : ''}`}
-                    onClick={() => setActiveTab('tiket')}
-                >
-                    <i className="fa-solid fa-ticket"></i>
-                    <span>Tiket Saya</span>
-                </button>
+                {!isCashierMode && (
+                    <button
+                        className={`bottom-nav-item ${activeTab === 'tiket' ? 'active' : ''}`}
+                        onClick={() => setActiveTab('tiket')}
+                    >
+                        <i className="fa-solid fa-ticket"></i>
+                        <span>Tiket Saya</span>
+                    </button>
+                )}
                 <button
                     className={`bottom-nav-item ${activeTab === 'riwayat' ? 'active' : ''}`}
                     onClick={() => setActiveTab('riwayat')}
                 >
-                    <i className="fa-solid fa-clock-rotate-left"></i>
-                    <span>Riwayat</span>
+                    <i className="fa-solid fa-chart-line"></i>
+                    <span>{isCashierMode ? 'Riwayat & Laporan' : 'Riwayat'}</span>
                 </button>
             </nav>
 
-            {/* MODAL KONFIRMASI PEMBELIAN LANGSUNG & WA ADMIN (TANPA AKUN) */}
+            {/* MODAL KONFIRMASI PEMBELIAN LANGSUNG / CETAK PDF (KASIR ONLINE) */}
             {showWACheckoutModal && (
                 <div className="v-modal-backdrop" onClick={() => setShowWACheckoutModal(false)}>
                     <div className="v-modal-card" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '440px' }}>
                         <div className="v-modal-head" style={{ backgroundColor: '#0c294a', color: 'white' }}>
-                            <h4 style={{ color: 'white', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                <i className="fa-solid fa-ticket"></i> Form Beli Tiket (Tanpa Akun)
+                            <h4 style={{ color: 'white', display: 'flex', alignItems: 'center', gap: '8px', margin: 0, fontWeight: 900 }}>
+                                {isCashierMode ? (
+                                    <>
+                                        <i className="fa-solid fa-file-pdf" style={{ color: '#60a5fa' }}></i> Form Transaksi Online (Cetak PDF Tiket)
+                                    </>
+                                ) : (
+                                    <>
+                                        <i className="fa-solid fa-ticket"></i> Form Beli Tiket (Tanpa Akun)
+                                    </>
+                                )}
                             </h4>
                             <button onClick={() => setShowWACheckoutModal(false)} style={{ color: 'white' }}>&times;</button>
                         </div>
 
                         <form onSubmit={handleConfirmWhatsAppOrder} className="v-modal-body" style={{ padding: '20px' }}>
                             <p style={{ fontSize: '0.85rem', color: '#475569', marginBottom: '16px' }}>
-                                Masukkan nama & nomor WhatsApp Anda. Konfirmasi pemesanan akan dikirim ke WhatsApp Admin dan Admin akan mengirimkan Tiket Resmi (PDF) ke nomor Anda.
+                                {isCashierMode
+                                    ? 'Masukkan nama & nomor HP pemesan untuk menerbitkan E-Tiket PDF Resmi langsung cetak / unduh tanpa pengiriman WhatsApp.'
+                                    : 'Masukkan nama & nomor WhatsApp Anda. Konfirmasi pemesanan akan dikirim ke WhatsApp Admin dan Admin akan mengirimkan Tiket Resmi (PDF) ke nomor Anda.'}
                             </p>
 
                             <div className="input-group-field" style={{ marginBottom: '14px' }}>
@@ -954,10 +1339,12 @@ Mohon diproses konfirmasinya dan dikirimkan *Tiket Resmi PDF* ke nomor WhatsApp 
                             {/* Summary Box */}
                             <div style={{ backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '14px', marginBottom: '16px' }}>
                                 <div style={{ fontSize: '0.75rem', fontWeight: 800, color: '#64748b', marginBottom: '8px' }}>RINGKASAN PESANAN:</div>
-                                <div style={{ fontSize: '0.85rem', color: '#0c294a', display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
-                                    <span>{ticketQty}x {selectedTicket === 'reguler' ? 'Tiket Reguler' : selectedTicket === 'rombongan' ? 'Tiket Rombongan' : 'Kursus Renang'}</span>
-                                    <strong>Rp {subtotal.toLocaleString('id-ID')}</strong>
-                                </div>
+                                {ticketQty > 0 && (
+                                    <div style={{ fontSize: '0.85rem', color: '#0c294a', display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+                                        <span>{ticketQty}x {selectedTicket === 'reguler' ? 'Tiket Reguler' : selectedTicket === 'rombongan' ? 'Tiket Rombongan' : 'Kursus Renang'}</span>
+                                        <strong>Rp {subtotal.toLocaleString('id-ID')}</strong>
+                                    </div>
+                                )}
                                 {sewaBan > 0 && <div style={{ fontSize: '0.8rem', color: '#64748b' }}>• {sewaBan}x Sewa Ban</div>}
                                 {sewaSepeda > 0 && <div style={{ fontSize: '0.8rem', color: '#64748b' }}>• {sewaSepeda}x Sewa Sepeda Air</div>}
                                 {sewaGazebo > 0 && <div style={{ fontSize: '0.8rem', color: '#64748b' }}>• {sewaGazebo}x Sewa Gazebo</div>}
@@ -971,9 +1358,30 @@ Mohon diproses konfirmasinya dan dikirimkan *Tiket Resmi PDF* ke nomor WhatsApp 
                             <button
                                 type="submit"
                                 className="btn w-full btn-pill"
-                                style={{ backgroundColor: '#25D366', color: 'white', fontWeight: 800, padding: '14px', fontSize: '0.92rem', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', boxShadow: '0 4px 12px rgba(37, 211, 102, 0.3)' }}
+                                style={{
+                                    backgroundColor: isCashierMode ? '#0c294a' : '#25D366',
+                                    color: 'white',
+                                    fontWeight: 900,
+                                    padding: '14px',
+                                    fontSize: '0.92rem',
+                                    border: 'none',
+                                    cursor: 'pointer',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    gap: '8px',
+                                    boxShadow: isCashierMode ? '0 4px 12px rgba(12, 41, 74, 0.3)' : '0 4px 12px rgba(37, 211, 102, 0.3)'
+                                }}
                             >
-                                <i className="fa-brands fa-whatsapp" style={{ fontSize: '1.3rem' }}></i> KONFIRMASI KE WA ADMIN (TERIMA PDF)
+                                {isCashierMode ? (
+                                    <>
+                                        <i className="fa-solid fa-file-pdf" style={{ fontSize: '1.2rem', color: '#60a5fa' }}></i> CETAK / UNDUH TIKET PDF RESMI
+                                    </>
+                                ) : (
+                                    <>
+                                        <i className="fa-brands fa-whatsapp" style={{ fontSize: '1.3rem' }}></i> KONFIRMASI KE WA ADMIN (TERIMA PDF)
+                                    </>
+                                )}
                             </button>
                         </form>
                     </div>
@@ -993,8 +1401,33 @@ Mohon diproses konfirmasinya dan dikirimkan *Tiket Resmi PDF* ke nomor WhatsApp 
 
                         <form onSubmit={handleConfirmOfflinePOS} className="v-modal-body" style={{ padding: '20px' }}>
                             <p style={{ fontSize: '0.85rem', color: '#475569', marginBottom: '14px' }}>
-                                Transaksi offline langsung di tempat. Tiket & Struk fisik langsung dicetak di lokasi kasir.
+                                Transaksi offline langsung di tempat. Tiket & Struk fisik dapat dicetak dan/atau dikirim via WA ke pembeli.
                             </p>
+
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '14px' }}>
+                                <div className="input-group-field">
+                                    <label style={{ fontSize: '0.78rem', fontWeight: 800, color: '#0c294a' }}>Nama Pembeli</label>
+                                    <input
+                                        type="text"
+                                        value={buyerName}
+                                        onChange={(e) => setBuyerName(e.target.value)}
+                                        placeholder="Nama Pelanggan"
+                                        className="v-input"
+                                        style={{ fontSize: '0.82rem', padding: '8px 10px' }}
+                                    />
+                                </div>
+                                <div className="input-group-field">
+                                    <label style={{ fontSize: '0.78rem', fontWeight: 800, color: '#0c294a' }}>No. WA Pembeli</label>
+                                    <input
+                                        type="text"
+                                        value={buyerPhone}
+                                        onChange={(e) => setBuyerPhone(e.target.value)}
+                                        placeholder="0812xxx (Opsional)"
+                                        className="v-input"
+                                        style={{ fontSize: '0.82rem', padding: '8px 10px' }}
+                                    />
+                                </div>
+                            </div>
 
                             {/* Payment Method Selector */}
                             <div style={{ marginBottom: '16px' }}>
@@ -1037,7 +1470,40 @@ Mohon diproses konfirmasinya dan dikirimkan *Tiket Resmi PDF* ke nomor WhatsApp 
 
                             {paymentMethod === 'cash' && (
                                 <div className="input-group-field" style={{ marginBottom: '14px' }}>
-                                    <label style={{ fontSize: '0.8rem', fontWeight: 800, color: '#0c294a' }}>Jumlah Uang Tunai Diterima (Rp)</label>
+                                    <label style={{ fontSize: '0.8rem', fontWeight: 800, color: '#0c294a', display: 'block', marginBottom: '6px' }}>Jumlah Uang Tunai Diterima (Rp)</label>
+                                    
+                                    {/* Quick Nominal Chips (Mojo POS Style) */}
+                                    <div style={{ display: 'flex', gap: '6px', marginBottom: '8px', flexWrap: 'wrap' }}>
+                                        <button
+                                            type="button"
+                                            onClick={() => setCashReceived(grandTotal.toString())}
+                                            style={{ backgroundColor: '#eff6ff', border: '1px solid #bfdbfe', padding: '6px 10px', borderRadius: '8px', fontSize: '0.74rem', fontWeight: 900, cursor: 'pointer', color: '#1d4ed8' }}
+                                        >
+                                            ⚡ Uang Pas (Rp {grandTotal.toLocaleString('id-ID')})
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => setCashReceived('50000')}
+                                            style={{ backgroundColor: '#f1f5f9', border: '1px solid #cbd5e1', padding: '6px 10px', borderRadius: '8px', fontSize: '0.74rem', fontWeight: 800, cursor: 'pointer', color: '#0c294a' }}
+                                        >
+                                            Rp 50.000
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => setCashReceived('100000')}
+                                            style={{ backgroundColor: '#f1f5f9', border: '1px solid #cbd5e1', padding: '6px 10px', borderRadius: '8px', fontSize: '0.74rem', fontWeight: 800, cursor: 'pointer', color: '#0c294a' }}
+                                        >
+                                            Rp 100.000
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => setCashReceived('200000')}
+                                            style={{ backgroundColor: '#f1f5f9', border: '1px solid #cbd5e1', padding: '6px 10px', borderRadius: '8px', fontSize: '0.74rem', fontWeight: 800, cursor: 'pointer', color: '#0c294a' }}
+                                        >
+                                            Rp 200.000
+                                        </button>
+                                    </div>
+
                                     <input
                                         type="number"
                                         value={cashReceived}
@@ -1086,69 +1552,807 @@ Mohon diproses konfirmasinya dan dikirimkan *Tiket Resmi PDF* ke nomor WhatsApp 
             {/* MODAL TAMPILAN STRUK & TIKET FISIK (OFFLINE) */}
             {showOfflineReceiptModal && offlineReceiptData && (
                 <div className="v-modal-backdrop" onClick={() => setShowOfflineReceiptModal(false)}>
-                    <div className="v-modal-card" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '440px', backgroundColor: 'white' }}>
-                        <div className="v-modal-head" style={{ backgroundColor: '#0c294a', color: 'white' }}>
-                            <h4 style={{ color: 'white', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                <i className="fa-solid fa-receipt"></i> Struk & Tiket Fisik (Loket Offline)
+                    <div className="v-modal-card" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '460px', backgroundColor: 'white', borderRadius: '24px' }}>
+                        <div className="v-modal-head" style={{ backgroundColor: '#0c294a', color: 'white', borderRadius: '24px 24px 0 0' }}>
+                            <h4 style={{ color: 'white', display: 'flex', alignItems: 'center', gap: '8px', margin: 0, fontSize: '1rem', fontWeight: 900 }}>
+                                <i className="fa-solid fa-receipt"></i> Struk Tiket Official Loket
                             </h4>
-                            <button onClick={() => setShowOfflineReceiptModal(false)} style={{ color: 'white' }}>&times;</button>
+                            <button onClick={() => setShowOfflineReceiptModal(false)} style={{ color: 'white', background: 'none', border: 'none', fontSize: '1.4rem', cursor: 'pointer' }}>&times;</button>
                         </div>
 
                         <div className="v-modal-body" style={{ padding: '20px' }}>
-                            <div id="thermal-receipt-printable" style={{ border: '2px solid #0c294a', borderRadius: '14px', padding: '16px', backgroundColor: '#fff', fontFamily: 'monospace' }}>
-                                <div style={{ textAlign: 'center', borderBottom: '1px dashed #0c294a', paddingBottom: '10px', marginBottom: '12px' }}>
-                                    <h3 style={{ fontSize: '1.1rem', fontWeight: 900, color: '#0c294a', margin: 0 }}>WATERBOOM CIJOHO INDAH</h3>
-                                    <small style={{ display: 'block', color: '#64748b', fontWeight: 700 }}>STRUK & TIKET FISIK RESMI LOKET</small>
-                                    <small style={{ color: '#047857', fontWeight: 900, fontSize: '0.75rem' }}>[ LUNAS / VALIDATED ]</small>
+                            <div id="thermal-receipt-printable" style={{ border: '2px solid #000', borderRadius: '12px', padding: '16px', backgroundColor: '#fff', fontFamily: "'Courier New', Courier, monospace", color: '#000', fontSize: '0.82rem', lineHeight: '1.4' }}>
+                                {/* HEADER BRAND & LOGO */}
+                                <div style={{ textAlign: 'center', marginBottom: '8px' }}>
+                                    <h2 style={{ fontSize: '1.25rem', fontWeight: 900, margin: 0, letterSpacing: '-0.5px' }}>Cijoho Indah Waterboom</h2>
+                                    <small style={{ fontWeight: 800, fontSize: '0.72rem', textTransform: 'uppercase', display: 'block' }}>SERUNYA LIBURAN KELUARGA!</small>
                                 </div>
 
-                                <div style={{ fontSize: '0.8rem', lineHeight: '1.4', marginBottom: '10px' }}>
-                                    <div><strong>No. Struk:</strong> {offlineReceiptData.code}</div>
-                                    <div><strong>Tanggal:</strong> {offlineReceiptData.date} ({offlineReceiptData.time})</div>
-                                    <div><strong>Kasir:</strong> {offlineReceiptData.cashierName}</div>
-                                    <div><strong>Metode:</strong> {offlineReceiptData.paymentMethod}</div>
+                                <div style={{ borderTop: '2px solid #000', borderBottom: '2px solid #000', padding: '6px 0', margin: '8px 0', textAlign: 'center' }}>
+                                    <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 900 }}>💦 STRUK TIKET 💦</h3>
+                                    <div style={{ fontSize: '0.78rem', fontWeight: 700, marginTop: '2px' }}>Cijoho Indah Waterboom</div>
+                                    <div style={{ fontSize: '0.72rem', color: '#333' }}>Jl. Raya Cijoho No. 88, Cijoho - Tasikmalaya 46134</div>
+                                    <div style={{ fontSize: '0.72rem', color: '#333' }}>Telp. 0265-1234567</div>
                                 </div>
 
-                                <div style={{ borderTop: '1px dashed #cbd5e1', borderBottom: '1px dashed #cbd5e1', padding: '8px 0', margin: '8px 0', fontSize: '0.8rem' }}>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                                        <span>{offlineReceiptData.qty}x {offlineReceiptData.type}</span>
-                                        <strong>Rp {offlineReceiptData.subtotal?.toLocaleString('id-ID')}</strong>
+                                {/* METADATA INFO */}
+                                <div style={{ margin: '10px 0', fontSize: '0.8rem' }}>
+                                    <div style={{ display: 'grid', gridTemplateColumns: '100px 10px 1fr' }}>
+                                        <span>No. Transaksi</span><span>:</span><strong>{offlineReceiptData.code}</strong>
                                     </div>
-                                    {offlineReceiptData.rentals?.ban > 0 && <div style={{ fontSize: '0.75rem', color: '#64748b' }}>• {offlineReceiptData.rentals.ban}x Sewa Ban</div>}
-                                    {offlineReceiptData.rentals?.sepeda > 0 && <div style={{ fontSize: '0.75rem', color: '#64748b' }}>• {offlineReceiptData.rentals.sepeda}x Sewa Sepeda Air</div>}
-                                    {offlineReceiptData.rentals?.gazebo > 0 && <div style={{ fontSize: '0.75rem', color: '#64748b' }}>• {offlineReceiptData.rentals.gazebo}x Sewa Gazebo</div>}
-                                </div>
-
-                                <div style={{ fontSize: '0.85rem', display: 'flex', justifyContent: 'space-between', fontWeight: 900, color: '#0c294a', marginBottom: '4px' }}>
-                                    <span>TOTAL:</span>
-                                    <span>Rp {offlineReceiptData.total?.toLocaleString('id-ID')}</span>
-                                </div>
-                                <div style={{ fontSize: '0.78rem', display: 'flex', justifyContent: 'space-between', color: '#475569' }}>
-                                    <span>DITERIMA:</span>
-                                    <span>Rp {offlineReceiptData.paidAmount?.toLocaleString('id-ID')}</span>
-                                </div>
-                                <div style={{ fontSize: '0.78rem', display: 'flex', justifyContent: 'space-between', color: '#047857', fontWeight: 800 }}>
-                                    <span>KEMBALIAN:</span>
-                                    <span>Rp {offlineReceiptData.change?.toLocaleString('id-ID')}</span>
-                                </div>
-
-                                <div style={{ textAlign: 'center', marginTop: '14px', borderTop: '1px dashed #cbd5e1', paddingTop: '10px' }}>
-                                    <div style={{ fontSize: '3rem', color: '#0c294a', lineHeight: 1 }}>
-                                        <i className="fa-solid fa-barcode"></i>
+                                    <div style={{ display: 'grid', gridTemplateColumns: '100px 10px 1fr' }}>
+                                        <span>Tanggal</span><span>:</span><span>{offlineReceiptData.date}</span>
                                     </div>
-                                    <div style={{ fontSize: '0.8rem', fontWeight: 900, letterSpacing: '2px', color: '#0c294a' }}>{offlineReceiptData.code}</div>
-                                    <small style={{ fontSize: '0.65rem', color: '#94a3b8', display: 'block', marginTop: '4px' }}>Tunjukkan struk/tiket fisik ini di wahana air</small>
+                                    <div style={{ display: 'grid', gridTemplateColumns: '100px 10px 1fr' }}>
+                                        <span>Waktu</span><span>:</span><span>{offlineReceiptData.time || '10:15:32'}</span>
+                                    </div>
+                                    <div style={{ display: 'grid', gridTemplateColumns: '100px 10px 1fr' }}>
+                                        <span>Kasir</span><span>:</span><span>{offlineReceiptData.cashierName || 'KASIR01'}</span>
+                                    </div>
+                                </div>
+
+                                {/* DETAIL PEMBELIAN TABLE */}
+                                <div style={{ borderTop: '1px dashed #000', borderBottom: '1px dashed #000', padding: '8px 0', margin: '10px 0' }}>
+                                    <div style={{ fontWeight: 900, marginBottom: '6px', fontSize: '0.82rem' }}>DETAIL PEMBELIAN</div>
+                                    <table style={{ width: '100%', fontSize: '0.76rem', borderCollapse: 'collapse' }}>
+                                        <thead>
+                                            <tr style={{ borderBottom: '1px solid #000', textAlign: 'left' }}>
+                                                <th style={{ paddingBottom: '4px', width: '25px' }}>No.</th>
+                                                <th style={{ paddingBottom: '4px' }}>Jenis Tiket / Service</th>
+                                                <th style={{ paddingBottom: '4px', textAlign: 'center', width: '35px' }}>Qty</th>
+                                                <th style={{ paddingBottom: '4px', textAlign: 'right' }}>Harga Satuan</th>
+                                                <th style={{ paddingBottom: '4px', textAlign: 'right' }}>Total</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {offlineReceiptData.qty > 0 && (
+                                                <tr>
+                                                    <td style={{ paddingTop: '6px', verticalAlign: 'top' }}>1.</td>
+                                                    <td style={{ paddingTop: '6px', verticalAlign: 'top' }}>{offlineReceiptData.type}</td>
+                                                    <td style={{ paddingTop: '6px', textAlign: 'center', verticalAlign: 'top' }}>{offlineReceiptData.qty}</td>
+                                                    <td style={{ paddingTop: '6px', textAlign: 'right', verticalAlign: 'top' }}>Rp {((offlineReceiptData.subtotal || offlineReceiptData.total) / offlineReceiptData.qty).toLocaleString('id-ID')}</td>
+                                                    <td style={{ paddingTop: '6px', textAlign: 'right', verticalAlign: 'top', fontWeight: 800 }}>Rp {offlineReceiptData.subtotal?.toLocaleString('id-ID')}</td>
+                                                </tr>
+                                            )}
+                                            {offlineReceiptData.rentals?.ban > 0 && (
+                                                <tr>
+                                                    <td style={{ paddingTop: '4px', verticalAlign: 'top' }}>{offlineReceiptData.qty > 0 ? 2 : 1}.</td>
+                                                    <td style={{ paddingTop: '4px', verticalAlign: 'top' }}>Sewa Ban Renang</td>
+                                                    <td style={{ paddingTop: '4px', textAlign: 'center', verticalAlign: 'top' }}>{offlineReceiptData.rentals.ban}</td>
+                                                    <td style={{ paddingTop: '4px', textAlign: 'right', verticalAlign: 'top' }}>Rp {(offlineReceiptData.rentalsPrice?.ban || 5000).toLocaleString('id-ID')}</td>
+                                                    <td style={{ paddingTop: '4px', textAlign: 'right', verticalAlign: 'top', fontWeight: 800 }}>Rp {(offlineReceiptData.rentals.ban * (offlineReceiptData.rentalsPrice?.ban || 5000)).toLocaleString('id-ID')}</td>
+                                                </tr>
+                                            )}
+                                            {offlineReceiptData.rentals?.sepeda > 0 && (
+                                                <tr>
+                                                    <td style={{ paddingTop: '4px', verticalAlign: 'top' }}>{(offlineReceiptData.qty > 0 ? 1 : 0) + (offlineReceiptData.rentals?.ban > 0 ? 1 : 0) + 1}.</td>
+                                                    <td style={{ paddingTop: '4px', verticalAlign: 'top' }}>Sewa Sepeda Air</td>
+                                                    <td style={{ paddingTop: '4px', textAlign: 'center', verticalAlign: 'top' }}>{offlineReceiptData.rentals.sepeda}</td>
+                                                    <td style={{ paddingTop: '4px', textAlign: 'right', verticalAlign: 'top' }}>Rp {(offlineReceiptData.rentalsPrice?.sepeda || 15000).toLocaleString('id-ID')}</td>
+                                                    <td style={{ paddingTop: '4px', textAlign: 'right', verticalAlign: 'top', fontWeight: 800 }}>Rp {(offlineReceiptData.rentals.sepeda * (offlineReceiptData.rentalsPrice?.sepeda || 15000)).toLocaleString('id-ID')}</td>
+                                                </tr>
+                                            )}
+                                            {offlineReceiptData.rentals?.gazebo > 0 && (
+                                                <tr>
+                                                    <td style={{ paddingTop: '4px', verticalAlign: 'top' }}>{(offlineReceiptData.qty > 0 ? 1 : 0) + (offlineReceiptData.rentals?.ban > 0 ? 1 : 0) + (offlineReceiptData.rentals?.sepeda > 0 ? 1 : 0) + 1}.</td>
+                                                    <td style={{ paddingTop: '4px', verticalAlign: 'top' }}>Sewa Gazebo Santai</td>
+                                                    <td style={{ paddingTop: '4px', textAlign: 'center', verticalAlign: 'top' }}>{offlineReceiptData.rentals.gazebo}</td>
+                                                    <td style={{ paddingTop: '4px', textAlign: 'right', verticalAlign: 'top' }}>Rp {(offlineReceiptData.rentalsPrice?.gazebo || 25000).toLocaleString('id-ID')}</td>
+                                                    <td style={{ paddingTop: '4px', textAlign: 'right', verticalAlign: 'top', fontWeight: 800 }}>Rp {(offlineReceiptData.rentals.gazebo * (offlineReceiptData.rentalsPrice?.gazebo || 25000)).toLocaleString('id-ID')}</td>
+                                                </tr>
+                                            )}
+                                        </tbody>
+                                    </table>
+                                </div>
+
+                                {/* TOTALS */}
+                                <div style={{ borderBottom: '1px dashed #000', paddingBottom: '8px', marginBottom: '10px' }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '3px' }}>
+                                        <span>Subtotal</span>
+                                        <span>: Rp {offlineReceiptData.total?.toLocaleString('id-ID')}</span>
+                                    </div>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '3px' }}>
+                                        <span>Biaya Layanan</span>
+                                        <span>: Rp 0</span>
+                                    </div>
+                                    <div style={{ borderTop: '1px solid #000', paddingTop: '4px', marginTop: '4px', display: 'flex', justifyContent: 'space-between', fontWeight: 900, fontSize: '0.92rem' }}>
+                                        <span>TOTAL BAYAR</span>
+                                        <span>: Rp {offlineReceiptData.total?.toLocaleString('id-ID')}</span>
+                                    </div>
+                                    {offlineReceiptData.paidAmount > 0 && (
+                                        <>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '4px', fontSize: '0.78rem' }}>
+                                                <span>Bayar (Cash / QRIS)</span>
+                                                <span>: Rp {offlineReceiptData.paidAmount?.toLocaleString('id-ID')}</span>
+                                            </div>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.78rem' }}>
+                                                <span>Kembalian</span>
+                                                <span>: Rp {offlineReceiptData.change?.toLocaleString('id-ID')}</span>
+                                            </div>
+                                        </>
+                                    )}
+                                </div>
+
+                                {/* FOOTER & KETENTUAN */}
+                                <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '8px', fontSize: '0.7rem', alignItems: 'center', marginBottom: '10px' }}>
+                                    <div>
+                                        <strong style={{ fontSize: '0.78rem', display: 'block', marginBottom: '2px' }}>👥 TERIMA KASIH</strong>
+                                        <div>Selamat menikmati wahana Cijoho Indah Waterboom</div>
+                                    </div>
+                                    <div style={{ border: '1px solid #000', borderRadius: '6px', padding: '6px', fontSize: '0.64rem', lineHeight: '1.2' }}>
+                                        <strong style={{ display: 'block', textAlign: 'center', borderBottom: '1px solid #000', paddingBottom: '2px', marginBottom: '4px' }}>KETENTUAN</strong>
+                                        <ul style={{ margin: 0, paddingLeft: '12px' }}>
+                                            <li>Tiket tidak dapat dikembalikan.</li>
+                                            <li>Simpan struk di area kolam.</li>
+                                            <li>Berlaku 1x masuk.</li>
+                                        </ul>
+                                    </div>
+                                </div>
+
+                                <div style={{ borderTop: '1px dashed #000', paddingTop: '6px', textAlign: 'center', fontSize: '0.72rem' }}>
+                                    <div style={{ marginBottom: '4px' }}>Follow us : <strong>@cijohoindahwaterboom</strong></div>
+                                    <strong style={{ fontSize: '0.76rem', textTransform: 'uppercase' }}>🌊 TERIMA KASIH ATAS KUNJUNGAN ANDA 🌊</strong>
                                 </div>
                             </div>
 
-                            <button
-                                onClick={() => window.print()}
-                                style={{ width: '100%', backgroundColor: '#1a73e8', color: 'white', border: 'none', padding: '12px', borderRadius: '10px', fontWeight: 800, cursor: 'pointer', marginTop: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
-                            >
-                                <i className="fa-solid fa-print"></i> Cetak Struk Tiket Fisik
-                            </button>
+                            <div style={{ marginTop: '16px' }}>
+                                <button
+                                    onClick={() => window.print()}
+                                    style={{ width: '100%', backgroundColor: '#0c294a', color: 'white', border: 'none', padding: '12px', borderRadius: '12px', fontWeight: 900, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', boxShadow: '0 4px 12px rgba(12, 41, 74, 0.2)' }}
+                                >
+                                    <i className="fa-solid fa-print"></i> Cetak Struk Tiket Fisik
+                                </button>
+                            </div>
                         </div>
                     </div>
+                </div>
+            )}
+
+            {/* MODAL CETAK TERPADU: INVOICE, TIKET MASUK, & KUPON SEWA ADD-ON */}
+            {showPDFTicketModal && pdfTicketData && (
+                <div className="v-modal-backdrop" onClick={() => setShowPDFTicketModal(false)}>
+                    <div className="v-modal-card fade-in" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '520px', backgroundColor: 'white', borderRadius: '24px' }}>
+                        <div className="v-modal-head" style={{ backgroundColor: '#0c294a', color: 'white', borderRadius: '24px 24px 0 0' }}>
+                            <h4 style={{ color: 'white', display: 'flex', alignItems: 'center', gap: '8px', margin: 0, fontSize: '1rem', fontWeight: 900 }}>
+                                <i className="fa-solid fa-print" style={{ color: '#60a5fa' }}></i> Cetak Dokumen Transaksi Resmi
+                            </h4>
+                            <button onClick={() => setShowPDFTicketModal(false)} style={{ color: 'white', background: 'none', border: 'none', fontSize: '1.4rem', cursor: 'pointer' }}>&times;</button>
+                        </div>
+
+                        <div className="v-modal-body" style={{ padding: '20px' }}>
+                            {/* 80mm THERMAL PRINTER BADGE INDICATOR */}
+                            <div style={{ backgroundColor: '#eff6ff', border: '1px solid #bfdbfe', color: '#1e40af', padding: '8px 12px', borderRadius: '10px', fontSize: '0.76rem', fontWeight: 800, marginBottom: '12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                <span><i className="fa-solid fa-print"></i> UKURAN PRINTER: <strong>THERMAL 80 MM (POS STANDARD)</strong></span>
+                                <span style={{ backgroundColor: '#2563eb', color: 'white', padding: '2px 8px', borderRadius: '12px', fontSize: '0.68rem', fontWeight: 900 }}>80mm POS Roll</span>
+                            </div>
+
+                            {/* Format Selector Bar */}
+                            <div style={{ display: 'flex', gap: '4px', backgroundColor: '#f1f5f9', padding: '4px', borderRadius: '12px', marginBottom: '16px', overflowX: 'auto' }}>
+                                <button
+                                    type="button"
+                                    onClick={() => setPrintFormat('card')}
+                                    style={{ flex: 1, minWidth: '90px', border: 'none', padding: '8px 4px', borderRadius: '8px', fontSize: '0.72rem', fontWeight: 800, backgroundColor: printFormat === 'card' ? '#0c294a' : 'transparent', color: printFormat === 'card' ? 'white' : '#64748b', cursor: 'pointer' }}
+                                >
+                                    <i className="fa-solid fa-file-pdf"></i> E-Tiket PDF
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setPrintFormat('full')}
+                                    style={{ flex: 1, minWidth: '90px', border: 'none', padding: '8px 4px', borderRadius: '8px', fontSize: '0.72rem', fontWeight: 800, backgroundColor: printFormat === 'full' ? '#0c294a' : 'transparent', color: printFormat === 'full' ? 'white' : '#64748b', cursor: 'pointer' }}
+                                >
+                                    <i className="fa-solid fa-layer-group"></i> Struk Lengkap
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setPrintFormat('invoice')}
+                                    style={{ flex: 1, minWidth: '70px', border: 'none', padding: '8px 4px', borderRadius: '8px', fontSize: '0.72rem', fontWeight: 800, backgroundColor: printFormat === 'invoice' ? '#0c294a' : 'transparent', color: printFormat === 'invoice' ? 'white' : '#64748b', cursor: 'pointer' }}
+                                >
+                                    <i className="fa-solid fa-file-invoice-dollar"></i> Invoice
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setPrintFormat('ticket')}
+                                    style={{ flex: 1, minWidth: '85px', border: 'none', padding: '8px 4px', borderRadius: '8px', fontSize: '0.72rem', fontWeight: 800, backgroundColor: printFormat === 'ticket' ? '#0c294a' : 'transparent', color: printFormat === 'ticket' ? 'white' : '#64748b', cursor: 'pointer' }}
+                                >
+                                    <i className="fa-solid fa-ticket"></i> Tiket Masuk
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setPrintFormat('rental')}
+                                    style={{ flex: 1, minWidth: '80px', border: 'none', padding: '8px 4px', borderRadius: '8px', fontSize: '0.72rem', fontWeight: 800, backgroundColor: printFormat === 'rental' ? '#0c294a' : 'transparent', color: printFormat === 'rental' ? 'white' : '#64748b', cursor: 'pointer' }}
+                                >
+                                    <i className="fa-solid fa-bookmark"></i> Kupon Sewa
+                                </button>
+                            </div>
+
+                            {/* Printable Container Area */}
+                            {printFormat === 'card' && (
+                                <div id="pdf-printable-area" style={{ border: '3px solid #0c294a', borderRadius: '18px', padding: '20px', backgroundColor: '#f8fafc' }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '2px solid #0c294a', paddingBottom: '12px', marginBottom: '16px' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                            <img src="assets/logo.png" alt="Logo" style={{ height: '42px' }} />
+                                            <div>
+                                                <h3 style={{ fontSize: '1rem', fontWeight: 900, color: '#0c294a', margin: 0 }}>WATERBOOM CIJOHO INDAH</h3>
+                                                <small style={{ color: '#1a73e8', fontWeight: 700 }}>E-TICKET RESMI PENGUNJUNG</small>
+                                            </div>
+                                        </div>
+                                        <span style={{ backgroundColor: '#d1fae5', color: '#047857', fontSize: '0.72rem', fontWeight: 900, padding: '4px 10px', borderRadius: '50px', border: '1px solid #6ee7b7' }}>
+                                            VALIDATED / LUNAS
+                                        </span>
+                                    </div>
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', fontSize: '0.85rem', marginBottom: '16px' }}>
+                                        <div>
+                                            <span style={{ color: '#64748b', fontSize: '0.72rem', display: 'block' }}>KODE BOOKING</span>
+                                            <strong style={{ fontSize: '1.1rem', color: '#1a73e8' }}>{pdfTicketData.code}</strong>
+                                        </div>
+                                        <div>
+                                            <span style={{ color: '#64748b', fontSize: '0.72rem', display: 'block' }}>TANGGAL KUNJUNGAN</span>
+                                            <strong>{pdfTicketData.date}</strong>
+                                        </div>
+                                        <div>
+                                            <span style={{ color: '#64748b', fontSize: '0.72rem', display: 'block' }}>NAMA PEMESAN</span>
+                                            <strong>{pdfTicketData.name || pdfTicketData.buyerName || 'Pengunjung'}</strong>
+                                        </div>
+                                        <div>
+                                            <span style={{ color: '#64748b', fontSize: '0.72rem', display: 'block' }}>NO. WHATSAPP</span>
+                                            <strong>{pdfTicketData.phone || pdfTicketData.buyerPhone || '-'}</strong>
+                                        </div>
+                                    </div>
+                                    <div style={{ borderTop: '1px dashed #cbd5e1', paddingTop: '10px', marginBottom: '16px' }}>
+                                        <span style={{ color: '#64748b', fontSize: '0.72rem', display: 'block', marginBottom: '6px' }}>RINCIAN ITEM & TOTAL:</span>
+                                        {pdfTicketData.qty > 0 && (
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', marginBottom: '4px' }}>
+                                                <span>{pdfTicketData.type} ({pdfTicketData.qty}x)</span>
+                                                <strong>Rp {(pdfTicketData.subtotal || (pdfTicketData.total - ((pdfTicketData.rentals?.ban || 0)*5000 + (pdfTicketData.rentals?.sepeda || 0)*15000 + (pdfTicketData.rentals?.gazebo || 0)*25000)))?.toLocaleString('id-ID')}</strong>
+                                            </div>
+                                        )}
+                                        {pdfTicketData.rentals?.ban > 0 && (
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.82rem', color: '#475569', marginBottom: '2px' }}>
+                                                <span>• Sewa Ban Renang ({pdfTicketData.rentals.ban}x)</span>
+                                                <span>Rp {(pdfTicketData.rentals.ban * (pdfTicketData.rentalsPrice?.ban || 5000)).toLocaleString('id-ID')}</span>
+                                            </div>
+                                        )}
+                                        {pdfTicketData.rentals?.sepeda > 0 && (
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.82rem', color: '#475569', marginBottom: '2px' }}>
+                                                <span>• Sewa Sepeda Air ({pdfTicketData.rentals.sepeda}x)</span>
+                                                <span>Rp {(pdfTicketData.rentals.sepeda * (pdfTicketData.rentalsPrice?.sepeda || 15000)).toLocaleString('id-ID')}</span>
+                                            </div>
+                                        )}
+                                        {pdfTicketData.rentals?.gazebo > 0 && (
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.82rem', color: '#475569', marginBottom: '2px' }}>
+                                                <span>• Sewa Gazebo Santai ({pdfTicketData.rentals.gazebo}x)</span>
+                                                <span>Rp {(pdfTicketData.rentals.gazebo * (pdfTicketData.rentalsPrice?.gazebo || 25000)).toLocaleString('id-ID')}</span>
+                                            </div>
+                                        )}
+                                        <div style={{ borderTop: '1px solid #cbd5e1', paddingTop: '6px', marginTop: '6px', display: 'flex', justifyContent: 'space-between', fontSize: '0.9rem', fontWeight: 900, color: '#0c294a' }}>
+                                            <span>TOTAL BAYAR</span>
+                                            <span>Rp {pdfTicketData.total?.toLocaleString('id-ID')}</span>
+                                        </div>
+                                    </div>
+                                    <div style={{ backgroundColor: 'white', border: '1px solid #cbd5e1', borderRadius: '12px', padding: '16px', textAlign: 'center' }}>
+                                        <div style={{ fontSize: '4.5rem', color: '#0c294a', lineHeight: 1 }}>
+                                            <i className="fa-solid fa-qrcode"></i>
+                                        </div>
+                                        <div style={{ letterSpacing: '3px', fontWeight: 900, color: '#475569', fontSize: '0.9rem', marginTop: '6px' }}>
+                                            {pdfTicketData.code}
+                                        </div>
+                                        <small style={{ color: '#94a3b8', fontSize: '0.7rem' }}>Tunjukkan barcode/QR code ini ke loket pintu masuk</small>
+                                    </div>
+                                </div>
+                            )}
+
+                            {printFormat !== 'card' && (
+                                <div id="printable-full-package" className="thermal-receipt-80mm" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                                    {/* 1. STRUK INVOICE PEMBAYARAN */}
+                                {(printFormat === 'full' || printFormat === 'invoice') && (
+                                    <div id="printable-invoice-only" className="thermal-receipt-80mm" style={{ border: '3px solid #000', borderRadius: '16px', padding: '18px', backgroundColor: '#ffffff', fontFamily: "'Courier New', Courier, monospace", color: '#000', fontSize: '0.82rem', lineHeight: '1.4' }}>
+                                        {/* HEADER BRAND & LOGO */}
+                                        <div style={{ textAlign: 'center', marginBottom: '8px' }}>
+                                            <h2 style={{ fontSize: '1.25rem', fontWeight: 900, margin: 0, letterSpacing: '-0.5px' }}>Cijoho Indah Waterboom</h2>
+                                            <small style={{ fontWeight: 800, fontSize: '0.72rem', textTransform: 'uppercase', display: 'block' }}>SERUNYA LIBURAN KELUARGA!</small>
+                                        </div>
+
+                                        <div style={{ borderTop: '2px solid #000', borderBottom: '2px solid #000', padding: '6px 0', margin: '8px 0', textAlign: 'center' }}>
+                                            <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 900 }}>💦 STRUK TIKET 💦</h3>
+                                            <div style={{ fontSize: '0.78rem', fontWeight: 700, marginTop: '2px' }}>Cijoho Indah Waterboom</div>
+                                            <div style={{ fontSize: '0.72rem', color: '#333' }}>Jl. Raya Cijoho No. 88, Cijoho - Tasikmalaya 46134</div>
+                                            <div style={{ fontSize: '0.72rem', color: '#333' }}>Telp. 0265-1234567</div>
+                                        </div>
+
+                                        {/* METADATA INFO */}
+                                        <div style={{ margin: '10px 0', fontSize: '0.8rem' }}>
+                                            <div style={{ display: 'grid', gridTemplateColumns: '100px 10px 1fr' }}>
+                                                <span>No. Transaksi</span><span>:</span><strong>{pdfTicketData.code}</strong>
+                                            </div>
+                                            <div style={{ display: 'grid', gridTemplateColumns: '100px 10px 1fr' }}>
+                                                <span>Tanggal</span><span>:</span><span>{pdfTicketData.date}</span>
+                                            </div>
+                                            <div style={{ display: 'grid', gridTemplateColumns: '100px 10px 1fr' }}>
+                                                <span>Waktu</span><span>:</span><span>{pdfTicketData.time || '10:15:32'}</span>
+                                            </div>
+                                            <div style={{ display: 'grid', gridTemplateColumns: '100px 10px 1fr' }}>
+                                                <span>Kasir</span><span>:</span><span>{pdfTicketData.cashierName || 'KASIR01'}</span>
+                                            </div>
+                                        </div>
+
+                                        {/* DETAIL PEMBELIAN TABLE */}
+                                        <div style={{ borderTop: '1px dashed #000', borderBottom: '1px dashed #000', padding: '8px 0', margin: '10px 0' }}>
+                                            <div style={{ fontWeight: 900, marginBottom: '6px', fontSize: '0.82rem' }}>DETAIL PEMBELIAN</div>
+                                            <table style={{ width: '100%', fontSize: '0.76rem', borderCollapse: 'collapse' }}>
+                                                <thead>
+                                                    <tr style={{ borderBottom: '1px solid #000', textAlign: 'left' }}>
+                                                        <th style={{ paddingBottom: '4px', width: '25px' }}>No.</th>
+                                                        <th style={{ paddingBottom: '4px' }}>Jenis Tiket / Service</th>
+                                                        <th style={{ paddingBottom: '4px', textAlign: 'center', width: '35px' }}>Qty</th>
+                                                        <th style={{ paddingBottom: '4px', textAlign: 'right' }}>Harga Satuan</th>
+                                                        <th style={{ paddingBottom: '4px', textAlign: 'right' }}>Total</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {pdfTicketData.qty > 0 && (
+                                                        <tr>
+                                                            <td style={{ paddingTop: '6px', verticalAlign: 'top' }}>1.</td>
+                                                            <td style={{ paddingTop: '6px', verticalAlign: 'top' }}>{pdfTicketData.type}</td>
+                                                            <td style={{ paddingTop: '6px', textAlign: 'center', verticalAlign: 'top' }}>{pdfTicketData.qty}</td>
+                                                            <td style={{ paddingTop: '6px', textAlign: 'right', verticalAlign: 'top' }}>Rp {((pdfTicketData.subtotal || pdfTicketData.total) / pdfTicketData.qty).toLocaleString('id-ID')}</td>
+                                                            <td style={{ paddingTop: '6px', textAlign: 'right', verticalAlign: 'top', fontWeight: 800 }}>Rp {pdfTicketData.subtotal?.toLocaleString('id-ID')}</td>
+                                                        </tr>
+                                                    )}
+                                                    {pdfTicketData.rentals?.ban > 0 && (
+                                                        <tr>
+                                                            <td style={{ paddingTop: '4px', verticalAlign: 'top' }}>{pdfTicketData.qty > 0 ? 2 : 1}.</td>
+                                                            <td style={{ paddingTop: '4px', verticalAlign: 'top' }}>Sewa Ban Renang</td>
+                                                            <td style={{ paddingTop: '4px', textAlign: 'center', verticalAlign: 'top' }}>{pdfTicketData.rentals.ban}</td>
+                                                            <td style={{ paddingTop: '4px', textAlign: 'right', verticalAlign: 'top' }}>Rp {(pdfTicketData.rentalsPrice?.ban || 5000).toLocaleString('id-ID')}</td>
+                                                            <td style={{ paddingTop: '4px', textAlign: 'right', verticalAlign: 'top', fontWeight: 800 }}>Rp {(pdfTicketData.rentals.ban * (pdfTicketData.rentalsPrice?.ban || 5000)).toLocaleString('id-ID')}</td>
+                                                        </tr>
+                                                    )}
+                                                    {pdfTicketData.rentals?.sepeda > 0 && (
+                                                        <tr>
+                                                            <td style={{ paddingTop: '4px', verticalAlign: 'top' }}>{(pdfTicketData.qty > 0 ? 1 : 0) + (pdfTicketData.rentals?.ban > 0 ? 1 : 0) + 1}.</td>
+                                                            <td style={{ paddingTop: '4px', verticalAlign: 'top' }}>Sewa Sepeda Air</td>
+                                                            <td style={{ paddingTop: '4px', textAlign: 'center', verticalAlign: 'top' }}>{pdfTicketData.rentals.sepeda}</td>
+                                                            <td style={{ paddingTop: '4px', textAlign: 'right', verticalAlign: 'top' }}>Rp {(pdfTicketData.rentalsPrice?.sepeda || 15000).toLocaleString('id-ID')}</td>
+                                                            <td style={{ paddingTop: '4px', textAlign: 'right', verticalAlign: 'top', fontWeight: 800 }}>Rp {(pdfTicketData.rentals.sepeda * (pdfTicketData.rentalsPrice?.sepeda || 15000)).toLocaleString('id-ID')}</td>
+                                                        </tr>
+                                                    )}
+                                                    {pdfTicketData.rentals?.gazebo > 0 && (
+                                                        <tr>
+                                                            <td style={{ paddingTop: '4px', verticalAlign: 'top' }}>{(pdfTicketData.qty > 0 ? 1 : 0) + (pdfTicketData.rentals?.ban > 0 ? 1 : 0) + (pdfTicketData.rentals?.sepeda > 0 ? 1 : 0) + 1}.</td>
+                                                            <td style={{ paddingTop: '4px', verticalAlign: 'top' }}>Sewa Gazebo Santai</td>
+                                                            <td style={{ paddingTop: '4px', textAlign: 'center', verticalAlign: 'top' }}>{pdfTicketData.rentals.gazebo}</td>
+                                                            <td style={{ paddingTop: '4px', textAlign: 'right', verticalAlign: 'top' }}>Rp {(pdfTicketData.rentalsPrice?.gazebo || 25000).toLocaleString('id-ID')}</td>
+                                                            <td style={{ paddingTop: '4px', textAlign: 'right', verticalAlign: 'top', fontWeight: 800 }}>Rp {(pdfTicketData.rentals.gazebo * (pdfTicketData.rentalsPrice?.gazebo || 25000)).toLocaleString('id-ID')}</td>
+                                                        </tr>
+                                                    )}
+                                                </tbody>
+                                            </table>
+                                        </div>
+
+                                        {/* TOTALS */}
+                                        <div style={{ borderBottom: '1px dashed #000', paddingBottom: '8px', marginBottom: '10px' }}>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '3px' }}>
+                                                <span>Subtotal</span>
+                                                <span>: Rp {pdfTicketData.total?.toLocaleString('id-ID')}</span>
+                                            </div>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '3px' }}>
+                                                <span>Biaya Layanan</span>
+                                                <span>: Rp 0</span>
+                                            </div>
+                                            <div style={{ borderTop: '1px solid #000', paddingTop: '4px', marginTop: '4px', display: 'flex', justifyContent: 'space-between', fontWeight: 900, fontSize: '0.92rem' }}>
+                                                <span>TOTAL BAYAR</span>
+                                                <span>: Rp {pdfTicketData.total?.toLocaleString('id-ID')}</span>
+                                            </div>
+                                        </div>
+
+                                        {/* FOOTER & KETENTUAN */}
+                                        <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '8px', fontSize: '0.7rem', alignItems: 'center', marginBottom: '10px' }}>
+                                            <div>
+                                                <strong style={{ fontSize: '0.78rem', display: 'block', marginBottom: '2px' }}>👥 TERIMA KASIH</strong>
+                                                <div>Selamat menikmati wahana Cijoho Indah Waterboom</div>
+                                            </div>
+                                            <div style={{ border: '1px solid #000', borderRadius: '6px', padding: '6px', fontSize: '0.64rem', lineHeight: '1.2' }}>
+                                                <strong style={{ display: 'block', textAlign: 'center', borderBottom: '1px solid #000', paddingBottom: '2px', marginBottom: '4px' }}>KETENTUAN</strong>
+                                                <ul style={{ margin: 0, paddingLeft: '12px' }}>
+                                                    <li>Tiket tidak dapat dikembalikan.</li>
+                                                    <li>Simpan struk di area kolam.</li>
+                                                    <li>Berlaku 1x masuk.</li>
+                                                </ul>
+                                            </div>
+                                        </div>
+
+                                        <div style={{ borderTop: '1px dashed #000', paddingTop: '6px', textAlign: 'center', fontSize: '0.72rem' }}>
+                                            <div style={{ marginBottom: '4px' }}>Follow us : <strong>@cijohoindahwaterboom</strong></div>
+                                            <strong style={{ fontSize: '0.76rem', textTransform: 'uppercase' }}>🌊 TERIMA KASIH ATAS KUNJUNGAN ANDA 🌊</strong>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {printFormat === 'full' && (
+                                    <div style={{ textTransform: 'uppercase', fontSize: '0.75rem', fontWeight: 900, color: '#000', textAlign: 'center', letterSpacing: '1px', padding: '8px 0', borderTop: '2px dashed #000', borderBottom: '2px dashed #000', margin: '10px 0', fontFamily: 'monospace' }}>
+                                        ✂ ---------------------- POTONG DI SINI ---------------------- ✂
+                                    </div>
+                                )}
+
+                                {/* 2. TIKET MASUK WAHANA (EXACT MATCH SAMPLE TICKET IMAGE) */}
+                                {(printFormat === 'full' || printFormat === 'ticket') && (
+                                    <div id="printable-ticket-only" className="thermal-receipt-80mm" style={{ border: '3px solid #000', borderRadius: '16px', padding: '18px', backgroundColor: '#ffffff', fontFamily: "'Courier New', Courier, monospace", color: '#000', fontSize: '0.82rem', lineHeight: '1.4' }}>
+                                        {/* HEADER BRAND & LOGO */}
+                                        <div style={{ textAlign: 'center', marginBottom: '8px' }}>
+                                            <h2 style={{ fontSize: '1.25rem', fontWeight: 900, margin: 0, letterSpacing: '-0.5px' }}>Cijoho Indah Waterboom</h2>
+                                            <small style={{ fontWeight: 800, fontSize: '0.72rem', textTransform: 'uppercase', display: 'block' }}>SERUNYA LIBURAN KELUARGA!</small>
+                                        </div>
+
+                                        <div style={{ borderTop: '2px dashed #000', borderBottom: '2px dashed #000', padding: '6px 0', margin: '8px 0', textAlign: 'center' }}>
+                                            <h3 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 900 }}>💦 TIKET MASUK 💦</h3>
+                                            <div style={{ fontSize: '0.8rem', fontWeight: 800, marginTop: '2px' }}>Cijoho Indah Waterboom</div>
+                                            <div style={{ fontSize: '0.72rem', color: '#333' }}>Jl. Raya Cijoho No. 88, Cijoho - Tasikmalaya 46134</div>
+                                            <div style={{ fontSize: '0.72rem', color: '#333' }}>Telp. 0265-1234567</div>
+                                        </div>
+
+                                        {/* METADATA INFO */}
+                                        <div style={{ borderBottom: '2px dashed #000', paddingBottom: '8px', marginBottom: '8px', fontSize: '0.82rem' }}>
+                                            <div style={{ display: 'grid', gridTemplateColumns: '110px 10px 1fr' }}>
+                                                <span>No. Transaksi</span><span>:</span><strong>{pdfTicketData.code}</strong>
+                                            </div>
+                                            <div style={{ display: 'grid', gridTemplateColumns: '110px 10px 1fr' }}>
+                                                <span>Tanggal</span><span>:</span><span>{pdfTicketData.date}</span>
+                                            </div>
+                                            <div style={{ display: 'grid', gridTemplateColumns: '110px 10px 1fr' }}>
+                                                <span>Waktu</span><span>:</span><span>{pdfTicketData.time || '10:15:32'}</span>
+                                            </div>
+                                            <div style={{ display: 'grid', gridTemplateColumns: '110px 10px 1fr' }}>
+                                                <span>Petugas Tiket</span><span>:</span><span>{pdfTicketData.cashierName || 'DEDI SAPUTRA'}</span>
+                                            </div>
+                                        </div>
+
+                                        {pdfTicketData.qty > 0 ? (
+                                            <>
+                                                {/* NOTICE BADGE */}
+                                                <div style={{ textAlign: 'center', borderBottom: '2px dashed #000', padding: '8px 0', marginBottom: '8px' }}>
+                                                    <div style={{ fontWeight: 900, fontSize: '0.88rem' }}>✦ TIKET BERLAKU UNTUK {pdfTicketData.qty > 1 ? `${pdfTicketData.qty} ORANG` : 'SATU ORANG'} ✦</div>
+                                                    <div style={{ fontWeight: 900, fontSize: '0.95rem', letterSpacing: '1px' }}>SEKALI PAKAI</div>
+                                                </div>
+
+                                                {/* FOOTER & BARCODE */}
+                                                <div style={{ textAlign: 'center', paddingTop: '4px' }}>
+                                                    <div style={{ fontWeight: 900, fontSize: '0.9rem' }}>💦 TERIMA KASIH 💦</div>
+                                                    <div style={{ fontSize: '0.78rem', marginBottom: '6px' }}>Selamat menikmati wahana Cijoho Indah Waterboom</div>
+                                                    <div style={{ fontSize: '1.2rem', lineHeight: '0.8', margin: '4px 0' }}>~~~~~~~~~~~~~~~</div>
+                                                    <div style={{ fontSize: '3rem', color: '#000', lineHeight: 1, marginTop: '6px' }}>
+                                                        <i className="fa-solid fa-barcode"></i>
+                                                    </div>
+                                                    <div style={{ fontSize: '0.88rem', fontWeight: 900, letterSpacing: '2px', marginTop: '2px' }}>{pdfTicketData.code}</div>
+                                                </div>
+                                            </>
+                                        ) : (
+                                            <div style={{ textAlign: 'center', padding: '12px 0', fontWeight: 800, fontSize: '0.82rem' }}>
+                                                <i>(Transaksi Ini Tidak Mencakup Tiket Masuk Wahana)</i>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+
+                                {printFormat === 'full' && (
+                                    <div style={{ textTransform: 'uppercase', fontSize: '0.75rem', fontWeight: 900, color: '#000', textAlign: 'center', letterSpacing: '1px', padding: '8px 0', borderTop: '2px dashed #000', borderBottom: '2px dashed #000', margin: '10px 0', fontFamily: 'monospace' }}>
+                                        ✂ ---------------------- POTONG DI SINI ---------------------- ✂
+                                    </div>
+                                )}
+
+                                {/* 3. KUPON PENUKARAN SEWA ADD-ON (TERPISAH PER ITEM / UNIT SOBEKAN) */}
+                                {(printFormat === 'full' || printFormat === 'rental') && (() => {
+                                    const rentalSources = pdfTicketData.rentals || pdfTicketData.details?.rentals || {};
+                                    const banQty = rentalSources.ban || 0;
+                                    const sepedaQty = rentalSources.sepeda || 0;
+                                    const gazeboQty = rentalSources.gazebo || 0;
+
+                                    const coupons = [];
+                                    if (banQty > 0) {
+                                        for (let i = 1; i <= banQty; i++) {
+                                            coupons.push({
+                                                id: `BAN-${i}`,
+                                                title: 'KUPON SEWA BAN RENANG',
+                                                itemName: 'Sewa Ban Renang',
+                                                code: `${pdfTicketData.code}-BAN${banQty > 1 ? `-${i}` : ''}`,
+                                                stand: 'STAND BAN RENANG',
+                                                index: i,
+                                                totalCount: banQty
+                                            });
+                                        }
+                                    }
+                                    if (sepedaQty > 0) {
+                                        for (let i = 1; i <= sepedaQty; i++) {
+                                            coupons.push({
+                                                id: `SPD-${i}`,
+                                                title: 'KUPON SEWA SEPEDA AIR',
+                                                itemName: 'Sewa Sepeda Air',
+                                                code: `${pdfTicketData.code}-SPD${sepedaQty > 1 ? `-${i}` : ''}`,
+                                                stand: 'STAND SEPEDA AIR',
+                                                index: i,
+                                                totalCount: sepedaQty
+                                            });
+                                        }
+                                    }
+                                    if (gazeboQty > 0) {
+                                        for (let i = 1; i <= gazeboQty; i++) {
+                                            coupons.push({
+                                                id: `GZB-${i}`,
+                                                title: 'KUPON SEWA GAZEBO SANTAI',
+                                                itemName: 'Sewa Gazebo Santai',
+                                                code: `${pdfTicketData.code}-GZB${gazeboQty > 1 ? `-${i}` : ''}`,
+                                                stand: 'STAND GAZEBO SANTAI',
+                                                index: i,
+                                                totalCount: gazeboQty
+                                            });
+                                        }
+                                    }
+
+                                    return (
+                                        <div id="printable-addon-only" className="thermal-receipt-80mm" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                                            {coupons.length > 0 ? (
+                                                coupons.map((coupon, idx) => (
+                                                    <React.Fragment key={coupon.id}>
+                                                        {idx > 0 && (
+                                                            <div style={{ textTransform: 'uppercase', fontSize: '0.72rem', fontWeight: 900, color: '#000', textAlign: 'center', letterSpacing: '1px', padding: '6px 0', borderTop: '2px dashed #000', borderBottom: '2px dashed #000', margin: '4px 0', fontFamily: 'monospace' }}>
+                                                                ✂ ---------------- SOBEK DI SINI ---------------- ✂
+                                                            </div>
+                                                        )}
+                                                        <div style={{ border: '3px solid #000', borderRadius: '16px', padding: '18px', backgroundColor: '#ffffff', fontFamily: "'Courier New', Courier, monospace", color: '#000', fontSize: '0.82rem', lineHeight: '1.4' }}>
+                                                            {/* HEADER BRAND & LOGO */}
+                                                            <div style={{ textAlign: 'center', marginBottom: '8px' }}>
+                                                                <h2 style={{ fontSize: '1.2rem', fontWeight: 900, margin: 0, letterSpacing: '-0.5px' }}>Cijoho Indah Waterboom</h2>
+                                                                <small style={{ fontWeight: 800, fontSize: '0.7rem', textTransform: 'uppercase', display: 'block' }}>SERUNYA LIBURAN KELUARGA!</small>
+                                                            </div>
+
+                                                            <div style={{ borderTop: '2px dashed #000', borderBottom: '2px dashed #000', padding: '6px 0', margin: '8px 0', textAlign: 'center' }}>
+                                                                <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 900 }}>💦 {coupon.title} 💦</h3>
+                                                                <div style={{ fontSize: '0.78rem', fontWeight: 800, marginTop: '2px' }}>Cijoho Indah Waterboom</div>
+                                                                <div style={{ fontSize: '0.7rem', color: '#333' }}>Jl. Raya Cijoho No. 88, Cijoho - Tasikmalaya 46134</div>
+                                                                <div style={{ fontSize: '0.7rem', color: '#333' }}>Telp. 0265-1234567</div>
+                                                            </div>
+
+                                                            {/* METADATA INFO */}
+                                                            <div style={{ borderBottom: '2px dashed #000', paddingBottom: '8px', marginBottom: '8px', fontSize: '0.8rem' }}>
+                                                                <div style={{ display: 'grid', gridTemplateColumns: '105px 10px 1fr' }}>
+                                                                    <span>No. Transaksi</span><span>:</span><strong>{pdfTicketData.code}</strong>
+                                                                </div>
+                                                                <div style={{ display: 'grid', gridTemplateColumns: '105px 10px 1fr' }}>
+                                                                    <span>Kode Kupon</span><span>:</span><strong>{coupon.code}</strong>
+                                                                </div>
+                                                                <div style={{ display: 'grid', gridTemplateColumns: '105px 10px 1fr' }}>
+                                                                    <span>Tanggal</span><span>:</span><span>{pdfTicketData.date}</span>
+                                                                </div>
+                                                                <div style={{ display: 'grid', gridTemplateColumns: '105px 10px 1fr' }}>
+                                                                    <span>Waktu</span><span>:</span><span>{pdfTicketData.time || '10:15:32'}</span>
+                                                                </div>
+                                                                <div style={{ display: 'grid', gridTemplateColumns: '105px 10px 1fr' }}>
+                                                                    <span>Petugas Stand</span><span>:</span><span>{pdfTicketData.cashierName || 'STAND01'}</span>
+                                                                </div>
+                                                            </div>
+
+                                                            {/* ITEM PENUKARAN PER UNIT */}
+                                                            <div style={{ borderBottom: '2px dashed #000', paddingBottom: '8px', marginBottom: '8px' }}>
+                                                                <div style={{ fontWeight: 900, marginBottom: '4px', fontSize: '0.82rem' }}>ITEM HAK SEWA:</div>
+                                                                <div style={{ fontSize: '0.88rem', fontWeight: 900, padding: '2px 0' }}>
+                                                                    • 1x {coupon.itemName} {coupon.totalCount > 1 ? `[Unit ${coupon.index}/${coupon.totalCount}]` : ''}
+                                                                </div>
+                                                                <div style={{ fontSize: '0.72rem', color: '#333', marginTop: '2px' }}>
+                                                                    Lokasi Stand: <strong>{coupon.stand}</strong>
+                                                                </div>
+                                                            </div>
+
+                                                            {/* NOTICE BADGE */}
+                                                            <div style={{ textAlign: 'center', borderBottom: '2px dashed #000', padding: '8px 0', marginBottom: '8px' }}>
+                                                                <div style={{ fontWeight: 900, fontSize: '0.8rem' }}>✦ SERAHKAN STRUK/KUPON INI KE PETUGAS {coupon.stand} ✦</div>
+                                                                <div style={{ fontWeight: 900, fontSize: '0.92rem', letterSpacing: '1px' }}>SEKALI TUKAR (DISOBEK)</div>
+                                                            </div>
+
+                                                            {/* FOOTER & BARCODE */}
+                                                            <div style={{ textAlign: 'center', paddingTop: '4px' }}>
+                                                                <div style={{ fontWeight: 900, fontSize: '0.88rem' }}>💦 TERIMA KASIH 💦</div>
+                                                                <div style={{ fontSize: '0.75rem', marginBottom: '6px' }}>Selamat menikmati wahana Cijoho Indah Waterboom</div>
+                                                                <div style={{ fontSize: '1.2rem', lineHeight: '0.8', margin: '4px 0' }}>~~~~~~~~~~~~~~~</div>
+                                                                <div style={{ fontSize: '2.8rem', color: '#000', lineHeight: 1, marginTop: '6px' }}>
+                                                                    <i className="fa-solid fa-barcode"></i>
+                                                                </div>
+                                                                <div style={{ fontSize: '0.85rem', fontWeight: 900, letterSpacing: '2px', marginTop: '2px' }}>{coupon.code}</div>
+                                                            </div>
+                                                        </div>
+                                                    </React.Fragment>
+                                                ))
+                                            ) : (
+                                                <div style={{ border: '2px solid #000', borderRadius: '12px', padding: '16px', backgroundColor: '#ffffff', textAlign: 'center', fontWeight: 800, fontSize: '0.82rem', fontFamily: 'monospace' }}>
+                                                    <i>(Tidak Ada Item Sewa Add-on Pada Transaksi Ini)</i>
+                                                </div>
+                                            )}
+                                        </div>
+                                    );
+                                })()}
+                            </div>
+                        )}
+
+                            {/* OPSI CETAK STRUK INTERAKTIF */}
+                            <div style={{ backgroundColor: '#f8fafc', border: '1.5px solid #cbd5e1', borderRadius: '16px', padding: '14px', marginBottom: '16px' }}>
+                                <label style={{ fontSize: '0.82rem', fontWeight: 900, color: '#0c294a', display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '10px' }}>
+                                    <i className="fa-solid fa-print" style={{ color: '#2563eb' }}></i> PILIH FORMAT CETAK DOKUMEN:
+                                </label>
+
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                                    <button
+                                        type="button"
+                                        onClick={() => triggerIsolatedPrint('card')}
+                                        style={{ backgroundColor: printFormat === 'card' ? '#0c294a' : 'white', color: printFormat === 'card' ? 'white' : '#0c294a', border: '1.5px solid #0c294a', padding: '11px 8px', borderRadius: '10px', fontSize: '0.78rem', fontWeight: 900, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', boxShadow: '0 2px 6px rgba(0,0,0,0.05)' }}
+                                    >
+                                        <i className="fa-solid fa-file-pdf" style={{ color: '#2563eb' }}></i> Cetak PDF E-Tiket
+                                    </button>
+
+                                    <button
+                                        type="button"
+                                        onClick={() => triggerIsolatedPrint('invoice')}
+                                        style={{ backgroundColor: printFormat === 'invoice' ? '#0c294a' : 'white', color: printFormat === 'invoice' ? 'white' : '#0c294a', border: '1.5px solid #0c294a', padding: '11px 8px', borderRadius: '10px', fontSize: '0.78rem', fontWeight: 900, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', boxShadow: '0 2px 6px rgba(0,0,0,0.05)' }}
+                                    >
+                                        <i className="fa-solid fa-file-invoice-dollar" style={{ color: '#eab308' }}></i> Cetak Invoice
+                                    </button>
+
+                                    <button
+                                        type="button"
+                                        onClick={() => triggerIsolatedPrint('ticket')}
+                                        style={{ backgroundColor: printFormat === 'ticket' ? '#047857' : 'white', color: printFormat === 'ticket' ? 'white' : '#047857', border: '1.5px solid #047857', padding: '11px 8px', borderRadius: '10px', fontSize: '0.78rem', fontWeight: 900, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', boxShadow: '0 2px 6px rgba(0,0,0,0.05)' }}
+                                    >
+                                        <i className="fa-solid fa-ticket" style={{ color: '#10b981' }}></i> Cetak Tiket Masuk
+                                    </button>
+
+                                    <button
+                                        type="button"
+                                        onClick={() => triggerIsolatedPrint('rental')}
+                                        style={{ backgroundColor: printFormat === 'rental' ? '#b45309' : 'white', color: printFormat === 'rental' ? 'white' : '#b45309', border: '1.5px solid #b45309', padding: '11px 8px', borderRadius: '10px', fontSize: '0.78rem', fontWeight: 900, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', boxShadow: '0 2px 6px rgba(0,0,0,0.05)' }}
+                                    >
+                                        <i className="fa-solid fa-bookmark" style={{ color: '#f59e0b' }}></i> Cetak Struk Add-On
+                                    </button>
+                                </div>
+                            </div>
+
+                            {/* Action Buttons */}
+                            <div style={{ display: 'flex', gap: '10px', marginTop: '16px' }}>
+                                <button
+                                    type="button"
+                                    onClick={() => triggerIsolatedPrint(printFormat)}
+                                    style={{ flex: 1, backgroundColor: '#0c294a', color: 'white', border: 'none', padding: '13px', borderRadius: '12px', fontWeight: 900, fontSize: '0.88rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', boxShadow: '0 4px 12px rgba(12, 41, 74, 0.2)' }}
+                                >
+                                    <i className="fa-solid fa-print"></i> Cetak PDF ({printFormat.toUpperCase()})
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setShowPDFTicketModal(false)}
+                                    style={{ backgroundColor: '#f1f5f9', color: '#475569', border: '1px solid #cbd5e1', padding: '13px 18px', borderRadius: '12px', fontWeight: 800, fontSize: '0.85rem', cursor: 'pointer' }}
+                                >
+                                    Selesai
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* MODAL CETAK LAPORAN REKAPITULASI SHIFT KASIR (MAJOO/MOJO POS STYLE) */}
+            {showPrintReportModal && (
+                <div className="v-modal-backdrop" onClick={() => setShowPrintReportModal(false)}>
+                    <div className="v-modal-card fade-in" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '440px', backgroundColor: 'white', borderRadius: '24px' }}>
+                        <div className="v-modal-head" style={{ backgroundColor: '#0c294a', color: 'white', borderRadius: '24px 24px 0 0' }}>
+                            <h4 style={{ color: 'white', display: 'flex', alignItems: 'center', gap: '8px', margin: 0, fontSize: '1rem', fontWeight: 900 }}>
+                                <i className="fa-solid fa-print" style={{ color: '#60a5fa' }}></i> Struk Laporan Kasir Shift
+                            </h4>
+                            <button onClick={() => setShowPrintReportModal(false)} style={{ color: 'white', background: 'none', border: 'none', fontSize: '1.4rem', cursor: 'pointer' }}>&times;</button>
+                        </div>
+
+                        <div className="v-modal-body" style={{ padding: '20px' }}>
+                            <div id="shift-report-printable" style={{ border: '2px solid #0c294a', borderRadius: '16px', padding: '16px', backgroundColor: '#fff', fontFamily: 'monospace' }}>
+                                <div style={{ textAlign: 'center', borderBottom: '1px dashed #0c294a', paddingBottom: '10px', marginBottom: '12px' }}>
+                                    <h3 style={{ fontSize: '1.1rem', fontWeight: 900, color: '#0c294a', margin: 0 }}>WATERBOOM CIJOHO INDAH</h3>
+                                    <small style={{ display: 'block', color: '#64748b', fontWeight: 700 }}>LAPORAN SETORAN & SHIFT KASIR</small>
+                                    <small style={{ color: '#047857', fontWeight: 900, fontSize: '0.75rem' }}>[ SHIFT CLOSING REPORT ]</small>
+                                </div>
+
+                                <div style={{ fontSize: '0.8rem', lineHeight: '1.4', marginBottom: '10px' }}>
+                                    <div><strong>Tanggal:</strong> {selectedReportDate}</div>
+                                    <div><strong>Petugas Kasir:</strong> Petugas Kasir 1</div>
+                                    <div><strong>Waktu Cetak:</strong> {new Date().toLocaleTimeString('id-ID')}</div>
+                                </div>
+
+                                <div style={{ borderTop: '1px dashed #cbd5e1', borderBottom: '1px dashed #cbd5e1', padding: '8px 0', margin: '8px 0', fontSize: '0.8rem' }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+                                        <span>Total Transaksi:</span>
+                                        <strong>{todayTransactions.length} Transaksi</strong>
+                                    </div>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+                                        <span>Total Tiket Terjual:</span>
+                                        <strong>{todayTicketsCount} Orang</strong>
+                                    </div>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+                                        <span>Total Ban Tersewa:</span>
+                                        <strong>{todayBanCount} Unit</strong>
+                                    </div>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+                                        <span>Total Sepeda Air Tersewa:</span>
+                                        <strong>{todaySepedaCount} Unit</strong>
+                                    </div>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+                                        <span>Total Gazebo Tersewa:</span>
+                                        <strong>{todayGazeboCount} Unit</strong>
+                                    </div>
+                                </div>
+
+                                <div style={{ fontSize: '0.82rem', marginBottom: '12px' }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', color: '#166534', fontWeight: 800 }}>
+                                        <span>SETORAN TUNAI (CASH):</span>
+                                        <span>Rp {todayCashRev.toLocaleString('id-ID')}</span>
+                                    </div>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', color: '#2563eb', fontWeight: 800 }}>
+                                        <span>TOTAL QRIS / TRANSFER:</span>
+                                        <span>Rp {todayQrisRev.toLocaleString('id-ID')}</span>
+                                    </div>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', color: '#0c294a', fontWeight: 900, fontSize: '0.95rem', marginTop: '6px', paddingTop: '6px', borderTop: '1px dashed #cbd5e1' }}>
+                                        <span>TOTAL GROSS OMSET:</span>
+                                        <span>Rp {todayRevenue.toLocaleString('id-ID')}</span>
+                                    </div>
+                                </div>
+
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', textAlign: 'center', marginTop: '16px', paddingTop: '10px', borderTop: '1px dashed #cbd5e1', fontSize: '0.72rem' }}>
+                                    <div>
+                                        <div>Kasir Operasional</div>
+                                        <div style={{ height: '40px' }}></div>
+                                        <strong>( Petugas Kasir 1 )</strong>
+                                    </div>
+                                    <div>
+                                        <div>Supervisor / Manager</div>
+                                        <div style={{ height: '40px' }}></div>
+                                        <strong>( Admin Waterboom )</strong>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div style={{ display: 'flex', gap: '10px', marginTop: '16px' }}>
+                                <button
+                                    type="button"
+                                    onClick={() => window.print()}
+                                    style={{ flex: 1, backgroundColor: '#0c294a', color: 'white', border: 'none', padding: '13px', borderRadius: '12px', fontWeight: 900, fontSize: '0.88rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
+                                >
+                                    <i className="fa-solid fa-print"></i> Cetak Laporan Kasir
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setShowPrintReportModal(false)}
+                                    style={{ backgroundColor: '#f1f5f9', color: '#475569', border: '1px solid #cbd5e1', padding: '13px 18px', borderRadius: '12px', fontWeight: 800, fontSize: '0.85rem', cursor: 'pointer' }}
+                                >
+                                    Selesai
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Copy Toast Notification */}
+            {copyToast && (
+                <div style={{
+                    position: 'fixed',
+                    bottom: '80px',
+                    left: '50%',
+                    transform: 'translateX(-50%)',
+                    backgroundColor: '#0c294a',
+                    color: 'white',
+                    padding: '10px 22px',
+                    borderRadius: '30px',
+                    fontSize: '0.85rem',
+                    fontWeight: 800,
+                    zIndex: 10000,
+                    boxShadow: '0 4px 15px rgba(0,0,0,0.25)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px'
+                }}>
+                    <i className="fa-solid fa-circle-check" style={{ color: '#25D366', fontSize: '1.1rem' }}></i>
+                    <span>{copyToast}</span>
                 </div>
             )}
         </div>

@@ -4502,33 +4502,53 @@ img {
 }
 
 .quick-login-buttons {
-    display: flex;
-    gap: 12px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
 }
 
 .btn-quick-fill {
-    flex: 1;
-    height: 40px;
-    border-radius: 10px;
+    padding: 10px 8px;
+    min-height: 48px;
+    border-radius: 12px;
     border: 1.5px solid #cbd5e1;
     background-color: white;
-    font-size: 0.85rem;
+    font-size: 0.82rem;
     font-weight: 800;
     cursor: pointer;
     display: flex;
+    flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 6px;
-    transition: all 0.2s;
+    gap: 2px;
+    transition: all 0.2s ease;
+}
+
+.btn-quick-fill:hover {
+    background-color: #f1f5f9;
+    border-color: #0c294a;
+    transform: translateY(-1px);
 }
 
 .btn-quick-fill.admin {
-    color: #475569;
+    color: #0c294a;
 }
 
-.btn-quick-fill.notif-btn:hover {
-    background-color: #f8fafc;
-    border-color: #cbd5e1;
+.btn-quick-fill.kasir {
+    color: #047857;
+}
+
+.btn-quick-label {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-weight: 800;
+}
+
+.btn-quick-email {
+    font-size: 0.68rem;
+    color: #64748b;
+    font-weight: 600;
 }
 
 /* Instagram-Style Account Switcher Dropdown */
@@ -8310,9 +8330,57 @@ img {
     }
 
     .login-glass-card {
-        width: 90% !important;
-        padding: 24px 18px !important;
+        width: 95% !important;
+        max-width: 440px !important;
+        padding: 28px 20px !important;
+        border-radius: 24px !important;
     }
+
+@media (max-width: 576px) {
+    .login-page-container {
+        padding: 12px !important;
+        min-height: 100dvh;
+    }
+    
+    .login-glass-card {
+        width: 100% !important;
+        max-width: 100% !important;
+        padding: 22px 14px !important;
+        border-radius: 20px !important;
+    }
+
+    .login-header h2 {
+        font-size: 1.15rem !important;
+    }
+
+    .login-role-tabs {
+        padding: 4px !important;
+        gap: 4px !important;
+    }
+
+    .role-tab-btn {
+        padding: 9px 6px !important;
+        font-size: 0.78rem !important;
+    }
+
+    .quick-login-buttons {
+        grid-template-columns: 1fr 1fr !important;
+        gap: 6px !important;
+    }
+
+    .btn-quick-fill {
+        padding: 8px 4px !important;
+        min-height: 44px !important;
+    }
+
+    .btn-quick-label {
+        font-size: 0.76rem !important;
+    }
+
+    .btn-quick-email {
+        font-size: 0.62rem !important;
+    }
+}
 
     .superadmin-main {
         padding: 12px !important;
@@ -9460,24 +9528,119 @@ body,
     color: #60a5fa !important;
 }
 
-/* Printable Area CSS for E-Tiket PDF and Thermal Receipt */
+/* Printable PDF Card & Thermal Receipt Precision Printer Styles */
 @media print {
+    @page {
+        margin: 6mm;
+        size: auto;
+    }
+
     body * {
         visibility: hidden !important;
     }
-    #pdf-printable-area, #pdf-printable-area *,
-    #thermal-receipt-printable, #thermal-receipt-printable * {
+
+    /* 1. Thermal POS Receipts & Ticket Cards */
+    .thermal-receipt-80mm {
+        font-family: 'Courier New', Courier, monospace !important;
+        color: #000000 !important;
+        background: #ffffff !important;
+        width: 76mm !important;
+        max-width: 76mm !important;
+        margin: 0 auto !important;
+        box-shadow: none !important;
+        font-size: 11px !important;
+        line-height: 1.3 !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+    }
+
+    body.print-mode-invoice #printable-invoice-only,
+    body.print-mode-invoice #printable-invoice-only *,
+    body.print-mode-ticket #printable-ticket-only,
+    body.print-mode-ticket #printable-ticket-only *,
+    body.print-mode-rental #printable-addon-only,
+    body.print-mode-rental #printable-addon-only *,
+    body.print-mode-full #printable-full-package,
+    body.print-mode-full #printable-full-package *,
+    body:not([class*="print-mode-"]) #thermal-receipt-printable,
+    body:not([class*="print-mode-"]) #thermal-receipt-printable *,
+    body:not([class*="print-mode-"]) #shift-report-printable,
+    body:not([class*="print-mode-"]) #shift-report-printable * {
         visibility: visible !important;
     }
-    #pdf-printable-area, #thermal-receipt-printable {
-        position: absolute !important;
-        left: 0 !important;
-        top: 0 !important;
-        width: 100% !important;
-        border: none !important;
-        box-shadow: none !important;
-        margin: 0 !important;
-        padding: 10px !important;
-        background: white !important;
+
+    /* Individual Ticket Containers: Strictly enforce 3px solid black border box & 16px rounded corners */
+    #printable-invoice-only,
+    #printable-ticket-only,
+    #thermal-receipt-printable,
+    #shift-report-printable,
+    #printable-addon-only > div {
+        border: 3px solid #000000 !important;
+        border-radius: 16px !important;
+        padding: 18px !important;
+        background-color: #ffffff !important;
+        box-sizing: border-box !important;
+        outline: none !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
     }
-}
+
+    body.print-mode-invoice #printable-invoice-only,
+    body.print-mode-ticket #printable-ticket-only,
+    body:not([class*="print-mode-"]) #thermal-receipt-printable,
+    body:not([class*="print-mode-"]) #shift-report-printable {
+        position: relative !important;
+        left: auto !important;
+        top: 0 !important;
+        transform: none !important;
+        margin: 6px auto !important;
+        width: 76mm !important;
+        max-width: 76mm !important;
+    }
+
+    body.print-mode-rental #printable-addon-only,
+    body.print-mode-full #printable-full-package {
+        position: relative !important;
+        left: auto !important;
+        top: 0 !important;
+        transform: none !important;
+        margin: 6px auto !important;
+        width: 76mm !important;
+        max-width: 76mm !important;
+        border: none !important;
+        background: transparent !important;
+    }
+
+    /* 2. Official E-Ticket PDF Card (Standard PDF / Document Print Format) */
+    body.print-mode-pdf-card #pdf-printable-area,
+    body.print-mode-pdf-card #pdf-printable-area *,
+    body:not([class*="print-mode-"]) #pdf-printable-area,
+    body:not([class*="print-mode-"]) #pdf-printable-area * {
+        visibility: visible !important;
+    }
+
+    body.print-mode-pdf-card #pdf-printable-area,
+    body:not([class*="print-mode-"]) #pdf-printable-area {
+        position: relative !important;
+        left: auto !important;
+        top: 0 !important;
+        transform: none !important;
+        width: 100% !important;
+        max-width: 580px !important;
+        margin: 10px auto !important;
+        padding: 24px !important;
+        border: 3px solid #0c294a !important;
+        border-radius: 18px !important;
+        background-color: #ffffff !important;
+        box-shadow: none !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+        box-sizing: border-box !important;
+    }
+
+    body.print-mode-pdf-card #pdf-printable-area div,
+    body:not([class*="print-mode-"]) #pdf-printable-area div {
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+    }
+}

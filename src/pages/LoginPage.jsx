@@ -128,27 +128,34 @@ export default function LoginPage() {
                 <div className="decor-circle circle-2"></div>
             </div>
             
-            <div className="login-glass-card fade-in" style={{ maxWidth: '440px' }}>
+            <div className="login-glass-card fade-in">
                 <div className="login-header">
-                    <h2>PORTAL MASUK STAF & ADMIN</h2>
-                    <p>Waterboom Cijoho Indah</p>
+                    <img src="assets/logo.png" alt="Waterboom Cijoho Indah" className="login-logo-img" style={{ height: '48px', width: 'auto', marginBottom: '8px', objectFit: 'contain' }} />
+                    <h2 style={{ fontSize: 'clamp(1.15rem, 4.5vw, 1.45rem)', fontWeight: 900, color: '#0c294a', margin: 0, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                        PORTAL MASUK STAF & ADMIN
+                    </h2>
+                    <p style={{ fontSize: '0.85rem', color: '#64748b', fontWeight: 600, marginTop: '2px', marginBottom: 0 }}>
+                        Waterboom Cijoho Indah
+                    </p>
                 </div>
 
                 {/* Role Switcher Tabs */}
-                <div className="login-role-tabs" style={{ marginBottom: '20px' }}>
+                <div className="login-role-tabs">
                     <button 
                         type="button"
                         className={`role-tab-btn ${email.includes('admin') ? 'active' : ''}`}
                         onClick={() => handleRoleSwitch('admin')}
                     >
-                        <i className="fa-solid fa-user-shield"></i> Portal Admin
+                        <i className="fa-solid fa-user-shield"></i>
+                        <span>Portal Admin</span>
                     </button>
                     <button 
                         type="button"
                         className={`role-tab-btn ${email.includes('kasir') ? 'active' : ''}`}
                         onClick={() => handleRoleSwitch('kasir')}
                     >
-                        <i className="fa-solid fa-cash-register"></i> Portal Kasir
+                        <i className="fa-solid fa-cash-register"></i>
+                        <span>Portal Kasir</span>
                     </button>
                 </div>
 
@@ -190,13 +197,14 @@ export default function LoginPage() {
                                 type="button" 
                                 className="password-toggle-btn"
                                 onClick={() => setShowPassword(!showPassword)}
+                                aria-label="Toggle Password Visibility"
                             >
                                 <i className={showPassword ? "fa-regular fa-eye-slash" : "fa-regular fa-eye"}></i>
                             </button>
                         </div>
                     </div>
 
-                    <button type="submit" className="btn-login-submit" disabled={isLoading} style={{ height: '48px', fontSize: '0.95rem', fontWeight: 800 }}>
+                    <button type="submit" className="btn-login-submit" disabled={isLoading} style={{ minHeight: '48px', fontSize: '0.92rem', fontWeight: 900 }}>
                         {isLoading ? (
                             <>
                                 <span className="login-spinner"></span> Memproses Masuk...
@@ -210,19 +218,23 @@ export default function LoginPage() {
                 </form>
 
                 <div className="quick-login-divider">
-                    <span>Opsi Auto-Fill Cepat (Klik & Masuk)</span>
+                    <span>Opsi Auto-Fill Cepat (Klik &amp; Masuk)</span>
                 </div>
 
-                <div className="quick-login-buttons" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '8px' }}>
-                    <button type="button" className="btn-quick-fill admin" onClick={() => quickFill('admin')} style={{ padding: '10px' }}>
-                        <i className="fa-solid fa-user-shield"></i> Fill Admin (admin@cijoho.com)
+                <div className="quick-login-buttons">
+                    <button type="button" className="btn-quick-fill admin" onClick={() => quickFill('admin')}>
+                        <i className="fa-solid fa-user-shield"></i>
+                        <span className="btn-quick-label">Fill Admin</span>
+                        <small className="btn-quick-email">(admin@cijoho.com)</small>
                     </button>
-                    <button type="button" className="btn-quick-fill kasir" onClick={() => quickFill('kasir')} style={{ padding: '10px' }}>
-                        <i className="fa-solid fa-cash-register"></i> Fill Kasir (kasir@cijoho.com)
+                    <button type="button" className="btn-quick-fill kasir" onClick={() => quickFill('kasir')}>
+                        <i className="fa-solid fa-cash-register"></i>
+                        <span className="btn-quick-label">Fill Kasir</span>
+                        <small className="btn-quick-email">(kasir@cijoho.com)</small>
                     </button>
                 </div>
 
-                <div className="login-footer-links" style={{ marginTop: '20px' }}>
+                <div className="login-footer-links">
                     <Link to="/" className="back-to-home-link">
                         <i className="fa-solid fa-arrow-left"></i> Kembali ke Beranda Utama
                     </Link>
