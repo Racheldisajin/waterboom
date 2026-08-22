@@ -37,6 +37,7 @@ const isDateInRange = (itemDateStr, startISO, endISO) => {
 
 export default function AdminDashboard() {
     const [history, setHistory] = useState([]);
+    const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedFilter, setSelectedFilter] = useState('all');
     
@@ -731,13 +732,48 @@ export default function AdminDashboard() {
 
     return (
         <div className="superadmin-dashboard-container">
+            {/* Mobile Sidebar Backdrop Overlay */}
+            {isMobileSidebarOpen && (
+                <div 
+                    className="mobile-sidebar-backdrop" 
+                    onClick={() => setIsMobileSidebarOpen(false)} 
+                />
+            )}
+
+            {/* Mobile Top Navigation Header */}
+            <div className="mobile-admin-topbar">
+                <button 
+                    type="button" 
+                    className="mobile-admin-hamburger-btn"
+                    onClick={() => setIsMobileSidebarOpen(!isMobileSidebarOpen)}
+                    aria-label="Buka Navigasi Mobile"
+                >
+                    <i className="fa-solid fa-bars"></i>
+                </button>
+                <div className="mobile-admin-brand">
+                    <img src="assets/logo.png" alt="Logo" style={{ height: '26px' }} />
+                    <span>{systemSettings.businessName}</span>
+                </div>
+                <div className="mobile-admin-badge" style={{ backgroundColor: currentAccount.badgeColor }}>
+                    <i className={`fa-solid ${currentAccount.avatarIcon}`}></i>
+                </div>
+            </div>
+
             {/* 1. LEFT SIDEBAR */}
-            <aside className="superadmin-sidebar">
-                <div className="sidebar-brand-header">
+            <aside className={`superadmin-sidebar ${isMobileSidebarOpen ? 'mobile-open' : ''}`}>
+                <div className="sidebar-brand-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <div className="brand-title-wrap" style={{ marginLeft: 0 }}>
                         <span className="brand-name">{systemSettings.businessName}</span>
                         <span className="brand-loc">PORTAL UTAMA</span>
                     </div>
+                    <button 
+                        type="button"
+                        className="mobile-sidebar-close-btn"
+                        onClick={() => setIsMobileSidebarOpen(false)}
+                        style={{ background: 'none', border: 'none', color: '#94a3b8', fontSize: '1.2rem', cursor: 'pointer', padding: '4px' }}
+                    >
+                        <i className="fa-solid fa-xmark"></i>
+                    </button>
                 </div>
                 <div className="sidebar-profile-card">
                     <div className="profile-avatar-circle" style={{ backgroundColor: currentAccount.badgeColor }}>
