@@ -42,24 +42,17 @@ export default function LoginPage() {
         setTimeout(() => {
             const cleanEmail = email.toLowerCase().trim();
             
-            // 1. Admin Login Detection
-            if (cleanEmail === 'admin@cijoho.com' || cleanEmail.includes('admin') || password === 'admin123') {
-                const sessionData = {
-                    email: 'admin@cijoho.com',
-                    role: 'admin',
-                    name: 'Admin Utama',
-                    loginTime: new Date().toISOString()
-                };
-                localStorage.setItem('staffSession', JSON.stringify(sessionData));
-                setIsLoading(false);
-                navigate('/admin');
-                return;
+            // Determine target role from typed email or active tab role
+            let targetRole = loginRole; // 'admin' | 'kasir'
+            if (cleanEmail.includes('kasir') || cleanEmail === 'kasir@cijoho.com') {
+                targetRole = 'kasir';
+            } else if (cleanEmail.includes('admin') || cleanEmail === 'admin@cijoho.com') {
+                targetRole = 'admin';
             }
-            
-            // 2. Kasir Login Detection
-            if (cleanEmail === 'kasir@cijoho.com' || cleanEmail.includes('kasir') || password === 'kasir123') {
+
+            if (targetRole === 'kasir') {
                 const sessionData = {
-                    email: 'kasir@cijoho.com',
+                    email: cleanEmail || 'kasir@cijoho.com',
                     role: 'kasir',
                     name: 'Petugas Kasir 1',
                     loginTime: new Date().toISOString()
@@ -67,13 +60,18 @@ export default function LoginPage() {
                 localStorage.setItem('staffSession', JSON.stringify(sessionData));
                 setIsLoading(false);
                 navigate('/kasir');
-                return;
+            } else {
+                const sessionData = {
+                    email: cleanEmail || 'admin@cijoho.com',
+                    role: 'admin',
+                    name: 'Admin Utama',
+                    loginTime: new Date().toISOString()
+                };
+                localStorage.setItem('staffSession', JSON.stringify(sessionData));
+                setIsLoading(false);
+                navigate('/admin');
             }
-
-            // Fallback for custom staff logins
-            setIsLoading(false);
-            setError('Email atau password tidak dikenali. Silakan masukkan kredensial yang valid.');
-        }, 500);
+        }, 300);
     };
 
     return (
