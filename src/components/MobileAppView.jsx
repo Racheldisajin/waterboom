@@ -156,12 +156,12 @@ export default function MobileAppView({ onOpenBooking, isCashierMode = false }) 
 
             const { data, error } = await supabase.from('transactions').insert(rows);
             if (error) {
-                console.warn('Simpan Supabase dilewati (menggunakan penyimpanan lokal):', error.message);
+                console.warn('Simpan Supabase dilewati/gagal:', error.message);
                 return false;
             }
             return true;
         } catch (err) {
-            console.warn('Error koneksi Supabase (menggunakan penyimpanan lokal):', err.message);
+            console.warn('Error koneksi Supabase:', err.message);
             return false;
         }
     };
@@ -195,6 +195,88 @@ export default function MobileAppView({ onOpenBooking, isCashierMode = false }) 
                 total_price: subtotal
             });
         }
+        if (sewaBan > 0) {
+            items.push({
+                ticket_type: 'ban',
+                quantity: sewaBan,
+                total_price: sewaBan * (PRICES.rentals?.ban || 10000)
+            });
+        }
+        if (sewaSepeda > 0) {
+            items.push({
+                ticket_type: 'angsa',
+                quantity: sewaSepeda,
+                total_price: sewaSepeda * (PRICES.rentals?.sepeda || 25000)
+            });
+        }
+        if (sewaGazebo > 0) {
+            items.push({
+                ticket_type: 'gazebo',
+                quantity: sewaGazebo,
+                total_price: sewaGazebo * (PRICES.rentals?.gazebo || 30000)
+            });
+        }
+
+        const paymentMethodStr = paymentMethod === 'cash' ? 'tunai' : 'qris';
+
+        // Simpan ke Supabase
+        saveTransactionToSupabase(
+            receiptCode,
+            items,
+            paymentMethodStr,
+            'Petugas Kasir 1',
+            'Pengunjung Offline',
+            'lunas',
+            'offline'
+        );
+
+        // Simpan juga ke localStorage untuk history lokal
+        const newReceipt = {
+            code: receiptCode,
+            date: visitDate,
+            time: new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }),
+            cashierName: 'Petugas Kasir 1',
+            type: typeName,
+            qty: ticketQty,
+            ticketPrice: ticketPrice,
+            subtotal: subtotal,
+            rentals: { ban: sewaBan, sepeda: sewaSepeda, gazebo: sewaGazebo },
+            total: grandTotal,
+            paymentMethod: paymentMethodStr === 'tunai' ? 'Tunai (Cash)' : 'QRIS / EDC',
+            paidAmount: paidAmount,
+            change: change >= 0 ? change : 0,
+            status: 'Lunas - Struk Loket Fisik'
+        };
+
+        const updatedHistory = [newReceipt, ...historyList];
+        setHistoryList(updatedHistory);
+        localStorage.setItem('waterboom_sales_history', JSON.stringify(updatedHistory));
+        setOfflineReceiptData(newReceipt);
+
+        setShowOfflinePOSModal(false);
+        setShowOfflineReceiptModal(true);
+    };
+
+    // --- WHATSAPP ONLINE ORDER (MODIFIED) ---
+    const handleConfirmWhatsAppOrder = async (e) => {
+        e.preventDefault();
+
+        if (!buyerName.trim()) {
+            alert('Silakan masukkan Nama Pemesan.');
+            return;
+        }
+
+        const bookingCode = 'WCI-' + Math.floor(100000 + Math.random() * 900000);
+        const typeName = selectedTicket === 'reguler' ? 'Tiket Reguler' : selectedTicket === 'rombongan' ? 'Tiket Rombongan' : 'Kursus Renang';
+
+        // Items untuk Supabase
+        const items = [];
+        items.push({
+            ticket_type: selectedTicket,
+            quantity: ticketQty,
+            total_price: subtotal
+        });
+>>>>>>> secondary/main
         if (sewaBan > 0) {
             items.push({
                 ticket_type: 'ban',
