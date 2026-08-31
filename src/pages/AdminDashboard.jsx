@@ -209,6 +209,7 @@ export default function AdminDashboard() {
     const [showProfileDropdown, setShowProfileDropdown] = useState(false);
     const [showNotifDropdown, setShowNotifDropdown] = useState(false);
     const [selectedPDFTicket, setSelectedPDFTicket] = useState(null);
+    const [isPrinting, setIsPrinting] = useState(false);
 
     // Notifications state
     const [notifications, setNotifications] = useState([
@@ -330,6 +331,20 @@ export default function AdminDashboard() {
     const [newUser, setNewUser] = useState({ name: '', email: '', role: 'kasir', password: '' });
     const [priceEdit, setPriceEdit] = useState({ tickets: {}, rentals: {} });
     const [settingsEdit, setSettingsEdit] = useState({});
+
+    // Booking Jam Tiket Modal State
+    const [showAddBookingModal, setShowAddBookingModal] = useState(false);
+    const [newBooking, setNewBooking] = useState({
+        name: '',
+        phone: '',
+        date: new Date().toISOString().split('T')[0],
+        time: '09:30 WIB',
+        category: 'Beli', // Beli | Sewa
+        type: 'Tiket Reguler',
+        qty: 1,
+        channel: 'Online',
+        method: 'QRIS'
+    });
 
     const navigate = useNavigate();
 
@@ -728,15 +743,80 @@ export default function AdminDashboard() {
         }
     };
 
-    // Filter log list (combining Date Range Filter + Search Query & Offline/Online Filter)
+    // Add New Booking Ticket Handler (Admin)
+    const handleAddBooking = (e) => {
+        if (e && e.preventDefault) e.preventDefault();
+        const bookingCode = 'WCI-' + Math.floor(100000 + Math.random() * 900000);
+        const unitPrices = {
+            'Tiket Reguler': prices.tickets.reguler || 20000,
+            'Tiket Rombongan': prices.tickets.rombongan || 17000,
+            'Kursus Renang': prices.tickets.kursus || 15000,
+            'Sewa Ban': prices.rentals.ban || 5000,
+            'Sewa Sepeda Air': prices.rentals.sepeda || 20000,
+            'Sewa Gazebo': prices.rentals.gazebo || 20000
+        };
+        const unitPrice = unitPrices[newBooking.type] || 20000;
+        const totalPrice = unitPrice * parseInt(newBooking.qty || 1);
+        
+        const formattedDate = new Date(newBooking.date).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+        const isRental = newBooking.category === 'Sewa' || newBooking.type.includes('Sewa');
+
+        const createdTx = {
+            code: bookingCode,
+            date: formattedDate,
+            time: newBooking.time || '09:30 WIB',
+            category: isRental ? 'Sewa' : 'Beli',
+            type: newBooking.type,
+            product: newBooking.type,
+            qty: parseInt(newBooking.qty || 1),
+            total: totalPrice,
+            channel: newBooking.channel,
+            method: newBooking.method,
+            customer: newBooking.name || 'Pengunjung',
+            phone: newBooking.phone || '-',
+            name: newBooking.name || 'Pengunjung',
+            status: 'Lunas - E-Tiket PDF',
+            rentals: {
+                ban: newBooking.type === 'Sewa Ban' ? parseInt(newBooking.qty || 1) : 0,
+                sepeda: newBooking.type === 'Sewa Sepeda Air' ? parseInt(newBooking.qty || 1) : 0,
+                gazebo: newBooking.type === 'Sewa Gazebo' ? parseInt(newBooking.qty || 1) : 0
+            }
+        };
+
+        const updated = [createdTx, ...history];
+        setHistory(updated);
+        localStorage.setItem('waterboom_sales_history', JSON.stringify(updated));
+
+        let addedSales = 0;
+        let addedVisitors = 0;
+        updated.forEach(item => {
+            addedSales += Number(item.total) || 0;
+            addedVisitors += Number(item.qty) || 1;
+        });
+        setKpis(prev => ({
+            ...prev,
+            sales: addedSales,
+            inflow: addedSales,
+            visitors: addedVisitors,
+            transactions: updated.length
+        }));
+
+        setShowAddBookingModal(false);
+        setSelectedPDFTicket(createdTx);
+    };
+
+    // Filter log list (combining Date Range Filter + Search Query & Offline/Online & Category Beli/Sewa Filter)
     const filteredHistory = dateFilteredHistory.filter(item => {
         const matchesSearch = (item.code || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
             (item.product || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-            (item.type || '').toLowerCase().includes(searchQuery.toLowerCase());
+            (item.type || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+            (item.customer || '').toLowerCase().includes(searchQuery.toLowerCase());
 
         if (selectedFilter === 'all') return matchesSearch;
         if (selectedFilter === 'offline') return matchesSearch && (item.channel === 'Offline' || !item.code.startsWith('WCI-'));
         if (selectedFilter === 'online') return matchesSearch && (item.channel === 'Online' || item.code.startsWith('WCI-'));
+        if (selectedFilter === 'category_beli') return matchesSearch && (item.category === 'Beli' || (!item.category && item.type && item.type.includes('Tiket')));
+        if (selectedFilter === 'category_sewa') return matchesSearch && (item.category === 'Sewa' || (!item.category && item.type && item.type.includes('Sewa')));
         return matchesSearch;
     });
 
@@ -1144,7 +1224,61 @@ export default function AdminDashboard() {
                             {activeTab !== 'dashboard' && activeTab !== 'transaksi' && activeTab !== 'produk_harga' && activeTab !== 'pengguna' && activeTab !== 'pengeluaran' && activeTab !== 'rekap_keuangan' && 'Manajemen master data dan laporan operasional'}
                         </p>
                     </div>
-                    <div className="header-controls-column">
+                    <div className="header-controls-column" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        {/* Notification Bell Icon */}
+                        <div className="notif-wrapper" style={{ position: 'relative' }}>
+                            <button
+                                type="button"
+                                className="notif-btn"
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    setShowNotifDropdown(!showNotifDropdown);
+                                    setShowDateRangeDropdown(false);
+                                    setShowProfileDropdown(false);
+                                }}
+                                aria-label="Notifikasi Sistem"
+                                style={{
+                                    position: 'relative',
+                                    backgroundColor: '#ffffff',
+                                    border: '1.5px solid #cbd5e1',
+                                    borderRadius: '50%',
+                                    width: '40px',
+                                    height: '40px',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    fontSize: '1.15rem',
+                                    color: '#0c294a',
+                                    cursor: 'pointer',
+                                    boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
+                                    transition: 'all 0.2s ease'
+                                }}
+                                title="Pusat Notifikasi Admin"
+                            >
+                                <i className={`fa-${notifications.filter(n => !n.read).length > 0 ? 'solid' : 'regular'} fa-bell`} style={{ color: notifications.filter(n => !n.read).length > 0 ? '#2563eb' : '#64748b' }}></i>
+                                {notifications.filter(n => !n.read).length > 0 && (
+                                    <span className="notif-count-badge" style={{
+                                        position: 'absolute',
+                                        top: '-2px',
+                                        right: '-2px',
+                                        backgroundColor: '#ef4444',
+                                        color: '#ffffff',
+                                        fontSize: '0.62rem',
+                                        fontWeight: 900,
+                                        width: '18px',
+                                        height: '18px',
+                                        borderRadius: '50%',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        border: '2px solid white'
+                                    }}>
+                                        {notifications.filter(n => !n.read).length}
+                                    </span>
+                                )}
+                            </button>
+                        </div>
+
                         <div className="date-range-selector-wrapper" style={{ position: 'relative' }}>
                             <button
                                 type="button"
@@ -1346,8 +1480,8 @@ export default function AdminDashboard() {
                                         <span className="legend-item"><span className="dot green"></span> Pemasukan</span>
                                         <span className="legend-item"><span className="dot red"></span> Pengeluaran</span>
                                     </div>
-                                    <div className="svg-chart-container">
-                                        <svg viewBox="0 0 500 200" className="svg-line-chart">
+                                    <div className="svg-chart-container" style={{ overflow: 'visible', paddingBottom: '10px' }}>
+                                        <svg viewBox="0 0 500 175" className="svg-line-chart" style={{ overflow: 'visible' }}>
                                             <defs>
                                                 <linearGradient id="pemasukanGrad" x1="0" y1="0" x2="0" y2="1">
                                                     <stop offset="0%" stopColor="#10b981" stopOpacity="0.25" />
@@ -1358,28 +1492,28 @@ export default function AdminDashboard() {
                                                     <stop offset="100%" stopColor="#ef4444" stopOpacity="0.0" />
                                                 </linearGradient>
                                             </defs>
-                                            <line x1="0" y1="40" x2="500" y2="40" stroke="#f1f5f9" strokeWidth="1" />
-                                            <line x1="0" y1="90" x2="500" y2="90" stroke="#f1f5f9" strokeWidth="1" />
-                                            <line x1="0" y1="140" x2="500" y2="140" stroke="#f1f5f9" strokeWidth="1" />
-                                            <text x="15" y="44" fill="#94a3b8" fontSize="8" fontWeight="700">20 JT</text>
-                                            <text x="15" y="94" fill="#94a3b8" fontSize="8" fontWeight="700">15 JT</text>
-                                            <text x="15" y="144" fill="#94a3b8" fontSize="8" fontWeight="700">10 JT</text>
-                                            <text x="15" y="190" fill="#94a3b8" fontSize="8" fontWeight="700">0</text>
+                                            <line x1="0" y1="35" x2="500" y2="35" stroke="#f1f5f9" strokeWidth="1" />
+                                            <line x1="0" y1="80" x2="500" y2="80" stroke="#f1f5f9" strokeWidth="1" />
+                                            <line x1="0" y1="125" x2="500" y2="125" stroke="#f1f5f9" strokeWidth="1" />
+                                            <text x="15" y="38" fill="#94a3b8" fontSize="8" fontWeight="700">20 JT</text>
+                                            <text x="15" y="83" fill="#94a3b8" fontSize="8" fontWeight="700">15 JT</text>
+                                            <text x="15" y="128" fill="#94a3b8" fontSize="8" fontWeight="700">10 JT</text>
+                                            <text x="15" y="168" fill="#94a3b8" fontSize="8" fontWeight="700">0</text>
                                             {reportMetrics.sales > 0 ? (
                                                 <>
-                                                    <path d="M 50 140 Q 120 110 190 60 T 330 80 T 470 120 L 470 190 L 50 190 Z" fill="url(#pemasukanGrad)" />
-                                                    <path d="M 50 140 Q 120 110 190 60 T 330 80 T 470 120" fill="none" stroke="#10b981" strokeWidth="3" strokeLinecap="round" />
+                                                    <path d="M 50 125 Q 120 95 190 50 T 330 65 T 470 105 L 470 168 L 50 168 Z" fill="url(#pemasukanGrad)" />
+                                                    <path d="M 50 125 Q 120 95 190 50 T 330 65 T 470 105" fill="none" stroke="#10b981" strokeWidth="3" strokeLinecap="round" />
                                                 </>
                                             ) : (
-                                                <line x1="50" y1="190" x2="470" y2="190" stroke="#10b981" strokeWidth="2" strokeDasharray="4 4" />
+                                                <line x1="50" y1="168" x2="470" y2="168" stroke="#10b981" strokeWidth="2" strokeDasharray="4 4" />
                                             )}
                                             {kpis.outflow > 0 ? (
                                                 <>
-                                                    <path d="M 50 150 Q 120 158 190 145 T 330 142 T 470 148 L 470 190 L 50 190 Z" fill="url(#pengeluaranGrad)" />
-                                                    <path d="M 50 150 Q 120 158 190 145 T 330 142 T 470 148" fill="none" stroke="#ef4444" strokeWidth="2.5" strokeLinecap="round" strokeDasharray="3 3" />
+                                                    <path d="M 50 135 Q 120 142 190 130 T 330 128 T 470 133 L 470 168 L 50 168 Z" fill="url(#pengeluaranGrad)" />
+                                                    <path d="M 50 135 Q 120 142 190 130 T 330 128 T 470 133" fill="none" stroke="#ef4444" strokeWidth="2.5" strokeLinecap="round" strokeDasharray="3 3" />
                                                 </>
                                             ) : (
-                                                <line x1="50" y1="190" x2="470" y2="190" stroke="#ef4444" strokeWidth="1.5" strokeDasharray="2 2" />
+                                                <line x1="50" y1="168" x2="470" y2="168" stroke="#ef4444" strokeWidth="1.5" strokeDasharray="2 2" />
                                             )}
                                         </svg>
                                     </div>
@@ -1619,11 +1753,34 @@ export default function AdminDashboard() {
                                         onChange={(e) => setSelectedFilter(e.target.value)}
                                         className="table-select-filter"
                                     >
-                                        <option value="all">Semua Channel</option>
+                                        <option value="all">Semua Channel & Kategori</option>
                                         <option value="offline">Offline (Kasir)</option>
                                         <option value="online">Online (Pengunjung)</option>
+                                        <option value="category_beli">🛒 Kategori Beli</option>
+                                        <option value="category_sewa">🔑 Kategori Sewa</option>
                                     </select>
                                 </div>
+                                <button
+                                    type="button"
+                                    onClick={() => setShowAddBookingModal(true)}
+                                    className="btn btn-accent"
+                                    style={{
+                                        backgroundColor: '#10b981',
+                                        color: 'white',
+                                        border: 'none',
+                                        padding: '10px 16px',
+                                        borderRadius: '10px',
+                                        fontWeight: 800,
+                                        fontSize: '0.82rem',
+                                        cursor: 'pointer',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '6px',
+                                        boxShadow: '0 4px 12px rgba(16, 185, 129, 0.2)'
+                                    }}
+                                >
+                                    <i className="fa-solid fa-calendar-plus"></i> Tambah Jam Booking Tiket
+                                </button>
                             </div>
                             <div className="superadmin-table-wrapper">
                                 <table className="superadmin-table">
@@ -2250,13 +2407,47 @@ export default function AdminDashboard() {
 
                     {/* TAB: KATEGORI */}
                     {activeTab === 'kategori' && (
-                        <div className="chart-card-box" style={{ maxWidth: '600px' }}>
-                            <h3>Master Kategori Produk</h3>
-                            <ul className="sidebar-menu-links" style={{ listStyle: 'none', padding: 0, marginTop: '15px' }}>
-                                <li style={{ padding: '12px', borderBottom: '1px solid #f1f5f9', fontWeight: 800 }}>1. Tiket Masuk</li>
-                                <li style={{ padding: '12px', borderBottom: '1px solid #f1f5f9', fontWeight: 800 }}>2. Layanan Sewa Perlengkapan</li>
-                                <li style={{ padding: '12px', fontWeight: 800 }}>3. Kelas Kursus Edukatif</li>
-                            </ul>
+                        <div className="chart-card-box" style={{ maxWidth: '750px' }}>
+                            <h3 style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <i className="fa-solid fa-tags" style={{ color: '#2563eb' }}></i> Master Kategori Produk & Layanan
+                            </h3>
+                            <p style={{ color: '#64748b', fontSize: '0.85rem', marginBottom: '20px' }}>
+                                Klasifikasi resmi master data antara item <strong>BELI (Tiket Masuk)</strong> dan <strong>SEWA (Fasilitas & Wahana)</strong>.
+                            </p>
+                            
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                                {/* Kategori Beli */}
+                                <div style={{ backgroundColor: '#eff6ff', border: '1.5px solid #bfdbfe', borderRadius: '16px', padding: '18px' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }}>
+                                        <span style={{ backgroundColor: '#2563eb', color: 'white', padding: '8px 12px', borderRadius: '10px', fontSize: '1rem', fontWeight: 900 }}>🛒 BELI</span>
+                                        <div>
+                                            <h4 style={{ margin: 0, color: '#1e40af', fontSize: '0.95rem', fontWeight: 900 }}>Tiket Masuk & Edukasi</h4>
+                                            <small style={{ color: '#3b82f6', fontSize: '0.72rem', fontWeight: 700 }}>Pembelian Tiket Pengunjung</small>
+                                        </div>
+                                    </div>
+                                    <ul style={{ margin: 0, paddingLeft: '18px', fontSize: '0.83rem', color: '#1e3a8a', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                        <li>🎟️ <strong>Tiket Masuk Reguler</strong> (Rp 20.000)</li>
+                                        <li>🏫 <strong>Tiket Rombongan Sekolah</strong> (Rp 17.000)</li>
+                                        <li>🏊‍♂️ <strong>Kursus Renang Edukatif</strong> (Rp 15.000)</li>
+                                    </ul>
+                                </div>
+
+                                {/* Kategori Sewa */}
+                                <div style={{ backgroundColor: '#f0fdf4', border: '1.5px solid #bbf7d0', borderRadius: '16px', padding: '18px' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }}>
+                                        <span style={{ backgroundColor: '#16a34a', color: 'white', padding: '8px 12px', borderRadius: '10px', fontSize: '1rem', fontWeight: 900 }}>🔑 SEWA</span>
+                                        <div>
+                                            <h4 style={{ margin: 0, color: '#166534', fontSize: '0.95rem', fontWeight: 900 }}>Layanan Perlengkapan & Wahana</h4>
+                                            <small style={{ color: '#22c55e', fontSize: '0.72rem', fontWeight: 700 }}>Penyewaan Berdurasi</small>
+                                        </div>
+                                    </div>
+                                    <ul style={{ margin: 0, paddingLeft: '18px', fontSize: '0.83rem', color: '#14532d', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                        <li>🛖 <strong>Sewa Gazebo Saung</strong> (Rp 20.000 / Saung)</li>
+                                        <li>🛞 <strong>Sewa Ban Pelampung</strong> (Rp 5.000 / Unit)</li>
+                                        <li>🚴‍♂️ <strong>Sewa Sepeda Air (Bebek)</strong> (Rp 20.000 / Unit)</li>
+                                    </ul>
+                                </div>
+                            </div>
                         </div>
                     )}
 
@@ -2522,8 +2713,8 @@ export default function AdminDashboard() {
                                         <strong style={{ fontSize: '1.1rem', color: '#1a73e8' }}>{selectedPDFTicket.code}</strong>
                                     </div>
                                     <div>
-                                        <span style={{ color: '#64748b', fontSize: '0.72rem', display: 'block' }}>TANGGAL KUNJUNGAN</span>
-                                        <strong>{selectedPDFTicket.date}</strong>
+                                        <span style={{ color: '#64748b', fontSize: '0.72rem', display: 'block' }}>TANGGAL & JAM BOOKING</span>
+                                        <strong>{selectedPDFTicket.date} • ⏰ {selectedPDFTicket.time || '09:00 WIB'}</strong>
                                     </div>
                                     <div>
                                         <span style={{ color: '#64748b', fontSize: '0.72rem', display: 'block' }}>NAMA PEMESAN</span>
@@ -2577,18 +2768,22 @@ export default function AdminDashboard() {
                             </div>
                             <div style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
                                 <button
+                                    disabled={isPrinting}
                                     onClick={() => {
+                                        if (isPrinting) return;
+                                        setIsPrinting(true);
                                         document.body.className = 'print-mode-pdf-card';
                                         setTimeout(() => {
                                             window.print();
                                             setTimeout(() => {
                                                 document.body.className = '';
+                                                setIsPrinting(false);
                                             }, 1000);
                                         }, 120);
                                     }}
-                                    style={{ flex: 1, backgroundColor: '#1a73e8', color: 'white', border: 'none', padding: '12px', borderRadius: '10px', fontWeight: 800, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
+                                    style={{ flex: 1, backgroundColor: isPrinting ? '#94a3b8' : '#1a73e8', color: 'white', border: 'none', padding: '12px', borderRadius: '10px', fontWeight: 800, cursor: isPrinting ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
                                 >
-                                    <i className="fa-solid fa-print"></i> Cetak / Simpan Ke PDF
+                                    <i className="fa-solid fa-print"></i> {isPrinting ? 'Mencetak...' : 'Cetak / Simpan Ke PDF'}
                                 </button>
                                 <button
                                     onClick={() => {
@@ -2600,7 +2795,7 @@ export default function AdminDashboard() {
 
                                         const cleanPhone = targetPhone.replace(/[^0-9]/g, '');
                                         const formattedPhone = cleanPhone.startsWith('0') ? '62' + cleanPhone.slice(1) : cleanPhone;
-                                        const waText = `Halo kak *${selectedPDFTicket.name || 'Pengunjung'}*! 👋\nBerikut Tiket Resmi PDF Waterboom Cijoho Indah:\n\n📌 *Kode Booking:* ${selectedPDFTicket.code}\n📅 *Tanggal:* ${selectedPDFTicket.date}\n🎟️ *Detail:* ${selectedPDFTicket.type} (${selectedPDFTicket.qty || 1}x)\n💰 *Total:* Rp ${selectedPDFTicket.total?.toLocaleString('id-ID')}\n\nE-Tiket PDF siap digunakan di pintu masuk. Terima kasih!`;
+                                        const waText = `Halo kak *${selectedPDFTicket.name || 'Pengunjung'}*! 👋\nBerikut Tiket Resmi PDF Waterboom Cijoho Indah:\n\n📌 *Kode Booking:* ${selectedPDFTicket.code}\n📅 *Tanggal:* ${selectedPDFTicket.date}\n⏰ *Jam Booking:* ${selectedPDFTicket.time || '09:00 WIB'}\n🎟️ *Detail:* ${selectedPDFTicket.type} (${selectedPDFTicket.qty || 1}x)\n💰 *Total:* Rp ${selectedPDFTicket.total?.toLocaleString('id-ID')}\n\nE-Tiket PDF siap digunakan di pintu masuk. Terima kasih!`;
                                         window.open(`https://wa.me/${formattedPhone}?text=${encodeURIComponent(waText)}`, '_blank');
                                     }}
                                     style={{ flex: 1, backgroundColor: '#25D366', color: 'white', border: 'none', padding: '12px', borderRadius: '10px', fontWeight: 800, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
@@ -2609,7 +2804,7 @@ export default function AdminDashboard() {
                                 </button>
                                 <button
                                     onClick={() => {
-                                        const waText = `Halo kak *${selectedPDFTicket.name || 'Pengunjung'}*! 👋\nBerikut Tiket Resmi PDF Waterboom Cijoho Indah:\n\n📌 *Kode Booking:* ${selectedPDFTicket.code}\n📅 *Tanggal:* ${selectedPDFTicket.date}\n🎟️ *Detail:* ${selectedPDFTicket.type} (${selectedPDFTicket.qty || 1}x)\n💰 *Total:* Rp ${selectedPDFTicket.total?.toLocaleString('id-ID')}\n\nE-Tiket PDF siap digunakan di pintu masuk. Terima kasih!`;
+                                        const waText = `Halo kak *${selectedPDFTicket.name || 'Pengunjung'}*! 👋\nBerikut Tiket Resmi PDF Waterboom Cijoho Indah:\n\n📌 *Kode Booking:* ${selectedPDFTicket.code}\n📅 *Tanggal:* ${selectedPDFTicket.date}\n⏰ *Jam Booking:* ${selectedPDFTicket.time || '09:00 WIB'}\n🎟️ *Detail:* ${selectedPDFTicket.type} (${selectedPDFTicket.qty || 1}x)\n💰 *Total:* Rp ${selectedPDFTicket.total?.toLocaleString('id-ID')}\n\nE-Tiket PDF siap digunakan di pintu masuk. Terima kasih!`;
                                         navigator.clipboard.writeText(waText);
                                         setSwitchToast('Teks WA Berhasil Disalin!');
                                         setTimeout(() => setSwitchToast(''), 3000);
@@ -2620,6 +2815,268 @@ export default function AdminDashboard() {
                                 </button>
                             </div>
                         </div>
+                    </div>
+                </div>
+            )}
+
+            {/* MODAL NOTIFIKASI ADMIN (CENTERED OVERLAY FOR MOBILE & DESKTOP) */}
+            {showNotifDropdown && (
+                <div
+                    className="v-modal-backdrop fade-in"
+                    onClick={() => setShowNotifDropdown(false)}
+                    style={{ zIndex: 99999, backgroundColor: 'rgba(15, 23, 42, 0.5)', backdropFilter: 'blur(4px)' }}
+                >
+                    <div
+                        className="v-modal-card slide-down"
+                        onClick={(e) => e.stopPropagation()}
+                        style={{
+                            maxWidth: '440px',
+                            width: '92%',
+                            borderRadius: '20px',
+                            padding: 0,
+                            overflow: 'hidden',
+                            boxShadow: '0 20px 40px rgba(12, 41, 74, 0.35)',
+                            border: '1.5px solid #cbd5e1',
+                            margin: 'auto'
+                        }}
+                    >
+                        {/* Header Modal */}
+                        <div style={{ backgroundColor: '#0c294a', color: 'white', padding: '16px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                <i className="fa-solid fa-bell" style={{ color: '#60a5fa', fontSize: '1.2rem' }}></i>
+                                <div>
+                                    <h4 style={{ margin: 0, color: 'white', fontSize: '1rem', fontWeight: 900 }}>Notifikasi Admin</h4>
+                                    <small style={{ color: '#93c5fd', fontSize: '0.74rem' }}>{notifications.filter(n => !n.read).length} pesan belum dibaca</small>
+                                </div>
+                            </div>
+                            <button
+                                onClick={() => setShowNotifDropdown(false)}
+                                style={{ background: 'rgba(255, 255, 255, 0.15)', border: 'none', color: 'white', borderRadius: '50%', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: '1.1rem' }}
+                            >
+                                &times;
+                            </button>
+                        </div>
+
+                        {/* Actions Bar */}
+                        <div style={{ backgroundColor: '#f8fafc', padding: '10px 16px', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.76rem' }}>
+                            <span style={{ fontWeight: 800, color: '#64748b' }}>Pemberitahuan Sistem & Transaksi</span>
+                            {notifications.filter(n => !n.read).length > 0 && (
+                                <button
+                                    onClick={() => setNotifications(notifications.map(n => ({ ...n, read: true })))}
+                                    style={{ background: 'none', border: 'none', color: '#2563eb', fontWeight: 800, cursor: 'pointer', padding: 0 }}
+                                >
+                                    <i className="fa-solid fa-check-double"></i> Tandai Semua Dibaca
+                                </button>
+                            )}
+                        </div>
+
+                        {/* Notification Items List */}
+                        <div style={{ maxHeight: '360px', overflowY: 'auto', padding: '12px 16px' }}>
+                            {notifications.length === 0 ? (
+                                <div style={{ textAlign: 'center', padding: '30px 10px', color: '#94a3b8' }}>
+                                    <i className="fa-solid fa-bell-slash" style={{ fontSize: '2rem', marginBottom: '8px', opacity: 0.5 }}></i>
+                                    <p style={{ margin: 0, fontWeight: 700, fontSize: '0.85rem' }}>Tidak ada notifikasi saat ini</p>
+                                </div>
+                            ) : (
+                                notifications.map((n) => (
+                                    <div
+                                        key={n.id}
+                                        onClick={() => setNotifications(notifications.map(item => item.id === n.id ? { ...item, read: true } : item))}
+                                        style={{
+                                            backgroundColor: n.read ? '#ffffff' : '#f0f9ff',
+                                            border: n.read ? '1px solid #e2e8f0' : '1.5px solid #bae6fd',
+                                            borderRadius: '12px',
+                                            padding: '12px 14px',
+                                            marginBottom: '8px',
+                                            cursor: 'pointer',
+                                            transition: 'all 0.2s ease',
+                                            position: 'relative'
+                                        }}
+                                    >
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '4px' }}>
+                                            <strong style={{ fontSize: '0.86rem', color: '#0f2942', fontWeight: 900 }}>{n.title}</strong>
+                                            <button
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    setNotifications(notifications.filter(item => item.id !== n.id));
+                                                }}
+                                                style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', fontSize: '0.78rem', padding: '2px 4px' }}
+                                                title="Hapus Notifikasi"
+                                            >
+                                                <i className="fa-solid fa-trash-can"></i>
+                                            </button>
+                                        </div>
+                                        <p style={{ margin: '0 0 6px 0', fontSize: '0.78rem', color: '#475569', lineHeight: 1.3 }}>{n.desc}</p>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                            <small style={{ fontSize: '0.7rem', color: '#94a3b8', fontWeight: 600 }}>{n.time}</small>
+                                            {!n.read && (
+                                                <span style={{ backgroundColor: '#2563eb', color: 'white', fontSize: '0.62rem', fontWeight: 800, padding: '2px 6px', borderRadius: '10px' }}>BARU</span>
+                                            )}
+                                        </div>
+                                    </div>
+                                ))
+                            )}
+                        </div>
+
+                        {/* Footer Modal */}
+                        <div style={{ backgroundColor: '#f8fafc', padding: '12px 16px', borderTop: '1px solid #e2e8f0', textAlign: 'center' }}>
+                            <button
+                                onClick={() => setShowNotifDropdown(false)}
+                                style={{ width: '100%', backgroundColor: '#0c294a', color: 'white', border: 'none', padding: '10px', borderRadius: '10px', fontWeight: 800, fontSize: '0.82rem', cursor: 'pointer' }}
+                            >
+                                Tutup Notifikasi
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* MODAL TAMBAH BOOKING TIKET & JAM KUNJUNGAN (ADMIN) */}
+            {showAddBookingModal && (
+                <div className="v-modal-backdrop" onClick={() => setShowAddBookingModal(false)}>
+                    <div className="v-modal-card fade-in" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '480px', backgroundColor: 'white', borderRadius: '20px' }}>
+                        <div className="v-modal-head" style={{ backgroundColor: '#0c294a', color: 'white', borderRadius: '20px 20px 0 0' }}>
+                            <h4 style={{ color: 'white', display: 'flex', alignItems: 'center', gap: '8px', margin: 0, fontSize: '1rem', fontWeight: 900 }}>
+                                <i className="fa-solid fa-calendar-plus" style={{ color: '#60a5fa' }}></i> Tambah Booking Tiket & Jam Kunjungan
+                            </h4>
+                            <button onClick={() => setShowAddBookingModal(false)} style={{ color: 'white', background: 'none', border: 'none', fontSize: '1.4rem', cursor: 'pointer' }}>&times;</button>
+                        </div>
+                        <form onSubmit={handleAddBooking} className="v-modal-body" style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                            <div className="input-group-field">
+                                <label style={{ fontSize: '0.8rem', fontWeight: 800, color: '#0c294a' }}>Nama Pemesan / Pengunjung</label>
+                                <input
+                                    type="text"
+                                    placeholder="Contoh: Budi Santoso"
+                                    value={newBooking.name}
+                                    onChange={(e) => setNewBooking({ ...newBooking, name: e.target.value })}
+                                    required
+                                    className="v-input"
+                                />
+                            </div>
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                                <div className="input-group-field">
+                                    <label style={{ fontSize: '0.8rem', fontWeight: 800, color: '#0c294a' }}>No. WhatsApp</label>
+                                    <input
+                                        type="text"
+                                        placeholder="081234567890"
+                                        value={newBooking.phone}
+                                        onChange={(e) => setNewBooking({ ...newBooking, phone: e.target.value })}
+                                        className="v-input"
+                                    />
+                                </div>
+                                <div className="input-group-field">
+                                    <label style={{ fontSize: '0.8rem', fontWeight: 800, color: '#0c294a' }}>⏰ Jam Booking Tiket</label>
+                                    <select
+                                        value={newBooking.time}
+                                        onChange={(e) => setNewBooking({ ...newBooking, time: e.target.value })}
+                                        className="v-input"
+                                        style={{ fontWeight: 700 }}
+                                    >
+                                        <option value="08:00 WIB">08:00 WIB (Pagi)</option>
+                                        <option value="09:30 WIB">09:30 WIB (Pagi)</option>
+                                        <option value="11:00 WIB">11:00 WIB (Siang)</option>
+                                        <option value="13:00 WIB">13:00 WIB (Siang)</option>
+                                        <option value="14:30 WIB">14:30 WIB (Sore)</option>
+                                        <option value="16:00 WIB">16:00 WIB (Sore)</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                                <div className="input-group-field">
+                                    <label style={{ fontSize: '0.8rem', fontWeight: 800, color: '#0c294a' }}>Tanggal Kunjungan</label>
+                                    <input
+                                        type="date"
+                                        value={newBooking.date}
+                                        onChange={(e) => setNewBooking({ ...newBooking, date: e.target.value })}
+                                        required
+                                        className="v-input"
+                                    />
+                                </div>
+                                <div className="input-group-field">
+                                    <label style={{ fontSize: '0.8rem', fontWeight: 800, color: '#0c294a' }}>Kategori Item</label>
+                                    <select
+                                        value={newBooking.category}
+                                        onChange={(e) => {
+                                            const cat = e.target.value;
+                                            const defaultType = cat === 'Beli' ? 'Tiket Reguler' : 'Sewa Ban';
+                                            setNewBooking({ ...newBooking, category: cat, type: defaultType });
+                                        }}
+                                        className="v-input"
+                                        style={{ fontWeight: 800 }}
+                                    >
+                                        <option value="Beli">🛒 Beli (Tiket Masuk / Kursus)</option>
+                                        <option value="Sewa">🔑 Sewa (Ban, Sepeda, Gazebo)</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: '10px' }}>
+                                <div className="input-group-field">
+                                    <label style={{ fontSize: '0.8rem', fontWeight: 800, color: '#0c294a' }}>Jenis Tiket / Layanan</label>
+                                    <select
+                                        value={newBooking.type}
+                                        onChange={(e) => setNewBooking({ ...newBooking, type: e.target.value })}
+                                        className="v-input"
+                                    >
+                                        {newBooking.category === 'Beli' ? (
+                                            <>
+                                                <option value="Tiket Reguler">Tiket Reguler (Rp 20.000)</option>
+                                                <option value="Tiket Rombongan">Tiket Rombongan (Rp 17.000)</option>
+                                                <option value="Kursus Renang">Kursus Renang (Rp 15.000)</option>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <option value="Sewa Ban">Sewa Ban Renang (Rp 5.000)</option>
+                                                <option value="Sewa Sepeda Air">Sewa Sepeda Air (Rp 20.000)</option>
+                                                <option value="Sewa Gazebo">Sewa Gazebo Santai (Rp 20.000)</option>
+                                            </>
+                                        )}
+                                    </select>
+                                </div>
+                                <div className="input-group-field">
+                                    <label style={{ fontSize: '0.8rem', fontWeight: 800, color: '#0c294a' }}>Jumlah (Qty)</label>
+                                    <input
+                                        type="number"
+                                        min="1"
+                                        value={newBooking.qty}
+                                        onChange={(e) => setNewBooking({ ...newBooking, qty: e.target.value })}
+                                        required
+                                        className="v-input"
+                                    />
+                                </div>
+                            </div>
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                                <div className="input-group-field">
+                                    <label style={{ fontSize: '0.8rem', fontWeight: 800, color: '#0c294a' }}>Channel Penjualan</label>
+                                    <select
+                                        value={newBooking.channel}
+                                        onChange={(e) => setNewBooking({ ...newBooking, channel: e.target.value })}
+                                        className="v-input"
+                                    >
+                                        <option value="Online">Online (Aplikasi WA)</option>
+                                        <option value="Offline">Offline (Loket Fisik)</option>
+                                    </select>
+                                </div>
+                                <div className="input-group-field">
+                                    <label style={{ fontSize: '0.8rem', fontWeight: 800, color: '#0c294a' }}>Metode Pembayaran</label>
+                                    <select
+                                        value={newBooking.method}
+                                        onChange={(e) => setNewBooking({ ...newBooking, method: e.target.value })}
+                                        className="v-input"
+                                    >
+                                        <option value="QRIS">QRIS / Instant E-Wallet</option>
+                                        <option value="Tunai">Tunai / Cash Loket</option>
+                                        <option value="Transfer">Bank Transfer</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <button
+                                type="submit"
+                                className="btn w-full btn-pill"
+                                style={{ backgroundColor: '#0c294a', color: 'white', fontWeight: 900, padding: '12px', borderRadius: '12px', border: 'none', cursor: 'pointer', marginTop: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
+                            >
+                                <i className="fa-solid fa-check-circle"></i> SIMPAN BOOKING & CETAK TIKET
+                            </button>
+                        </form>
                     </div>
                 </div>
             )}

@@ -4,6 +4,30 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 export default function Header({ onOpenBooking }) {
     const [isScrolled, setIsScrolled] = useState(false);
     const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
+    const [showNotif, setShowNotif] = useState(false);
+    const [notifications, setNotifications] = useState([
+        {
+            id: 1,
+            title: 'Promo Tiket Hemat 🏊‍♂️',
+            desc: 'Dapatkan diskon Tiket Rombongan hanya Rp 17.000/orang.',
+            time: '10 menit lalu',
+            read: false
+        },
+        {
+            id: 2,
+            title: 'Wahana Sepeda Air Buka 🚣',
+            desc: 'Wahana Sepeda Air & Gazebo buka penuh hari ini.',
+            time: '1 jam lalu',
+            read: false
+        },
+        {
+            id: 3,
+            title: 'Jam Operasional Terbaru ⏰',
+            desc: 'Waterboom Cijoho Indah buka setiap hari 08.00 - 17.00 WIB.',
+            time: '3 jam lalu',
+            read: true
+        }
+    ]);
     const { pathname } = useLocation();
     const navigate = useNavigate();
 
@@ -65,7 +89,7 @@ export default function Header({ onOpenBooking }) {
                             alignItems: 'center',
                             justifyContent: 'center',
                             cursor: 'pointer',
-                            marginRight: '14px',
+                            marginRight: '8px',
                             flexShrink: 0,
                             boxShadow: '0 2px 6px rgba(0,0,0,0.05)',
                             transition: 'all 0.2s ease'
@@ -100,23 +124,50 @@ export default function Header({ onOpenBooking }) {
                         </ul>
                     </nav>
 
-                    {/* Navbar Actions (Desktop) */}
-                    <div className="nav-actions">
-                        {/* Secret Hidden Portal */}
+                    {/* Navbar Actions (Desktop & Mobile Notif Bell) */}
+                    <div className="nav-actions" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        {/* Notification Bell Button */}
                         <button
                             type="button"
-                            onClick={() => navigate('/login?role=staf')}
+                            onClick={() => setShowNotif(!showNotif)}
                             style={{
-                                background: 'transparent',
-                                border: 'none',
-                                width: '24px',
-                                height: '24px',
-                                cursor: 'default',
-                                opacity: 0,
-                                outline: 'none'
+                                position: 'relative',
+                                background: '#f1f5f9',
+                                border: '1.5px solid #cbd5e1',
+                                borderRadius: '50%',
+                                width: '38px',
+                                height: '38px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                cursor: 'pointer',
+                                fontSize: '1.15rem',
+                                color: '#0c294a'
                             }}
-                            title="Akses Staf"
-                        />
+                            title="Pusat Notifikasi"
+                        >
+                            <i className={`fa-${notifications.filter(n => !n.read).length > 0 ? 'solid' : 'regular'} fa-bell`} style={{ color: notifications.filter(n => !n.read).length > 0 ? '#2563eb' : '#64748b' }}></i>
+                            {notifications.filter(n => !n.read).length > 0 && (
+                                <span style={{
+                                    position: 'absolute',
+                                    top: '-2px',
+                                    right: '-2px',
+                                    backgroundColor: '#ef4444',
+                                    color: 'white',
+                                    fontSize: '0.62rem',
+                                    fontWeight: 900,
+                                    width: '18px',
+                                    height: '18px',
+                                    borderRadius: '50%',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    border: '2px solid white'
+                                }}>
+                                    {notifications.filter(n => !n.read).length}
+                                </span>
+                            )}
+                        </button>
 
                         {/* PESAN TIKET Button */}
                         <Link
@@ -129,6 +180,118 @@ export default function Header({ onOpenBooking }) {
                     </div>
                 </div>
             </header>
+
+            {/* MODAL NOTIFIKASI PUBLIC WEBSITE */}
+            {showNotif && (
+                <div
+                    className="v-modal-backdrop fade-in"
+                    onClick={() => setShowNotif(false)}
+                    style={{ zIndex: 99999, backgroundColor: 'rgba(15, 23, 42, 0.5)', backdropFilter: 'blur(4px)' }}
+                >
+                    <div
+                        className="v-modal-card slide-down"
+                        onClick={(e) => e.stopPropagation()}
+                        style={{
+                            maxWidth: '440px',
+                            width: '92%',
+                            borderRadius: '20px',
+                            padding: 0,
+                            overflow: 'hidden',
+                            boxShadow: '0 20px 40px rgba(12, 41, 74, 0.35)',
+                            border: '1.5px solid #cbd5e1',
+                            margin: 'auto'
+                        }}
+                    >
+                        {/* Header Modal */}
+                        <div style={{ backgroundColor: '#0c294a', color: 'white', padding: '16px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                <i className="fa-solid fa-bell" style={{ color: '#60a5fa', fontSize: '1.2rem' }}></i>
+                                <div>
+                                    <h4 style={{ margin: 0, color: 'white', fontSize: '1rem', fontWeight: 900 }}>Pusat Notifikasi</h4>
+                                    <small style={{ color: '#93c5fd', fontSize: '0.74rem' }}>{notifications.filter(n => !n.read).length} pesan belum dibaca</small>
+                                </div>
+                            </div>
+                            <button
+                                onClick={() => setShowNotif(false)}
+                                style={{ background: 'rgba(255, 255, 255, 0.15)', border: 'none', color: 'white', borderRadius: '50%', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: '1.1rem' }}
+                            >
+                                &times;
+                            </button>
+                        </div>
+
+                        {/* Actions Bar */}
+                        <div style={{ backgroundColor: '#f8fafc', padding: '10px 16px', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.76rem' }}>
+                            <span style={{ fontWeight: 800, color: '#64748b' }}>Pemberitahuan Wahana & Promo</span>
+                            {notifications.filter(n => !n.read).length > 0 && (
+                                <button
+                                    onClick={() => setNotifications(notifications.map(n => ({ ...n, read: true })))}
+                                    style={{ background: 'none', border: 'none', color: '#2563eb', fontWeight: 800, cursor: 'pointer', padding: 0 }}
+                                >
+                                    <i className="fa-solid fa-check-double"></i> Tandai Dibaca
+                                </button>
+                            )}
+                        </div>
+
+                        {/* Notification Items List */}
+                        <div style={{ maxHeight: '360px', overflowY: 'auto', padding: '12px 16px' }}>
+                            {notifications.length === 0 ? (
+                                <div style={{ textAlign: 'center', padding: '30px 10px', color: '#94a3b8' }}>
+                                    <i className="fa-solid fa-bell-slash" style={{ fontSize: '2rem', marginBottom: '8px', opacity: 0.5 }}></i>
+                                    <p style={{ margin: 0, fontWeight: 700, fontSize: '0.85rem' }}>Tidak ada notifikasi saat ini</p>
+                                </div>
+                            ) : (
+                                notifications.map((n) => (
+                                    <div
+                                        key={n.id}
+                                        onClick={() => setNotifications(notifications.map(item => item.id === n.id ? { ...item, read: true } : item))}
+                                        style={{
+                                            backgroundColor: n.read ? '#ffffff' : '#f0f9ff',
+                                            border: n.read ? '1px solid #e2e8f0' : '1.5px solid #bae6fd',
+                                            borderRadius: '12px',
+                                            padding: '12px 14px',
+                                            marginBottom: '8px',
+                                            cursor: 'pointer',
+                                            transition: 'all 0.2s ease',
+                                            position: 'relative'
+                                        }}
+                                    >
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '4px' }}>
+                                            <strong style={{ fontSize: '0.86rem', color: '#0f2942', fontWeight: 900 }}>{n.title}</strong>
+                                            <button
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    setNotifications(notifications.filter(item => item.id !== n.id));
+                                                }}
+                                                style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', fontSize: '0.78rem', padding: '2px 4px' }}
+                                                title="Hapus Notifikasi"
+                                            >
+                                                <i className="fa-solid fa-trash-can"></i>
+                                            </button>
+                                        </div>
+                                        <p style={{ margin: '0 0 6px 0', fontSize: '0.78rem', color: '#475569', lineHeight: 1.3 }}>{n.desc}</p>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                            <small style={{ fontSize: '0.7rem', color: '#94a3b8', fontWeight: 600 }}>{n.time}</small>
+                                            {!n.read && (
+                                                <span style={{ backgroundColor: '#2563eb', color: 'white', fontSize: '0.62rem', fontWeight: 800, padding: '2px 6px', borderRadius: '10px' }}>BARU</span>
+                                            )}
+                                        </div>
+                                    </div>
+                                ))
+                            )}
+                        </div>
+
+                        {/* Footer Modal */}
+                        <div style={{ backgroundColor: '#f8fafc', padding: '12px 16px', borderTop: '1px solid #e2e8f0', textAlign: 'center' }}>
+                            <button
+                                onClick={() => setShowNotif(false)}
+                                style={{ width: '100%', backgroundColor: '#0c294a', color: 'white', border: 'none', padding: '10px', borderRadius: '10px', fontWeight: 800, fontSize: '0.82rem', cursor: 'pointer' }}
+                            >
+                                Tutup Notifikasi
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* Mobile Drawer Overlay Backdrop */}
             {isMobileNavOpen && (

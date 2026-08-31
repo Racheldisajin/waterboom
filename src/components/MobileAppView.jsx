@@ -19,9 +19,35 @@ export default function MobileAppView({ onOpenBooking, isCashierMode = false }) 
     const [ticketQty, setTicketQty] = useState(2);
     const [sewaBan, setSewaBan] = useState(1);
     const [sewaSepeda, setSewaSepeda] = useState(0);
-    const [sewaGazebo, setSewaGazebo] = useState(1);
+    const [sewaGazebo, setSewaGazebo] = useState(0);
     const [showSidebar, setShowSidebar] = useState(false);
     const [showNotif, setShowNotif] = useState(false);
+    const [notifications, setNotifications] = useState([
+        {
+            id: 1,
+            title: 'Pembayaran QRIS Berhasil 💳',
+            desc: 'Transaksi #WCI-823902 senilai Rp 40.000 telah lunas via QRIS.',
+            time: '5 menit yang lalu',
+            read: false,
+            type: 'payment'
+        },
+        {
+            id: 2,
+            title: 'Sewa Gazebo Terkonfirmasi 🎪',
+            desc: 'Gazebo Santai No. 04 disewa oleh Sdr. Pengunjung.',
+            time: '25 menit yang lalu',
+            read: false,
+            type: 'rental'
+        },
+        {
+            id: 3,
+            title: 'Laporan Shift Kasir Diperbarui 📊',
+            desc: 'Shift Pagi berhasil divalidasi oleh Petugas Kasir 1.',
+            time: '2 jam yang lalu',
+            read: true,
+            type: 'system'
+        }
+    ]);
     const [showReceipt, setShowReceipt] = useState(false);
     const [receiptData, setReceiptData] = useState(null);
 
@@ -45,10 +71,14 @@ export default function MobileAppView({ onOpenBooking, isCashierMode = false }) 
     const [copyToast, setCopyToast] = useState('');
     const [showPDFTicketModal, setShowPDFTicketModal] = useState(false);
     const [pdfTicketData, setPdfTicketData] = useState(null);
-    const [printFormat, setPrintFormat] = useState('card'); // 'card' | 'full' | 'invoice' | 'ticket' | 'rental'
+    const [printFormat, setPrintFormat] = useState('full'); // 'full' | 'invoice' | 'ticket' | 'rental'
+
+    const [isPrinting, setIsPrinting] = useState(false);
 
     // --- Helper Cetak Terisolasi (Dosen Requirement: Separate PDF Print Mode) ---
     const triggerIsolatedPrint = (formatMode) => {
+        if (isPrinting) return;
+        setIsPrinting(true);
         setPrintFormat(formatMode);
         const printClass = formatMode === 'card' ? 'print-mode-pdf-card' : `print-mode-${formatMode}`;
         document.body.className = printClass;
@@ -56,6 +86,7 @@ export default function MobileAppView({ onOpenBooking, isCashierMode = false }) 
             window.print();
             setTimeout(() => {
                 document.body.className = '';
+                setIsPrinting(false);
             }, 1000);
         }, 120);
     };
@@ -125,14 +156,12 @@ export default function MobileAppView({ onOpenBooking, isCashierMode = false }) 
 
             const { data, error } = await supabase.from('transactions').insert(rows);
             if (error) {
-                console.error('Gagal menyimpan ke Supabase:', error);
-                alert('Gagal Menyimpan Transaksi: ${error.message}');
+                console.warn('Simpan Supabase dilewati (menggunakan penyimpanan lokal):', error.message);
                 return false;
             }
             return true;
         } catch (err) {
-            console.error('Error Supabase:', err);
-            alert('Terjadi Kesalahan: ${err.message}');
+            console.warn('Error koneksi Supabase (menggunakan penyimpanan lokal):', err.message);
             return false;
         }
     };
@@ -390,7 +419,7 @@ Mohon diproses konfirmasinya dan dikirimkan *Tiket Resmi PDF* ke nomor WhatsApp 
         if (saved) {
             try {
                 return JSON.parse(saved);
-            } catch(e) {
+            } catch (e) {
                 return [];
             }
         }
@@ -504,6 +533,41 @@ Mohon diproses konfirmasinya dan dikirimkan *Tiket Resmi PDF* ke nomor WhatsApp 
         if (r?.gazebo) todayGazeboCount += r.gazebo;
     });
 
+    // Metric Bulanan (Selected Month: YYYY-MM)
+    const monthFilterStr = selectedReportMonth || new Date().toISOString().slice(0, 7);
+    const monthTransactions = historyList.filter(item => {
+        if (!selectedReportMonth) return true;
+        if (item.created_at && item.created_at.startsWith(monthFilterStr)) return true;
+        if (item.date) {
+            const [yearStr, monthNum] = monthFilterStr.split('-');
+            const monthsIndo = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+            const monthIdx = parseInt(monthNum || '1', 10) - 1;
+            const targetMonthName = monthsIndo[monthIdx] || '';
+            if (item.date.includes(targetMonthName) || item.date.includes(monthFilterStr) || item.date.includes(`${yearStr}`)) return true;
+        }
+        return true;
+    });
+
+    const monthRevenue = monthTransactions.reduce((acc, curr) => acc + (curr.total || 0), 0);
+    const monthCashRev = monthTransactions.filter(i => {
+        const pm = (i.paymentMethod || i.method || '').toLowerCase();
+        return pm.includes('tunai') || pm.includes('cash');
+    }).reduce((a, c) => a + (c.total || 0), 0);
+    const monthQrisRev = Math.max(0, monthRevenue - monthCashRev);
+
+    let monthTicketsCount = 0;
+    let monthBanCount = 0;
+    let monthSepedaCount = 0;
+    let monthGazeboCount = 0;
+
+    monthTransactions.forEach(item => {
+        if (item.qty > 0) monthTicketsCount += item.qty;
+        const r = item.details?.rentals || item.rentals;
+        if (r?.ban) monthBanCount += r.ban;
+        if (r?.sepeda) monthSepedaCount += r.sepeda;
+        if (r?.gazebo) monthGazeboCount += r.gazebo;
+    });
+
     // Trigger Payment / Checkout Modal (Offline vs Online)
     const handlePaymentClick = () => {
         const hasTickets = ticketQty > 0;
@@ -587,9 +651,33 @@ Mohon diproses konfirmasinya dan dikirimkan *Tiket Resmi PDF* ke nomor WhatsApp 
                     </div>
 
                     <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-                        <button className="header-icon-btn notif-bell" onClick={() => setShowNotif(!showNotif)}>
-                            <i className="fa-regular fa-bell"></i>
-                            <span className="bell-badge"></span>
+                        <button
+                            className="header-icon-btn notif-bell"
+                            onClick={() => setShowNotif(!showNotif)}
+                            style={{ position: 'relative', cursor: 'pointer', background: 'none', border: 'none', fontSize: '1.25rem' }}
+                            title="Pusat Notifikasi"
+                        >
+                            <i className={`fa-${notifications.filter(n => !n.read).length > 0 ? 'solid' : 'regular'} fa-bell`} style={{ color: notifications.filter(n => !n.read).length > 0 ? '#2563eb' : '#64748b' }}></i>
+                            {notifications.filter(n => !n.read).length > 0 && (
+                                <span className="bell-badge" style={{
+                                    position: 'absolute',
+                                    top: '-2px',
+                                    right: '-2px',
+                                    backgroundColor: '#ef4444',
+                                    color: 'white',
+                                    fontSize: '0.62rem',
+                                    fontWeight: 900,
+                                    width: '18px',
+                                    height: '18px',
+                                    borderRadius: '50%',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    border: '2px solid white'
+                                }}>
+                                    {notifications.filter(n => !n.read).length}
+                                </span>
+                            )}
                         </button>
                     </div>
                 </header>
@@ -634,9 +722,6 @@ Mohon diproses konfirmasinya dan dikirimkan *Tiket Resmi PDF* ke nomor WhatsApp 
                             <button onClick={() => { setActiveTab('beranda'); setShowSidebar(false); }} className={activeTab === 'beranda' ? 'active' : ''}>
                                 <i className="fa-solid fa-house"></i> Beranda Utama
                             </button>
-                            <button onClick={() => { setActiveTab('tiket'); setShowSidebar(false); }} className={activeTab === 'tiket' ? 'active' : ''}>
-                                <i className="fa-solid fa-ticket"></i> Tiket Saya
-                            </button>
                             <button onClick={() => { setActiveTab('riwayat'); setShowSidebar(false); }} className={activeTab === 'riwayat' ? 'active' : ''}>
                                 <i className="fa-solid fa-clock-rotate-left"></i> Riwayat Transaksi
                             </button>
@@ -646,7 +731,7 @@ Mohon diproses konfirmasinya dan dikirimkan *Tiket Resmi PDF* ke nomor WhatsApp 
             )}
 
             {/* Core Tab Content Container */}
-            <div className={`mobile-app-content ${!isCashierMode ? 'visitor-view-content' : ''}`} style={{ paddingTop: isCashierMode ? '74px' : '0px', paddingLeft: '12px', paddingRight: '12px', marginTop: 0 }}>
+            <div className={`mobile-app-content ${!isCashierMode ? 'visitor-view-content' : ''}`} style={{ paddingTop: isCashierMode ? '10px' : '0px', paddingLeft: '12px', paddingRight: '12px', marginTop: 0 }}>
                 {/* 1. BERANDA / BOOKING TAB */}
                 {activeTab === 'beranda' && (
                     <div className="app-tab-pane fade-in" style={{ paddingTop: 0, marginTop: 0 }}>
@@ -760,36 +845,57 @@ Mohon diproses konfirmasinya dan dikirimkan *Tiket Resmi PDF* ke nomor WhatsApp 
                                     className={`app-ticket-card reguler ${selectedTicket === 'reguler' ? 'active' : ''}`}
                                     onClick={() => setSelectedTicket('reguler')}
                                 >
-                                    <div className="card-icon-circle blue">
-                                        <i className="fa-solid fa-user-group"></i>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                        <div className="card-icon-circle blue" style={{ marginBottom: 0 }}>
+                                            <i className="fa-solid fa-user-group"></i>
+                                        </div>
+                                        <div>
+                                            <h5 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 800, color: '#0f2942' }}>Tiket Reguler</h5>
+                                            <span className="price-unit" style={{ fontSize: '0.76rem', color: '#64748b' }}>/orang</span>
+                                        </div>
                                     </div>
-                                    <h5>Tiket Reguler</h5>
-                                    <span className="price-tag">Rp 20.000</span>
-                                    <span className="price-unit">/orang</span>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                        <span className="price-tag">Rp 20.000</span>
+                                        <div style={{ width: '22px', height: '22px', borderRadius: '50%', border: selectedTicket === 'reguler' ? '6px solid #1a73e8' : '2px solid #cbd5e1', backgroundColor: 'white', boxSizing: 'border-box' }}></div>
+                                    </div>
                                 </div>
 
                                 <div
                                     className={`app-ticket-card rombongan ${selectedTicket === 'rombongan' ? 'active' : ''}`}
                                     onClick={() => setSelectedTicket('rombongan')}
                                 >
-                                    <div className="card-icon-circle orange">
-                                        <i className="fa-solid fa-users"></i>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                        <div className="card-icon-circle orange" style={{ marginBottom: 0 }}>
+                                            <i className="fa-solid fa-users"></i>
+                                        </div>
+                                        <div>
+                                            <h5 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 800, color: '#0f2942' }}>Tiket Rombongan</h5>
+                                            <span className="price-unit" style={{ fontSize: '0.76rem', color: '#64748b' }}>/orang</span>
+                                        </div>
                                     </div>
-                                    <h5>Tiket Rombongan</h5>
-                                    <span className="price-tag orange">Rp 17.000</span>
-                                    <span className="price-unit">/orang</span>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                        <span className="price-tag orange">Rp 17.000</span>
+                                        <div style={{ width: '22px', height: '22px', borderRadius: '50%', border: selectedTicket === 'rombongan' ? '6px solid #f97316' : '2px solid #cbd5e1', backgroundColor: 'white', boxSizing: 'border-box' }}></div>
+                                    </div>
                                 </div>
 
                                 <div
                                     className={`app-ticket-card kursus ${selectedTicket === 'kursus' ? 'active' : ''}`}
                                     onClick={() => setSelectedTicket('kursus')}
                                 >
-                                    <div className="card-icon-circle green">
-                                        <i className="fa-solid fa-person-swimming"></i>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                        <div className="card-icon-circle green" style={{ marginBottom: 0 }}>
+                                            <i className="fa-solid fa-person-swimming"></i>
+                                        </div>
+                                        <div>
+                                            <h5 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 800, color: '#0f2942' }}>Kursus Renang</h5>
+                                            <span className="price-unit" style={{ fontSize: '0.76rem', color: '#64748b' }}>/1x pertemuan</span>
+                                        </div>
                                     </div>
-                                    <h5>Kursus Renang</h5>
-                                    <span className="price-tag green">Rp 15.000</span>
-                                    <span className="price-unit">/1x pertemuan</span>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                        <span className="price-tag green">Rp 15.000</span>
+                                        <div style={{ width: '22px', height: '22px', borderRadius: '50%', border: selectedTicket === 'kursus' ? '6px solid #16a34a' : '2px solid #cbd5e1', backgroundColor: 'white', boxSizing: 'border-box' }}></div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -826,9 +932,11 @@ Mohon diproses konfirmasinya dan dikirimkan *Tiket Resmi PDF* ke nomor WhatsApp 
                             </div>
                         </div>
 
-                        {/* Rentals Grid */}
+                        {/* Rentals Grid (Single Select / Mutually Exclusive) */}
                         <div className="app-section">
-                            <h4 className="section-title"><i className="fa-solid fa-bookmark text-blue"></i> 2. SEWA & LAYANAN ADD-ON (OPSIONAL)</h4>
+                            <h4 className="section-title" style={{ display: 'block' }}>
+                                <i className="fa-solid fa-bookmark text-blue"></i> 2. SEWA & LAYANAN ADD-ON (PILIH 1 JENIS SEWA PER TRANSAKSI)
+                            </h4>
                             <div className="rental-cards-grid">
                                 <div className="rental-grid-card">
                                     <div className="rental-card-top">
@@ -841,7 +949,7 @@ Mohon diproses konfirmasinya dan dikirimkan *Tiket Resmi PDF* ke nomor WhatsApp 
                                     <div className="rental-card-counter">
                                         <button onClick={() => sewaBan > 0 && setSewaBan(sewaBan - 1)} className="r-btn">-</button>
                                         <span className="r-val">{sewaBan}</span>
-                                        <button onClick={() => setSewaBan(sewaBan + 1)} className="r-btn">+</button>
+                                        <button onClick={() => { setSewaBan(sewaBan + 1); setSewaSepeda(0); setSewaGazebo(0); }} className="r-btn">+</button>
                                     </div>
                                 </div>
 
@@ -856,7 +964,7 @@ Mohon diproses konfirmasinya dan dikirimkan *Tiket Resmi PDF* ke nomor WhatsApp 
                                     <div className="rental-card-counter">
                                         <button onClick={() => sewaSepeda > 0 && setSewaSepeda(sewaSepeda - 1)} className="r-btn">-</button>
                                         <span className="r-val">{sewaSepeda}</span>
-                                        <button onClick={() => setSewaSepeda(sewaSepeda + 1)} className="r-btn">+</button>
+                                        <button onClick={() => { setSewaSepeda(sewaSepeda + 1); setSewaBan(0); setSewaGazebo(0); }} className="r-btn">+</button>
                                     </div>
                                 </div>
 
@@ -871,7 +979,7 @@ Mohon diproses konfirmasinya dan dikirimkan *Tiket Resmi PDF* ke nomor WhatsApp 
                                     <div className="rental-card-counter">
                                         <button onClick={() => sewaGazebo > 0 && setSewaGazebo(sewaGazebo - 1)} className="r-btn">-</button>
                                         <span className="r-val">{sewaGazebo}</span>
-                                        <button onClick={() => setSewaGazebo(sewaGazebo + 1)} className="r-btn">+</button>
+                                        <button onClick={() => { setSewaGazebo(sewaGazebo + 1); setSewaBan(0); setSewaSepeda(0); }} className="r-btn">+</button>
                                     </div>
                                 </div>
                             </div>
@@ -982,7 +1090,7 @@ Mohon diproses konfirmasinya dan dikirimkan *Tiket Resmi PDF* ke nomor WhatsApp 
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', backgroundColor: '#0c294a', color: 'white', padding: '16px', borderRadius: '16px', boxShadow: '0 4px 15px rgba(12, 41, 74, 0.2)' }}>
                                     <div>
                                         <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 900, color: 'white' }}>Laporan & Rekapitulasi Kasir</h3>
-                                        <small style={{ color: '#60a5fa', fontSize: '0.75rem', fontWeight: 700 }}>Sistem Kasir Modern Style Majoo / Mojo POS</small>
+                                        <small style={{ color: '#60a5fa', fontSize: '0.75rem', fontWeight: 700 }}>Sistem Kasir Modern</small>
                                     </div>
                                     <button
                                         onClick={() => setShowPrintReportModal(true)}
@@ -1021,10 +1129,10 @@ Mohon diproses konfirmasinya dan dikirimkan *Tiket Resmi PDF* ke nomor WhatsApp 
                                     <div style={{ backgroundColor: '#fff7ed', border: '1.5px solid #fed7aa', padding: '12px', borderRadius: '14px' }}>
                                         <span style={{ fontSize: '0.72rem', fontWeight: 800, color: '#9a3412', display: 'block' }}>VOLUME TERJUAL</span>
                                         <div style={{ fontSize: '0.72rem', color: '#ea580c', fontWeight: 800, marginTop: '4px', display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
-                                            <span style={{ backgroundColor: '#ffedd5', padding: '2px 6px', borderRadius: '4px' }}>🎟️ {todayTicketsCount} Tiket</span>
-                                            <span style={{ backgroundColor: '#ffedd5', padding: '2px 6px', borderRadius: '4px' }}>⭕ {todayBanCount} Ban</span>
-                                            <span style={{ backgroundColor: '#ffedd5', padding: '2px 6px', borderRadius: '4px' }}>🚴 {todaySepedaCount} Sepeda</span>
-                                            <span style={{ backgroundColor: '#ffedd5', padding: '2px 6px', borderRadius: '4px' }}>🎪 {todayGazeboCount} Gazebo</span>
+                                            <span style={{ backgroundColor: '#ffedd5', padding: '2px 6px', borderRadius: '4px' }}> {todayTicketsCount} Tiket</span>
+                                            <span style={{ backgroundColor: '#ffedd5', padding: '2px 6px', borderRadius: '4px' }}> {todayBanCount} Ban</span>
+                                            <span style={{ backgroundColor: '#ffedd5', padding: '2px 6px', borderRadius: '4px' }}> {todaySepedaCount} Sepeda</span>
+                                            <span style={{ backgroundColor: '#ffedd5', padding: '2px 6px', borderRadius: '4px' }}> {todayGazeboCount} Gazebo</span>
                                         </div>
                                     </div>
                                 </div>
@@ -1103,22 +1211,123 @@ Mohon diproses konfirmasinya dan dikirimkan *Tiket Resmi PDF* ke nomor WhatsApp 
                                 {reportSubTab === 'bulanan' && (
                                     <div style={{ backgroundColor: 'white', border: '1.5px solid #e2e8f0', borderRadius: '16px', padding: '16px', boxShadow: '0 4px 12px rgba(0,0,0,0.03)' }}>
                                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
-                                            <h4 style={{ margin: 0, fontSize: '0.92rem', fontWeight: 900, color: '#0c294a' }}>Rekapitulasi Bulanan</h4>
-                                            <input
-                                                type="month"
-                                                value={selectedReportMonth}
-                                                onChange={(e) => setSelectedReportMonth(e.target.value)}
-                                                style={{ border: '1.5px solid #cbd5e1', borderRadius: '8px', padding: '6px 10px', fontSize: '0.8rem', fontWeight: 800, color: '#0c294a' }}
-                                            />
+                                            <h4 style={{ margin: 0, fontSize: '0.92rem', fontWeight: 900, color: '#0c294a', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                                <i className="fa-solid fa-calendar-days" style={{ color: '#2563eb' }}></i> Rekapitulasi Laporan Bulanan
+                                            </h4>
+                                            <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                                                <select
+                                                    value={selectedReportMonth.split('-')[1] || '08'}
+                                                    onChange={(e) => {
+                                                        const year = selectedReportMonth.split('-')[0] || '2026';
+                                                        setSelectedReportMonth(`${year}-${e.target.value}`);
+                                                    }}
+                                                    style={{
+                                                        border: '1.5px solid #2563eb',
+                                                        borderRadius: '10px',
+                                                        padding: '6px 10px',
+                                                        fontSize: '0.82rem',
+                                                        fontWeight: 800,
+                                                        color: '#0c294a',
+                                                        backgroundColor: '#eff6ff',
+                                                        cursor: 'pointer',
+                                                        outline: 'none'
+                                                    }}
+                                                >
+                                                    <option value="01">Januari</option>
+                                                    <option value="02">Februari</option>
+                                                    <option value="03">Maret</option>
+                                                    <option value="04">April</option>
+                                                    <option value="05">Mei</option>
+                                                    <option value="06">Juni</option>
+                                                    <option value="07">Juli</option>
+                                                    <option value="08">Agustus</option>
+                                                    <option value="09">September</option>
+                                                    <option value="10">Oktober</option>
+                                                    <option value="11">November</option>
+                                                    <option value="12">Desember</option>
+                                                </select>
+                                                <select
+                                                    value={selectedReportMonth.split('-')[0] || '2026'}
+                                                    onChange={(e) => {
+                                                        const month = selectedReportMonth.split('-')[1] || '08';
+                                                        setSelectedReportMonth(`${e.target.value}-${month}`);
+                                                    }}
+                                                    style={{
+                                                        border: '1.5px solid #2563eb',
+                                                        borderRadius: '10px',
+                                                        padding: '6px 10px',
+                                                        fontSize: '0.82rem',
+                                                        fontWeight: 800,
+                                                        color: '#0c294a',
+                                                        backgroundColor: '#eff6ff',
+                                                        cursor: 'pointer',
+                                                        outline: 'none'
+                                                    }}
+                                                >
+                                                    <option value="2025">2025</option>
+                                                    <option value="2026">2026</option>
+                                                    <option value="2027">2027</option>
+                                                </select>
+                                            </div>
                                         </div>
 
-                                        <div style={{ backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '14px', marginBottom: '14px' }}>
-                                            <span style={{ fontSize: '0.76rem', color: '#64748b', fontWeight: 700, display: 'block' }}>TOTAL OMSET BULANAN ({selectedReportMonth})</span>
-                                            <strong style={{ fontSize: '1.4rem', color: '#1a73e8', fontWeight: 900, display: 'block', margin: '4px 0' }}>
-                                                Rp {(todayRevenue * 30).toLocaleString('id-ID')}
+                                        {/* 1. Header Card Omset */}
+                                        <div style={{ background: 'linear-gradient(135deg, #0c294a 0%, #1e40af 100%)', borderRadius: '14px', padding: '16px', color: 'white', marginBottom: '14px', boxShadow: '0 4px 14px rgba(12, 41, 74, 0.15)' }}>
+                                            <span style={{ fontSize: '0.74rem', color: '#93c5fd', fontWeight: 800, letterSpacing: '0.5px', textTransform: 'uppercase' }}>TOTAL OMSET AKUMULASI BULANAN ({selectedReportMonth})</span>
+                                            <strong style={{ fontSize: '1.6rem', color: '#ffffff', fontWeight: 900, display: 'block', margin: '6px 0 2px 0' }}>
+                                                Rp {monthRevenue.toLocaleString('id-ID')}
                                             </strong>
-                                            <small style={{ fontSize: '0.74rem', color: '#475569' }}>Proyeksi bulanan berbasis akumulasi transaksi kasir saat ini.</small>
+                                            <small style={{ fontSize: '0.74rem', color: '#cbd5e1', display: 'block' }}>Akumulasi omset resmi dari {monthTransactions.length} transaksi di bulan {selectedReportMonth}.</small>
                                         </div>
+
+                                        {/* 2. Key Metrics Grid (4 Boxes) */}
+                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '14px' }}>
+                                            <div style={{ backgroundColor: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '12px', padding: '10px 12px' }}>
+                                                <small style={{ fontSize: '0.7rem', color: '#1e40af', fontWeight: 800, display: 'block' }}>KAS / TUNAI (CASH)</small>
+                                                <strong style={{ fontSize: '0.98rem', color: '#166534', fontWeight: 900 }}>Rp {monthCashRev.toLocaleString('id-ID')}</strong>
+                                            </div>
+                                            <div style={{ backgroundColor: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '12px', padding: '10px 12px' }}>
+                                                <small style={{ fontSize: '0.7rem', color: '#166534', fontWeight: 800, display: 'block' }}>QRIS / DIGITAL</small>
+                                                <strong style={{ fontSize: '0.98rem', color: '#1e40af', fontWeight: 900 }}>Rp {monthQrisRev.toLocaleString('id-ID')}</strong>
+                                            </div>
+                                            <div style={{ backgroundColor: '#fef3c7', border: '1px solid #fde68a', borderRadius: '12px', padding: '10px 12px' }}>
+                                                <small style={{ fontSize: '0.7rem', color: '#92400e', fontWeight: 800, display: 'block' }}>TIKET TERJUAL</small>
+                                                <strong style={{ fontSize: '0.98rem', color: '#78350f', fontWeight: 900 }}>{monthTicketsCount} Orang</strong>
+                                            </div>
+                                            <div style={{ backgroundColor: '#faf5ff', border: '1px solid #e9d5ff', borderRadius: '12px', padding: '10px 12px' }}>
+                                                <small style={{ fontSize: '0.7rem', color: '#6b21a8', fontWeight: 800, display: 'block' }}>UNIT SEWA TERJUAL</small>
+                                                <strong style={{ fontSize: '0.98rem', color: '#581c87', fontWeight: 900 }}>{monthBanCount + monthSepedaCount + monthGazeboCount} Unit</strong>
+                                            </div>
+                                        </div>
+
+                                        {/* 3. Breakdown Volume Barang & Layanan Sewa */}
+                                        <div style={{ borderTop: '1px dashed #cbd5e1', paddingTop: '12px', marginBottom: '14px', fontSize: '0.8rem' }}>
+                                            <h5 style={{ margin: '0 0 8px 0', fontSize: '0.82rem', fontWeight: 900, color: '#0c294a', textTransform: 'uppercase' }}>RINCIAN VOLUME TERJUAL BULANAN:</h5>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+                                                <span style={{ color: '#475569' }}>• Tiket Masuk Wahana</span>
+                                                <strong>{monthTicketsCount} Orang</strong>
+                                            </div>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+                                                <span style={{ color: '#475569' }}>• Sewa Ban Renang</span>
+                                                <strong>{monthBanCount} Unit</strong>
+                                            </div>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+                                                <span style={{ color: '#475569' }}>• Sewa Sepeda Air</span>
+                                                <strong>{monthSepedaCount} Unit</strong>
+                                            </div>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+                                                <span style={{ color: '#475569' }}>• Sewa Gazebo Santai</span>
+                                                <strong>{monthGazeboCount} Unit</strong>
+                                            </div>
+                                        </div>
+
+                                        {/* 4. Action Button Cetak */}
+                                        <button
+                                            onClick={() => window.print()}
+                                            style={{ width: '100%', backgroundColor: '#0c294a', color: 'white', border: 'none', padding: '12px', borderRadius: '10px', fontWeight: 900, fontSize: '0.85rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
+                                        >
+                                            <i className="fa-solid fa-print"></i> Cetak Laporan Bulanan ({selectedReportMonth})
+                                        </button>
                                     </div>
                                 )}
 
@@ -1242,6 +1451,23 @@ Mohon diproses konfirmasinya dan dikirimkan *Tiket Resmi PDF* ke nomor WhatsApp 
                             <h4>Beli Tiket Tanpa Akun</h4>
                             <p>Pembelian tiket langsung tanpa perlu buat akun / login</p>
                         </div>
+                        {/* Standby Mobile Footer */}
+                        <footer className="app-mobile-footer-standby" style={{ marginTop: '28px', paddingTop: '20px', paddingBottom: '20px', borderTop: '1px solid #e2e8f0', textAlign: 'center', backgroundColor: '#ffffff', borderRadius: '16px', paddingLeft: '16px', paddingRight: '16px', boxShadow: '0 2px 10px rgba(12, 41, 74, 0.04)' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', marginBottom: '6px' }}>
+                                <img src="assets/logo.png" alt="Waterboom Logo" style={{ height: '26px', width: 'auto', objectFit: 'contain' }} />
+                                <span style={{ fontSize: '0.88rem', fontWeight: 900, color: '#0c294a', textTransform: 'uppercase', letterSpacing: '0.5px' }}>WATERBOOM CIJOHO INDAH</span>
+                            </div>
+                            <p style={{ margin: '0 0 10px 0', fontSize: '0.76rem', color: '#64748b', lineHeight: 1.4 }}>
+                                Sensasi seru wahana air tropis tanpa batas untuk seluruh keluarga. Rasakan kesegaran air jernih & wahana terbaik!
+                            </p>
+                            <div style={{ display: 'flex', justifyContent: 'center', flexWrap: 'wrap', gap: '12px', marginBottom: '10px', fontSize: '0.76rem', fontWeight: 700 }}>
+                                <span style={{ color: '#0284c7' }}><i className="fa-solid fa-clock"></i> Buka 08.00 - 17.00 WIB</span>
+                                <span style={{ color: '#16a34a' }}><i className="fa-solid fa-location-dot"></i> Cijoho - Tasikmalaya</span>
+                            </div>
+                            <div style={{ fontSize: '0.72rem', color: '#94a3b8', borderTop: '1px dashed #e2e8f0', paddingTop: '8px' }}>
+                                &copy; {new Date().getFullYear()} Waterboom Cijoho Indah. All rights reserved.
+                            </div>
+                        </footer>
                     </div>
                 )}
             </div>
@@ -1285,6 +1511,122 @@ Mohon diproses konfirmasinya dan dikirimkan *Tiket Resmi PDF* ke nomor WhatsApp 
                     <span>{isCashierMode ? 'Riwayat & Laporan' : 'Riwayat'}</span>
                 </button>
             </nav>
+
+            {/* MODAL PUSAT NOTIFIKASI */}
+            {showNotif && (
+                <div
+                    className="v-modal-backdrop fade-in"
+                    onClick={() => setShowNotif(false)}
+                    style={{ zIndex: 9999, backgroundColor: 'rgba(15, 23, 42, 0.45)', backdropFilter: 'blur(4px)' }}
+                >
+                    <div
+                        className="v-modal-card slide-down"
+                        onClick={(e) => e.stopPropagation()}
+                        style={{
+                            maxWidth: '440px',
+                            width: '92%',
+                            borderRadius: '20px',
+                            padding: 0,
+                            overflow: 'hidden',
+                            boxShadow: '0 20px 40px rgba(12, 41, 74, 0.3)',
+                            animation: 'slideDown 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
+                            border: '1.5px solid #cbd5e1'
+                        }}
+                    >
+                        {/* Header Modal */}
+                        <div style={{ backgroundColor: '#0c294a', color: 'white', padding: '16px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                <i className="fa-solid fa-bell" style={{ color: '#60a5fa', fontSize: '1.2rem' }}></i>
+                                <div>
+                                    <h4 style={{ margin: 0, color: 'white', fontSize: '1rem', fontWeight: 900 }}>Pusat Notifikasi</h4>
+                                    <small style={{ color: '#93c5fd', fontSize: '0.74rem' }}>{notifications.filter(n => !n.read).length} pesan belum dibaca</small>
+                                </div>
+                            </div>
+                            <button
+                                onClick={() => setShowNotif(false)}
+                                style={{ background: 'rgba(255, 255, 255, 0.15)', border: 'none', color: 'white', borderRadius: '50%', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: '1.1rem' }}
+                            >
+                                &times;
+                            </button>
+                        </div>
+
+                        {/* Actions Bar */}
+                        <div style={{ backgroundColor: '#f8fafc', padding: '10px 16px', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.76rem' }}>
+                            <span style={{ fontWeight: 800, color: '#64748b' }}>Pemberitahuan Sistem & Transaksi</span>
+                            {notifications.filter(n => !n.read).length > 0 && (
+                                <button
+                                    onClick={() => {
+                                        setNotifications(notifications.map(n => ({ ...n, read: true })));
+                                    }}
+                                    style={{ background: 'none', border: 'none', color: '#2563eb', fontWeight: 800, cursor: 'pointer', padding: 0 }}
+                                >
+                                    <i className="fa-solid fa-check-double"></i> Tandai Semua Dibaca
+                                </button>
+                            )}
+                        </div>
+
+                        {/* Notification Items List */}
+                        <div style={{ maxHeight: '360px', overflowY: 'auto', padding: '12px 16px' }}>
+                            {notifications.length === 0 ? (
+                                <div style={{ textAlign: 'center', padding: '30px 10px', color: '#94a3b8' }}>
+                                    <i className="fa-solid fa-bell-slash" style={{ fontSize: '2rem', marginBottom: '8px', opacity: 0.5 }}></i>
+                                    <p style={{ margin: 0, fontWeight: 700, fontSize: '0.85rem' }}>Tidak ada notifikasi saat ini</p>
+                                </div>
+                            ) : (
+                                notifications.map((item) => (
+                                    <div
+                                        key={item.id}
+                                        onClick={() => {
+                                            setNotifications(notifications.map(n => n.id === item.id ? { ...n, read: true } : n));
+                                        }}
+                                        style={{
+                                            backgroundColor: item.read ? '#ffffff' : '#f0f9ff',
+                                            border: item.read ? '1px solid #e2e8f0' : '1.5px solid #bae6fd',
+                                            borderRadius: '12px',
+                                            padding: '12px 14px',
+                                            marginBottom: '8px',
+                                            cursor: 'pointer',
+                                            transition: 'all 0.2s ease',
+                                            position: 'relative'
+                                        }}
+                                    >
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '4px' }}>
+                                            <strong style={{ fontSize: '0.86rem', color: '#0f2942', fontWeight: 900 }}>{item.title}</strong>
+                                            <button
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    setNotifications(notifications.filter(n => n.id !== item.id));
+                                                }}
+                                                style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', fontSize: '0.78rem', padding: '2px 4px' }}
+                                                title="Hapus Notifikasi"
+                                            >
+                                                <i className="fa-solid fa-trash-can"></i>
+                                            </button>
+                                        </div>
+                                        <p style={{ margin: '0 0 6px 0', fontSize: '0.78rem', color: '#475569', lineHeight: 1.3 }}>{item.desc}</p>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                            <small style={{ fontSize: '0.7rem', color: '#94a3b8', fontWeight: 600 }}>{item.time}</small>
+                                            {!item.read && (
+                                                <span style={{ backgroundColor: '#2563eb', color: 'white', fontSize: '0.62rem', fontWeight: 800, padding: '2px 6px', borderRadius: '10px' }}>BARU</span>
+                                            )}
+                                        </div>
+                                    </div>
+                                ))
+                            )}
+                        </div>
+
+                        {/* Footer Modal */}
+                        <div style={{ backgroundColor: '#f8fafc', padding: '12px 16px', borderTop: '1px solid #e2e8f0', textAlign: 'center' }}>
+                            <button
+                                onClick={() => setShowNotif(false)}
+                                style={{ width: '100%', backgroundColor: '#0c294a', color: 'white', border: 'none', padding: '10px', borderRadius: '10px', fontWeight: 800, fontSize: '0.82rem', cursor: 'pointer' }}
+                            >
+                                Tutup Notifikasi
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* MODAL KONFIRMASI PEMBELIAN LANGSUNG / CETAK PDF (KASIR ONLINE) */}
             {showWACheckoutModal && (
@@ -1471,7 +1813,7 @@ Mohon diproses konfirmasinya dan dikirimkan *Tiket Resmi PDF* ke nomor WhatsApp 
                             {paymentMethod === 'cash' && (
                                 <div className="input-group-field" style={{ marginBottom: '14px' }}>
                                     <label style={{ fontSize: '0.8rem', fontWeight: 800, color: '#0c294a', display: 'block', marginBottom: '6px' }}>Jumlah Uang Tunai Diterima (Rp)</label>
-                                    
+
                                     {/* Quick Nominal Chips (Mojo POS Style) */}
                                     <div style={{ display: 'flex', gap: '6px', marginBottom: '8px', flexWrap: 'wrap' }}>
                                         <button
@@ -1726,46 +2068,41 @@ Mohon diproses konfirmasinya dan dikirimkan *Tiket Resmi PDF* ke nomor WhatsApp 
                                 <span style={{ backgroundColor: '#2563eb', color: 'white', padding: '2px 8px', borderRadius: '12px', fontSize: '0.68rem', fontWeight: 900 }}>80mm POS Roll</span>
                             </div>
 
-                            {/* Format Selector Bar */}
-                            <div style={{ display: 'flex', gap: '4px', backgroundColor: '#f1f5f9', padding: '4px', borderRadius: '12px', marginBottom: '16px', overflowX: 'auto' }}>
-                                <button
-                                    type="button"
-                                    onClick={() => setPrintFormat('card')}
-                                    style={{ flex: 1, minWidth: '90px', border: 'none', padding: '8px 4px', borderRadius: '8px', fontSize: '0.72rem', fontWeight: 800, backgroundColor: printFormat === 'card' ? '#0c294a' : 'transparent', color: printFormat === 'card' ? 'white' : '#64748b', cursor: 'pointer' }}
-                                >
-                                    <i className="fa-solid fa-file-pdf"></i> E-Tiket PDF
-                                </button>
+                            {/* Format Selector Bar (Responsive 4-Column Grid) */}
+                            <div className="format-selector-bar" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '4px', backgroundColor: '#f1f5f9', padding: '4px', borderRadius: '12px', marginBottom: '16px', boxSizing: 'border-box', width: '100%' }}>
                                 <button
                                     type="button"
                                     onClick={() => setPrintFormat('full')}
-                                    style={{ flex: 1, minWidth: '90px', border: 'none', padding: '8px 4px', borderRadius: '8px', fontSize: '0.72rem', fontWeight: 800, backgroundColor: printFormat === 'full' ? '#0c294a' : 'transparent', color: printFormat === 'full' ? 'white' : '#64748b', cursor: 'pointer' }}
+                                    style={{ border: 'none', padding: '8px 2px', borderRadius: '8px', fontSize: '0.68rem', fontWeight: 800, backgroundColor: printFormat === 'full' ? '#0c294a' : 'transparent', color: printFormat === 'full' ? 'white' : '#64748b', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '2px', textAlign: 'center' }}
                                 >
-                                    <i className="fa-solid fa-layer-group"></i> Struk Lengkap
+                                    <i className="fa-solid fa-layer-group" style={{ fontSize: '0.8rem' }}></i>
+                                    <span>Struk Lengkap</span>
                                 </button>
                                 <button
                                     type="button"
                                     onClick={() => setPrintFormat('invoice')}
-                                    style={{ flex: 1, minWidth: '70px', border: 'none', padding: '8px 4px', borderRadius: '8px', fontSize: '0.72rem', fontWeight: 800, backgroundColor: printFormat === 'invoice' ? '#0c294a' : 'transparent', color: printFormat === 'invoice' ? 'white' : '#64748b', cursor: 'pointer' }}
+                                    style={{ border: 'none', padding: '8px 2px', borderRadius: '8px', fontSize: '0.68rem', fontWeight: 800, backgroundColor: printFormat === 'invoice' ? '#0c294a' : 'transparent', color: printFormat === 'invoice' ? 'white' : '#64748b', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '2px', textAlign: 'center' }}
                                 >
-                                    <i className="fa-solid fa-file-invoice-dollar"></i> Invoice
+                                    <i className="fa-solid fa-file-invoice-dollar" style={{ fontSize: '0.8rem' }}></i>
+                                    <span>Invoice</span>
                                 </button>
                                 <button
                                     type="button"
                                     onClick={() => setPrintFormat('ticket')}
-                                    style={{ flex: 1, minWidth: '85px', border: 'none', padding: '8px 4px', borderRadius: '8px', fontSize: '0.72rem', fontWeight: 800, backgroundColor: printFormat === 'ticket' ? '#0c294a' : 'transparent', color: printFormat === 'ticket' ? 'white' : '#64748b', cursor: 'pointer' }}
+                                    style={{ border: 'none', padding: '8px 2px', borderRadius: '8px', fontSize: '0.68rem', fontWeight: 800, backgroundColor: printFormat === 'ticket' ? '#047857' : 'transparent', color: printFormat === 'ticket' ? 'white' : '#64748b', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '2px', textAlign: 'center' }}
                                 >
-                                    <i className="fa-solid fa-ticket"></i> Tiket Masuk
+                                    <i className="fa-solid fa-ticket" style={{ fontSize: '0.8rem' }}></i>
+                                    <span>Tiket Masuk</span>
                                 </button>
                                 <button
                                     type="button"
                                     onClick={() => setPrintFormat('rental')}
-                                    style={{ flex: 1, minWidth: '80px', border: 'none', padding: '8px 4px', borderRadius: '8px', fontSize: '0.72rem', fontWeight: 800, backgroundColor: printFormat === 'rental' ? '#0c294a' : 'transparent', color: printFormat === 'rental' ? 'white' : '#64748b', cursor: 'pointer' }}
+                                    style={{ border: 'none', padding: '8px 2px', borderRadius: '8px', fontSize: '0.68rem', fontWeight: 800, backgroundColor: printFormat === 'rental' ? '#b45309' : 'transparent', color: printFormat === 'rental' ? 'white' : '#64748b', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '2px', textAlign: 'center' }}
                                 >
-                                    <i className="fa-solid fa-bookmark"></i> Kupon Sewa
+                                    <i className="fa-solid fa-bookmark" style={{ fontSize: '0.8rem' }}></i>
+                                    <span>Kupon Sewa</span>
                                 </button>
                             </div>
-
-                            {/* Printable Container Area */}
                             {printFormat === 'card' && (
                                 <div id="pdf-printable-area" style={{ border: '3px solid #0c294a', borderRadius: '18px', padding: '20px', backgroundColor: '#f8fafc' }}>
                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '2px solid #0c294a', paddingBottom: '12px', marginBottom: '16px' }}>
@@ -1803,7 +2140,7 @@ Mohon diproses konfirmasinya dan dikirimkan *Tiket Resmi PDF* ke nomor WhatsApp 
                                         {pdfTicketData.qty > 0 && (
                                             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', marginBottom: '4px' }}>
                                                 <span>{pdfTicketData.type} ({pdfTicketData.qty}x)</span>
-                                                <strong>Rp {(pdfTicketData.subtotal || (pdfTicketData.total - ((pdfTicketData.rentals?.ban || 0)*5000 + (pdfTicketData.rentals?.sepeda || 0)*15000 + (pdfTicketData.rentals?.gazebo || 0)*25000)))?.toLocaleString('id-ID')}</strong>
+                                                <strong>Rp {(pdfTicketData.subtotal || (pdfTicketData.total - ((pdfTicketData.rentals?.ban || 0) * 5000 + (pdfTicketData.rentals?.sepeda || 0) * 15000 + (pdfTicketData.rentals?.gazebo || 0) * 25000)))?.toLocaleString('id-ID')}</strong>
                                             </div>
                                         )}
                                         {pdfTicketData.rentals?.ban > 0 && (
@@ -1844,332 +2181,415 @@ Mohon diproses konfirmasinya dan dikirimkan *Tiket Resmi PDF* ke nomor WhatsApp 
                             {printFormat !== 'card' && (
                                 <div id="printable-full-package" className="thermal-receipt-80mm" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
                                     {/* 1. STRUK INVOICE PEMBAYARAN */}
-                                {(printFormat === 'full' || printFormat === 'invoice') && (
-                                    <div id="printable-invoice-only" className="thermal-receipt-80mm" style={{ border: '3px solid #000', borderRadius: '16px', padding: '18px', backgroundColor: '#ffffff', fontFamily: "'Courier New', Courier, monospace", color: '#000', fontSize: '0.82rem', lineHeight: '1.4' }}>
-                                        {/* HEADER BRAND & LOGO */}
-                                        <div style={{ textAlign: 'center', marginBottom: '8px' }}>
-                                            <h2 style={{ fontSize: '1.25rem', fontWeight: 900, margin: 0, letterSpacing: '-0.5px' }}>Cijoho Indah Waterboom</h2>
-                                            <small style={{ fontWeight: 800, fontSize: '0.72rem', textTransform: 'uppercase', display: 'block' }}>SERUNYA LIBURAN KELUARGA!</small>
-                                        </div>
+                                    {(printFormat === 'full' || printFormat === 'invoice') && (
+                                        <div id="printable-invoice-only" className="thermal-receipt-80mm" style={{ border: '3px solid #000', borderRadius: '16px', padding: '18px', backgroundColor: '#ffffff', fontFamily: "'Courier New', Courier, monospace", color: '#000', fontSize: '0.82rem', lineHeight: '1.4' }}>
+                                            {/* HEADER BRAND & LOGO */}
+                                            <div style={{ textAlign: 'center', marginBottom: '8px' }}>
+                                                <h2 style={{ fontSize: '1.25rem', fontWeight: 900, margin: 0, letterSpacing: '-0.5px' }}>Cijoho Indah Waterboom</h2>
+                                                <small style={{ fontWeight: 800, fontSize: '0.72rem', textTransform: 'uppercase', display: 'block' }}>SERUNYA LIBURAN KELUARGA!</small>
+                                            </div>
 
-                                        <div style={{ borderTop: '2px solid #000', borderBottom: '2px solid #000', padding: '6px 0', margin: '8px 0', textAlign: 'center' }}>
-                                            <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 900 }}>💦 STRUK TIKET 💦</h3>
-                                            <div style={{ fontSize: '0.78rem', fontWeight: 700, marginTop: '2px' }}>Cijoho Indah Waterboom</div>
-                                            <div style={{ fontSize: '0.72rem', color: '#333' }}>Jl. Raya Cijoho No. 88, Cijoho - Tasikmalaya 46134</div>
-                                            <div style={{ fontSize: '0.72rem', color: '#333' }}>Telp. 0265-1234567</div>
-                                        </div>
+                                            <div style={{ borderTop: '2px solid #000', borderBottom: '2px solid #000', padding: '6px 0', margin: '8px 0', textAlign: 'center' }}>
+                                                <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 900 }}>💦 STRUK TIKET 💦</h3>
+                                                <div style={{ fontSize: '0.78rem', fontWeight: 700, marginTop: '2px' }}>Cijoho Indah Waterboom</div>
+                                                <div style={{ fontSize: '0.72rem', color: '#333' }}>Jl. Raya Cijoho No. 88, Cijoho - Tasikmalaya 46134</div>
+                                                <div style={{ fontSize: '0.72rem', color: '#333' }}>Telp. 0265-1234567</div>
+                                            </div>
 
-                                        {/* METADATA INFO */}
-                                        <div style={{ margin: '10px 0', fontSize: '0.8rem' }}>
-                                            <div style={{ display: 'grid', gridTemplateColumns: '100px 10px 1fr' }}>
-                                                <span>No. Transaksi</span><span>:</span><strong>{pdfTicketData.code}</strong>
-                                            </div>
-                                            <div style={{ display: 'grid', gridTemplateColumns: '100px 10px 1fr' }}>
-                                                <span>Tanggal</span><span>:</span><span>{pdfTicketData.date}</span>
-                                            </div>
-                                            <div style={{ display: 'grid', gridTemplateColumns: '100px 10px 1fr' }}>
-                                                <span>Waktu</span><span>:</span><span>{pdfTicketData.time || '10:15:32'}</span>
-                                            </div>
-                                            <div style={{ display: 'grid', gridTemplateColumns: '100px 10px 1fr' }}>
-                                                <span>Kasir</span><span>:</span><span>{pdfTicketData.cashierName || 'KASIR01'}</span>
-                                            </div>
-                                        </div>
-
-                                        {/* DETAIL PEMBELIAN TABLE */}
-                                        <div style={{ borderTop: '1px dashed #000', borderBottom: '1px dashed #000', padding: '8px 0', margin: '10px 0' }}>
-                                            <div style={{ fontWeight: 900, marginBottom: '6px', fontSize: '0.82rem' }}>DETAIL PEMBELIAN</div>
-                                            <table style={{ width: '100%', fontSize: '0.76rem', borderCollapse: 'collapse' }}>
-                                                <thead>
-                                                    <tr style={{ borderBottom: '1px solid #000', textAlign: 'left' }}>
-                                                        <th style={{ paddingBottom: '4px', width: '25px' }}>No.</th>
-                                                        <th style={{ paddingBottom: '4px' }}>Jenis Tiket / Service</th>
-                                                        <th style={{ paddingBottom: '4px', textAlign: 'center', width: '35px' }}>Qty</th>
-                                                        <th style={{ paddingBottom: '4px', textAlign: 'right' }}>Harga Satuan</th>
-                                                        <th style={{ paddingBottom: '4px', textAlign: 'right' }}>Total</th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody>
-                                                    {pdfTicketData.qty > 0 && (
-                                                        <tr>
-                                                            <td style={{ paddingTop: '6px', verticalAlign: 'top' }}>1.</td>
-                                                            <td style={{ paddingTop: '6px', verticalAlign: 'top' }}>{pdfTicketData.type}</td>
-                                                            <td style={{ paddingTop: '6px', textAlign: 'center', verticalAlign: 'top' }}>{pdfTicketData.qty}</td>
-                                                            <td style={{ paddingTop: '6px', textAlign: 'right', verticalAlign: 'top' }}>Rp {((pdfTicketData.subtotal || pdfTicketData.total) / pdfTicketData.qty).toLocaleString('id-ID')}</td>
-                                                            <td style={{ paddingTop: '6px', textAlign: 'right', verticalAlign: 'top', fontWeight: 800 }}>Rp {pdfTicketData.subtotal?.toLocaleString('id-ID')}</td>
-                                                        </tr>
-                                                    )}
-                                                    {pdfTicketData.rentals?.ban > 0 && (
-                                                        <tr>
-                                                            <td style={{ paddingTop: '4px', verticalAlign: 'top' }}>{pdfTicketData.qty > 0 ? 2 : 1}.</td>
-                                                            <td style={{ paddingTop: '4px', verticalAlign: 'top' }}>Sewa Ban Renang</td>
-                                                            <td style={{ paddingTop: '4px', textAlign: 'center', verticalAlign: 'top' }}>{pdfTicketData.rentals.ban}</td>
-                                                            <td style={{ paddingTop: '4px', textAlign: 'right', verticalAlign: 'top' }}>Rp {(pdfTicketData.rentalsPrice?.ban || 5000).toLocaleString('id-ID')}</td>
-                                                            <td style={{ paddingTop: '4px', textAlign: 'right', verticalAlign: 'top', fontWeight: 800 }}>Rp {(pdfTicketData.rentals.ban * (pdfTicketData.rentalsPrice?.ban || 5000)).toLocaleString('id-ID')}</td>
-                                                        </tr>
-                                                    )}
-                                                    {pdfTicketData.rentals?.sepeda > 0 && (
-                                                        <tr>
-                                                            <td style={{ paddingTop: '4px', verticalAlign: 'top' }}>{(pdfTicketData.qty > 0 ? 1 : 0) + (pdfTicketData.rentals?.ban > 0 ? 1 : 0) + 1}.</td>
-                                                            <td style={{ paddingTop: '4px', verticalAlign: 'top' }}>Sewa Sepeda Air</td>
-                                                            <td style={{ paddingTop: '4px', textAlign: 'center', verticalAlign: 'top' }}>{pdfTicketData.rentals.sepeda}</td>
-                                                            <td style={{ paddingTop: '4px', textAlign: 'right', verticalAlign: 'top' }}>Rp {(pdfTicketData.rentalsPrice?.sepeda || 15000).toLocaleString('id-ID')}</td>
-                                                            <td style={{ paddingTop: '4px', textAlign: 'right', verticalAlign: 'top', fontWeight: 800 }}>Rp {(pdfTicketData.rentals.sepeda * (pdfTicketData.rentalsPrice?.sepeda || 15000)).toLocaleString('id-ID')}</td>
-                                                        </tr>
-                                                    )}
-                                                    {pdfTicketData.rentals?.gazebo > 0 && (
-                                                        <tr>
-                                                            <td style={{ paddingTop: '4px', verticalAlign: 'top' }}>{(pdfTicketData.qty > 0 ? 1 : 0) + (pdfTicketData.rentals?.ban > 0 ? 1 : 0) + (pdfTicketData.rentals?.sepeda > 0 ? 1 : 0) + 1}.</td>
-                                                            <td style={{ paddingTop: '4px', verticalAlign: 'top' }}>Sewa Gazebo Santai</td>
-                                                            <td style={{ paddingTop: '4px', textAlign: 'center', verticalAlign: 'top' }}>{pdfTicketData.rentals.gazebo}</td>
-                                                            <td style={{ paddingTop: '4px', textAlign: 'right', verticalAlign: 'top' }}>Rp {(pdfTicketData.rentalsPrice?.gazebo || 25000).toLocaleString('id-ID')}</td>
-                                                            <td style={{ paddingTop: '4px', textAlign: 'right', verticalAlign: 'top', fontWeight: 800 }}>Rp {(pdfTicketData.rentals.gazebo * (pdfTicketData.rentalsPrice?.gazebo || 25000)).toLocaleString('id-ID')}</td>
-                                                        </tr>
-                                                    )}
-                                                </tbody>
-                                            </table>
-                                        </div>
-
-                                        {/* TOTALS */}
-                                        <div style={{ borderBottom: '1px dashed #000', paddingBottom: '8px', marginBottom: '10px' }}>
-                                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '3px' }}>
-                                                <span>Subtotal</span>
-                                                <span>: Rp {pdfTicketData.total?.toLocaleString('id-ID')}</span>
-                                            </div>
-                                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '3px' }}>
-                                                <span>Biaya Layanan</span>
-                                                <span>: Rp 0</span>
-                                            </div>
-                                            <div style={{ borderTop: '1px solid #000', paddingTop: '4px', marginTop: '4px', display: 'flex', justifyContent: 'space-between', fontWeight: 900, fontSize: '0.92rem' }}>
-                                                <span>TOTAL BAYAR</span>
-                                                <span>: Rp {pdfTicketData.total?.toLocaleString('id-ID')}</span>
-                                            </div>
-                                        </div>
-
-                                        {/* FOOTER & KETENTUAN */}
-                                        <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '8px', fontSize: '0.7rem', alignItems: 'center', marginBottom: '10px' }}>
-                                            <div>
-                                                <strong style={{ fontSize: '0.78rem', display: 'block', marginBottom: '2px' }}>👥 TERIMA KASIH</strong>
-                                                <div>Selamat menikmati wahana Cijoho Indah Waterboom</div>
-                                            </div>
-                                            <div style={{ border: '1px solid #000', borderRadius: '6px', padding: '6px', fontSize: '0.64rem', lineHeight: '1.2' }}>
-                                                <strong style={{ display: 'block', textAlign: 'center', borderBottom: '1px solid #000', paddingBottom: '2px', marginBottom: '4px' }}>KETENTUAN</strong>
-                                                <ul style={{ margin: 0, paddingLeft: '12px' }}>
-                                                    <li>Tiket tidak dapat dikembalikan.</li>
-                                                    <li>Simpan struk di area kolam.</li>
-                                                    <li>Berlaku 1x masuk.</li>
-                                                </ul>
-                                            </div>
-                                        </div>
-
-                                        <div style={{ borderTop: '1px dashed #000', paddingTop: '6px', textAlign: 'center', fontSize: '0.72rem' }}>
-                                            <div style={{ marginBottom: '4px' }}>Follow us : <strong>@cijohoindahwaterboom</strong></div>
-                                            <strong style={{ fontSize: '0.76rem', textTransform: 'uppercase' }}>🌊 TERIMA KASIH ATAS KUNJUNGAN ANDA 🌊</strong>
-                                        </div>
-                                    </div>
-                                )}
-
-                                {printFormat === 'full' && (
-                                    <div style={{ textTransform: 'uppercase', fontSize: '0.75rem', fontWeight: 900, color: '#000', textAlign: 'center', letterSpacing: '1px', padding: '8px 0', borderTop: '2px dashed #000', borderBottom: '2px dashed #000', margin: '10px 0', fontFamily: 'monospace' }}>
-                                        ✂ ---------------------- POTONG DI SINI ---------------------- ✂
-                                    </div>
-                                )}
-
-                                {/* 2. TIKET MASUK WAHANA (EXACT MATCH SAMPLE TICKET IMAGE) */}
-                                {(printFormat === 'full' || printFormat === 'ticket') && (
-                                    <div id="printable-ticket-only" className="thermal-receipt-80mm" style={{ border: '3px solid #000', borderRadius: '16px', padding: '18px', backgroundColor: '#ffffff', fontFamily: "'Courier New', Courier, monospace", color: '#000', fontSize: '0.82rem', lineHeight: '1.4' }}>
-                                        {/* HEADER BRAND & LOGO */}
-                                        <div style={{ textAlign: 'center', marginBottom: '8px' }}>
-                                            <h2 style={{ fontSize: '1.25rem', fontWeight: 900, margin: 0, letterSpacing: '-0.5px' }}>Cijoho Indah Waterboom</h2>
-                                            <small style={{ fontWeight: 800, fontSize: '0.72rem', textTransform: 'uppercase', display: 'block' }}>SERUNYA LIBURAN KELUARGA!</small>
-                                        </div>
-
-                                        <div style={{ borderTop: '2px dashed #000', borderBottom: '2px dashed #000', padding: '6px 0', margin: '8px 0', textAlign: 'center' }}>
-                                            <h3 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 900 }}>💦 TIKET MASUK 💦</h3>
-                                            <div style={{ fontSize: '0.8rem', fontWeight: 800, marginTop: '2px' }}>Cijoho Indah Waterboom</div>
-                                            <div style={{ fontSize: '0.72rem', color: '#333' }}>Jl. Raya Cijoho No. 88, Cijoho - Tasikmalaya 46134</div>
-                                            <div style={{ fontSize: '0.72rem', color: '#333' }}>Telp. 0265-1234567</div>
-                                        </div>
-
-                                        {/* METADATA INFO */}
-                                        <div style={{ borderBottom: '2px dashed #000', paddingBottom: '8px', marginBottom: '8px', fontSize: '0.82rem' }}>
-                                            <div style={{ display: 'grid', gridTemplateColumns: '110px 10px 1fr' }}>
-                                                <span>No. Transaksi</span><span>:</span><strong>{pdfTicketData.code}</strong>
-                                            </div>
-                                            <div style={{ display: 'grid', gridTemplateColumns: '110px 10px 1fr' }}>
-                                                <span>Tanggal</span><span>:</span><span>{pdfTicketData.date}</span>
-                                            </div>
-                                            <div style={{ display: 'grid', gridTemplateColumns: '110px 10px 1fr' }}>
-                                                <span>Waktu</span><span>:</span><span>{pdfTicketData.time || '10:15:32'}</span>
-                                            </div>
-                                            <div style={{ display: 'grid', gridTemplateColumns: '110px 10px 1fr' }}>
-                                                <span>Petugas Tiket</span><span>:</span><span>{pdfTicketData.cashierName || 'DEDI SAPUTRA'}</span>
-                                            </div>
-                                        </div>
-
-                                        {pdfTicketData.qty > 0 ? (
-                                            <>
-                                                {/* NOTICE BADGE */}
-                                                <div style={{ textAlign: 'center', borderBottom: '2px dashed #000', padding: '8px 0', marginBottom: '8px' }}>
-                                                    <div style={{ fontWeight: 900, fontSize: '0.88rem' }}>✦ TIKET BERLAKU UNTUK {pdfTicketData.qty > 1 ? `${pdfTicketData.qty} ORANG` : 'SATU ORANG'} ✦</div>
-                                                    <div style={{ fontWeight: 900, fontSize: '0.95rem', letterSpacing: '1px' }}>SEKALI PAKAI</div>
+                                            {/* METADATA INFO */}
+                                            <div style={{ margin: '10px 0', fontSize: '0.8rem' }}>
+                                                <div style={{ display: 'grid', gridTemplateColumns: '100px 10px 1fr' }}>
+                                                    <span>No. Transaksi</span><span>:</span><strong>{pdfTicketData.code}</strong>
                                                 </div>
-
-                                                {/* FOOTER & BARCODE */}
-                                                <div style={{ textAlign: 'center', paddingTop: '4px' }}>
-                                                    <div style={{ fontWeight: 900, fontSize: '0.9rem' }}>💦 TERIMA KASIH 💦</div>
-                                                    <div style={{ fontSize: '0.78rem', marginBottom: '6px' }}>Selamat menikmati wahana Cijoho Indah Waterboom</div>
-                                                    <div style={{ fontSize: '1.2rem', lineHeight: '0.8', margin: '4px 0' }}>~~~~~~~~~~~~~~~</div>
-                                                    <div style={{ fontSize: '3rem', color: '#000', lineHeight: 1, marginTop: '6px' }}>
-                                                        <i className="fa-solid fa-barcode"></i>
-                                                    </div>
-                                                    <div style={{ fontSize: '0.88rem', fontWeight: 900, letterSpacing: '2px', marginTop: '2px' }}>{pdfTicketData.code}</div>
+                                                <div style={{ display: 'grid', gridTemplateColumns: '100px 10px 1fr' }}>
+                                                    <span>Tanggal</span><span>:</span><span>{pdfTicketData.date}</span>
                                                 </div>
-                                            </>
-                                        ) : (
-                                            <div style={{ textAlign: 'center', padding: '12px 0', fontWeight: 800, fontSize: '0.82rem' }}>
-                                                <i>(Transaksi Ini Tidak Mencakup Tiket Masuk Wahana)</i>
+                                                <div style={{ display: 'grid', gridTemplateColumns: '100px 10px 1fr' }}>
+                                                    <span>Waktu</span><span>:</span><span>{pdfTicketData.time || '10:15:32'}</span>
+                                                </div>
+                                                <div style={{ display: 'grid', gridTemplateColumns: '100px 10px 1fr' }}>
+                                                    <span>Kasir</span><span>:</span><span>{pdfTicketData.cashierName || 'KASIR01'}</span>
+                                                </div>
                                             </div>
-                                        )}
-                                    </div>
-                                )}
 
-                                {printFormat === 'full' && (
-                                    <div style={{ textTransform: 'uppercase', fontSize: '0.75rem', fontWeight: 900, color: '#000', textAlign: 'center', letterSpacing: '1px', padding: '8px 0', borderTop: '2px dashed #000', borderBottom: '2px dashed #000', margin: '10px 0', fontFamily: 'monospace' }}>
-                                        ✂ ---------------------- POTONG DI SINI ---------------------- ✂
-                                    </div>
-                                )}
-
-                                {/* 3. KUPON PENUKARAN SEWA ADD-ON (TERPISAH PER ITEM / UNIT SOBEKAN) */}
-                                {(printFormat === 'full' || printFormat === 'rental') && (() => {
-                                    const rentalSources = pdfTicketData.rentals || pdfTicketData.details?.rentals || {};
-                                    const banQty = rentalSources.ban || 0;
-                                    const sepedaQty = rentalSources.sepeda || 0;
-                                    const gazeboQty = rentalSources.gazebo || 0;
-
-                                    const coupons = [];
-                                    if (banQty > 0) {
-                                        for (let i = 1; i <= banQty; i++) {
-                                            coupons.push({
-                                                id: `BAN-${i}`,
-                                                title: 'KUPON SEWA BAN RENANG',
-                                                itemName: 'Sewa Ban Renang',
-                                                code: `${pdfTicketData.code}-BAN${banQty > 1 ? `-${i}` : ''}`,
-                                                stand: 'STAND BAN RENANG',
-                                                index: i,
-                                                totalCount: banQty
-                                            });
-                                        }
-                                    }
-                                    if (sepedaQty > 0) {
-                                        for (let i = 1; i <= sepedaQty; i++) {
-                                            coupons.push({
-                                                id: `SPD-${i}`,
-                                                title: 'KUPON SEWA SEPEDA AIR',
-                                                itemName: 'Sewa Sepeda Air',
-                                                code: `${pdfTicketData.code}-SPD${sepedaQty > 1 ? `-${i}` : ''}`,
-                                                stand: 'STAND SEPEDA AIR',
-                                                index: i,
-                                                totalCount: sepedaQty
-                                            });
-                                        }
-                                    }
-                                    if (gazeboQty > 0) {
-                                        for (let i = 1; i <= gazeboQty; i++) {
-                                            coupons.push({
-                                                id: `GZB-${i}`,
-                                                title: 'KUPON SEWA GAZEBO SANTAI',
-                                                itemName: 'Sewa Gazebo Santai',
-                                                code: `${pdfTicketData.code}-GZB${gazeboQty > 1 ? `-${i}` : ''}`,
-                                                stand: 'STAND GAZEBO SANTAI',
-                                                index: i,
-                                                totalCount: gazeboQty
-                                            });
-                                        }
-                                    }
-
-                                    return (
-                                        <div id="printable-addon-only" className="thermal-receipt-80mm" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                                            {coupons.length > 0 ? (
-                                                coupons.map((coupon, idx) => (
-                                                    <React.Fragment key={coupon.id}>
-                                                        {idx > 0 && (
-                                                            <div style={{ textTransform: 'uppercase', fontSize: '0.72rem', fontWeight: 900, color: '#000', textAlign: 'center', letterSpacing: '1px', padding: '6px 0', borderTop: '2px dashed #000', borderBottom: '2px dashed #000', margin: '4px 0', fontFamily: 'monospace' }}>
-                                                                ✂ ---------------- SOBEK DI SINI ---------------- ✂
-                                                            </div>
+                                            {/* DETAIL PEMBELIAN TABLE */}
+                                            <div style={{ borderTop: '1px dashed #000', borderBottom: '1px dashed #000', padding: '8px 0', margin: '10px 0' }}>
+                                                <div style={{ fontWeight: 900, marginBottom: '6px', fontSize: '0.82rem' }}>DETAIL PEMBELIAN</div>
+                                                <table style={{ width: '100%', fontSize: '0.76rem', borderCollapse: 'collapse' }}>
+                                                    <thead>
+                                                        <tr style={{ borderBottom: '1px solid #000', textAlign: 'left' }}>
+                                                            <th style={{ paddingBottom: '4px', width: '25px' }}>No.</th>
+                                                            <th style={{ paddingBottom: '4px' }}>Jenis Tiket / Service</th>
+                                                            <th style={{ paddingBottom: '4px', textAlign: 'center', width: '35px' }}>Qty</th>
+                                                            <th style={{ paddingBottom: '4px', textAlign: 'right' }}>Harga Satuan</th>
+                                                            <th style={{ paddingBottom: '4px', textAlign: 'right' }}>Total</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        {pdfTicketData.qty > 0 && (
+                                                            <tr>
+                                                                <td style={{ paddingTop: '6px', verticalAlign: 'top' }}>1.</td>
+                                                                <td style={{ paddingTop: '6px', verticalAlign: 'top' }}>{pdfTicketData.type}</td>
+                                                                <td style={{ paddingTop: '6px', textAlign: 'center', verticalAlign: 'top' }}>{pdfTicketData.qty}</td>
+                                                                <td style={{ paddingTop: '6px', textAlign: 'right', verticalAlign: 'top' }}>Rp {((pdfTicketData.subtotal || pdfTicketData.total) / pdfTicketData.qty).toLocaleString('id-ID')}</td>
+                                                                <td style={{ paddingTop: '6px', textAlign: 'right', verticalAlign: 'top', fontWeight: 800 }}>Rp {pdfTicketData.subtotal?.toLocaleString('id-ID')}</td>
+                                                            </tr>
                                                         )}
-                                                        <div style={{ border: '3px solid #000', borderRadius: '16px', padding: '18px', backgroundColor: '#ffffff', fontFamily: "'Courier New', Courier, monospace", color: '#000', fontSize: '0.82rem', lineHeight: '1.4' }}>
-                                                            {/* HEADER BRAND & LOGO */}
-                                                            <div style={{ textAlign: 'center', marginBottom: '8px' }}>
-                                                                <h2 style={{ fontSize: '1.2rem', fontWeight: 900, margin: 0, letterSpacing: '-0.5px' }}>Cijoho Indah Waterboom</h2>
-                                                                <small style={{ fontWeight: 800, fontSize: '0.7rem', textTransform: 'uppercase', display: 'block' }}>SERUNYA LIBURAN KELUARGA!</small>
-                                                            </div>
+                                                        {pdfTicketData.rentals?.ban > 0 && (
+                                                            <tr>
+                                                                <td style={{ paddingTop: '4px', verticalAlign: 'top' }}>{pdfTicketData.qty > 0 ? 2 : 1}.</td>
+                                                                <td style={{ paddingTop: '4px', verticalAlign: 'top' }}>Sewa Ban Renang</td>
+                                                                <td style={{ paddingTop: '4px', textAlign: 'center', verticalAlign: 'top' }}>{pdfTicketData.rentals.ban}</td>
+                                                                <td style={{ paddingTop: '4px', textAlign: 'right', verticalAlign: 'top' }}>Rp {(pdfTicketData.rentalsPrice?.ban || 5000).toLocaleString('id-ID')}</td>
+                                                                <td style={{ paddingTop: '4px', textAlign: 'right', verticalAlign: 'top', fontWeight: 800 }}>Rp {(pdfTicketData.rentals.ban * (pdfTicketData.rentalsPrice?.ban || 5000)).toLocaleString('id-ID')}</td>
+                                                            </tr>
+                                                        )}
+                                                        {pdfTicketData.rentals?.sepeda > 0 && (
+                                                            <tr>
+                                                                <td style={{ paddingTop: '4px', verticalAlign: 'top' }}>{(pdfTicketData.qty > 0 ? 1 : 0) + (pdfTicketData.rentals?.ban > 0 ? 1 : 0) + 1}.</td>
+                                                                <td style={{ paddingTop: '4px', verticalAlign: 'top' }}>Sewa Sepeda Air</td>
+                                                                <td style={{ paddingTop: '4px', textAlign: 'center', verticalAlign: 'top' }}>{pdfTicketData.rentals.sepeda}</td>
+                                                                <td style={{ paddingTop: '4px', textAlign: 'right', verticalAlign: 'top' }}>Rp {(pdfTicketData.rentalsPrice?.sepeda || 15000).toLocaleString('id-ID')}</td>
+                                                                <td style={{ paddingTop: '4px', textAlign: 'right', verticalAlign: 'top', fontWeight: 800 }}>Rp {(pdfTicketData.rentals.sepeda * (pdfTicketData.rentalsPrice?.sepeda || 15000)).toLocaleString('id-ID')}</td>
+                                                            </tr>
+                                                        )}
+                                                        {pdfTicketData.rentals?.gazebo > 0 && (
+                                                            <tr>
+                                                                <td style={{ paddingTop: '4px', verticalAlign: 'top' }}>{(pdfTicketData.qty > 0 ? 1 : 0) + (pdfTicketData.rentals?.ban > 0 ? 1 : 0) + (pdfTicketData.rentals?.sepeda > 0 ? 1 : 0) + 1}.</td>
+                                                                <td style={{ paddingTop: '4px', verticalAlign: 'top' }}>Sewa Gazebo Santai</td>
+                                                                <td style={{ paddingTop: '4px', textAlign: 'center', verticalAlign: 'top' }}>{pdfTicketData.rentals.gazebo}</td>
+                                                                <td style={{ paddingTop: '4px', textAlign: 'right', verticalAlign: 'top' }}>Rp {(pdfTicketData.rentalsPrice?.gazebo || 25000).toLocaleString('id-ID')}</td>
+                                                                <td style={{ paddingTop: '4px', textAlign: 'right', verticalAlign: 'top', fontWeight: 800 }}>Rp {(pdfTicketData.rentals.gazebo * (pdfTicketData.rentalsPrice?.gazebo || 25000)).toLocaleString('id-ID')}</td>
+                                                            </tr>
+                                                        )}
+                                                    </tbody>
+                                                </table>
+                                            </div>
 
-                                                            <div style={{ borderTop: '2px dashed #000', borderBottom: '2px dashed #000', padding: '6px 0', margin: '8px 0', textAlign: 'center' }}>
-                                                                <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 900 }}>💦 {coupon.title} 💦</h3>
-                                                                <div style={{ fontSize: '0.78rem', fontWeight: 800, marginTop: '2px' }}>Cijoho Indah Waterboom</div>
-                                                                <div style={{ fontSize: '0.7rem', color: '#333' }}>Jl. Raya Cijoho No. 88, Cijoho - Tasikmalaya 46134</div>
-                                                                <div style={{ fontSize: '0.7rem', color: '#333' }}>Telp. 0265-1234567</div>
-                                                            </div>
+                                            {/* TOTALS */}
+                                            <div style={{ borderBottom: '1px dashed #000', paddingBottom: '8px', marginBottom: '10px' }}>
+                                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '3px' }}>
+                                                    <span>Subtotal</span>
+                                                    <span>: Rp {pdfTicketData.total?.toLocaleString('id-ID')}</span>
+                                                </div>
+                                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '3px' }}>
+                                                    <span>Biaya Layanan</span>
+                                                    <span>: Rp 0</span>
+                                                </div>
+                                                <div style={{ borderTop: '1px solid #000', paddingTop: '4px', marginTop: '4px', display: 'flex', justifyContent: 'space-between', fontWeight: 900, fontSize: '0.92rem' }}>
+                                                    <span>TOTAL BAYAR</span>
+                                                    <span>: Rp {pdfTicketData.total?.toLocaleString('id-ID')}</span>
+                                                </div>
+                                            </div>
 
-                                                            {/* METADATA INFO */}
-                                                            <div style={{ borderBottom: '2px dashed #000', paddingBottom: '8px', marginBottom: '8px', fontSize: '0.8rem' }}>
-                                                                <div style={{ display: 'grid', gridTemplateColumns: '105px 10px 1fr' }}>
-                                                                    <span>No. Transaksi</span><span>:</span><strong>{pdfTicketData.code}</strong>
-                                                                </div>
-                                                                <div style={{ display: 'grid', gridTemplateColumns: '105px 10px 1fr' }}>
-                                                                    <span>Kode Kupon</span><span>:</span><strong>{coupon.code}</strong>
-                                                                </div>
-                                                                <div style={{ display: 'grid', gridTemplateColumns: '105px 10px 1fr' }}>
-                                                                    <span>Tanggal</span><span>:</span><span>{pdfTicketData.date}</span>
-                                                                </div>
-                                                                <div style={{ display: 'grid', gridTemplateColumns: '105px 10px 1fr' }}>
-                                                                    <span>Waktu</span><span>:</span><span>{pdfTicketData.time || '10:15:32'}</span>
-                                                                </div>
-                                                                <div style={{ display: 'grid', gridTemplateColumns: '105px 10px 1fr' }}>
-                                                                    <span>Petugas Stand</span><span>:</span><span>{pdfTicketData.cashierName || 'STAND01'}</span>
-                                                                </div>
-                                                            </div>
+                                            {/* FOOTER & KETENTUAN */}
+                                            <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '8px', fontSize: '0.7rem', alignItems: 'center', marginBottom: '10px' }}>
+                                                <div>
+                                                    <strong style={{ fontSize: '0.78rem', display: 'block', marginBottom: '2px' }}>👥 TERIMA KASIH</strong>
+                                                    <div>Selamat menikmati wahana Cijoho Indah Waterboom</div>
+                                                </div>
+                                                <div style={{ border: '1px solid #000', borderRadius: '6px', padding: '6px', fontSize: '0.64rem', lineHeight: '1.2' }}>
+                                                    <strong style={{ display: 'block', textAlign: 'center', borderBottom: '1px solid #000', paddingBottom: '2px', marginBottom: '4px' }}>KETENTUAN</strong>
+                                                    <ul style={{ margin: 0, paddingLeft: '12px' }}>
+                                                        <li>Tiket tidak dapat dikembalikan.</li>
+                                                        <li>Simpan struk di area kolam.</li>
+                                                        <li>Berlaku 1x masuk.</li>
+                                                    </ul>
+                                                </div>
+                                            </div>
 
-                                                            {/* ITEM PENUKARAN PER UNIT */}
-                                                            <div style={{ borderBottom: '2px dashed #000', paddingBottom: '8px', marginBottom: '8px' }}>
-                                                                <div style={{ fontWeight: 900, marginBottom: '4px', fontSize: '0.82rem' }}>ITEM HAK SEWA:</div>
-                                                                <div style={{ fontSize: '0.88rem', fontWeight: 900, padding: '2px 0' }}>
-                                                                    • 1x {coupon.itemName} {coupon.totalCount > 1 ? `[Unit ${coupon.index}/${coupon.totalCount}]` : ''}
-                                                                </div>
-                                                                <div style={{ fontSize: '0.72rem', color: '#333', marginTop: '2px' }}>
-                                                                    Lokasi Stand: <strong>{coupon.stand}</strong>
-                                                                </div>
-                                                            </div>
+                                            <div style={{ borderTop: '1px dashed #000', paddingTop: '6px', textAlign: 'center', fontSize: '0.72rem' }}>
+                                                <div style={{ marginBottom: '4px' }}>Follow us : <strong>@cijohoindahwaterboom</strong></div>
+                                                <strong style={{ fontSize: '0.76rem', textTransform: 'uppercase' }}>🌊 TERIMA KASIH ATAS KUNJUNGAN ANDA 🌊</strong>
+                                            </div>
+                                        </div>
+                                    )}
 
-                                                            {/* NOTICE BADGE */}
-                                                            <div style={{ textAlign: 'center', borderBottom: '2px dashed #000', padding: '8px 0', marginBottom: '8px' }}>
-                                                                <div style={{ fontWeight: 900, fontSize: '0.8rem' }}>✦ SERAHKAN STRUK/KUPON INI KE PETUGAS {coupon.stand} ✦</div>
-                                                                <div style={{ fontWeight: 900, fontSize: '0.92rem', letterSpacing: '1px' }}>SEKALI TUKAR (DISOBEK)</div>
-                                                            </div>
+                                    {printFormat === 'full' && (
+                                        <div style={{ textTransform: 'uppercase', fontSize: '0.75rem', fontWeight: 900, color: '#000', textAlign: 'center', letterSpacing: '1px', padding: '8px 0', borderTop: '2px dashed #000', borderBottom: '2px dashed #000', margin: '10px 0', fontFamily: 'monospace' }}>
+                                            ✂ ---------------------- POTONG DI SINI ---------------------- ✂
+                                        </div>
+                                    )}
 
-                                                            {/* FOOTER & BARCODE */}
-                                                            <div style={{ textAlign: 'center', paddingTop: '4px' }}>
-                                                                <div style={{ fontWeight: 900, fontSize: '0.88rem' }}>💦 TERIMA KASIH 💦</div>
-                                                                <div style={{ fontSize: '0.75rem', marginBottom: '6px' }}>Selamat menikmati wahana Cijoho Indah Waterboom</div>
-                                                                <div style={{ fontSize: '1.2rem', lineHeight: '0.8', margin: '4px 0' }}>~~~~~~~~~~~~~~~</div>
-                                                                <div style={{ fontSize: '2.8rem', color: '#000', lineHeight: 1, marginTop: '6px' }}>
-                                                                    <i className="fa-solid fa-barcode"></i>
-                                                                </div>
-                                                                <div style={{ fontSize: '0.85rem', fontWeight: 900, letterSpacing: '2px', marginTop: '2px' }}>{coupon.code}</div>
-                                                            </div>
+                                    {/* 2. TIKET MASUK WAHANA (MONOCHROME BLACK & WHITE) */}
+                                    {printFormat === 'ticket' && (
+                                        <div id="printable-ticket-only" className="thermal-receipt-80mm" style={{ border: '1px solid #000', borderRadius: '0', padding: '24px 20px', backgroundColor: '#ffffff', fontFamily: "'Inter', Arial, sans-serif", color: '#000000', fontSize: '0.82rem', lineHeight: '1.4' }}>
+                                            {/* HEADER BRAND & LOGO */}
+                                            <div style={{ textAlign: 'center', marginBottom: '10px' }}>
+                                                <img src="assets/logo.png" alt="Logo" style={{ height: '46px', objectFit: 'contain', marginBottom: '2px', filter: 'grayscale(100%) contrast(200%)' }} />
+                                                <h2 style={{ fontSize: '1.3rem', fontWeight: 900, margin: '2px 0 0 0', letterSpacing: '-0.5px', color: '#000' }}>Cijoho Indah Waterboom</h2>
+                                                <div style={{ display: 'inline-block', backgroundColor: '#000', color: '#fff', padding: '3px 12px', borderRadius: '4px', fontSize: '0.66rem', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '1px', marginTop: '3px' }}>SERUNYA LIBURAN KELUARGA!</div>
+                                            </div>
+
+                                            <div style={{ borderTop: '1px dashed #000', margin: '10px 0' }}></div>
+
+                                            <div style={{ textAlign: 'center', margin: '10px 0' }}>
+                                                <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.5px' }}>✦ TIKET MASUK ✦</h3>
+                                                <div style={{ fontSize: '0.85rem', fontWeight: 800, marginTop: '4px' }}>Cijoho Indah Waterboom</div>
+                                                <div style={{ fontSize: '0.74rem', color: '#000' }}>Jl. Raya Cijoho No. 88</div>
+                                                <div style={{ fontSize: '0.74rem', color: '#000' }}>Cijoho - Tasikmalaya 46134</div>
+                                                <div style={{ fontSize: '0.74rem', color: '#000' }}>Telp. 0265-1234567</div>
+                                            </div>
+
+                                            <div style={{ borderTop: '1px dashed #000', margin: '10px 0' }}></div>
+
+                                            {/* METADATA INFO */}
+                                            <div style={{ fontSize: '0.82rem', lineHeight: '1.65', margin: '10px 0' }}>
+                                                <div style={{ display: 'grid', gridTemplateColumns: '115px 12px 1fr' }}>
+                                                    <span>No. Transaksi</span><span>:</span><strong>{pdfTicketData.code}</strong>
+                                                </div>
+                                                <div style={{ display: 'grid', gridTemplateColumns: '115px 12px 1fr' }}>
+                                                    <span>Tanggal</span><span>:</span><span>{pdfTicketData.date}</span>
+                                                </div>
+                                                <div style={{ display: 'grid', gridTemplateColumns: '115px 12px 1fr' }}>
+                                                    <span>Waktu</span><span>:</span><span>{pdfTicketData.time || '10:15:32'}</span>
+                                                </div>
+                                                <div style={{ display: 'grid', gridTemplateColumns: '115px 12px 1fr' }}>
+                                                    <span>Petugas Tiket</span><span>:</span><span>{pdfTicketData.cashierName || 'DEDI SAPUTRA'}</span>
+                                                </div>
+                                            </div>
+
+                                            <div style={{ borderTop: '1px dashed #000', margin: '10px 0' }}></div>
+
+                                            {pdfTicketData.qty > 0 ? (
+                                                <>
+                                                    {/* NOTICE BADGE */}
+                                                    <div style={{ textAlign: 'center', margin: '10px 0' }}>
+                                                        <div style={{ fontWeight: 900, fontSize: '0.88rem' }}>✦ TIKET BERLAKU UNTUK {pdfTicketData.qty > 1 ? `${pdfTicketData.qty} ORANG` : 'SATU ORANG'} ✦</div>
+                                                        <div style={{ fontWeight: 900, fontSize: '0.95rem', letterSpacing: '1px', textTransform: 'uppercase', marginTop: '2px' }}>SEKALI PAKAI</div>
+                                                    </div>
+
+                                                    <div style={{ borderTop: '1px dashed #000', margin: '10px 0' }}></div>
+
+                                                    {/* FOOTER & BARCODE */}
+                                                    <div style={{ textAlign: 'center', paddingTop: '4px' }}>
+                                                        <div style={{ fontWeight: 900, fontSize: '0.95rem', marginBottom: '2px' }}>✦ TERIMA KASIH ✦</div>
+                                                        <div style={{ fontSize: '0.78rem', color: '#000' }}>Selamat menikmati wahana</div>
+                                                        <div style={{ fontSize: '0.78rem', fontWeight: 800, color: '#000' }}>Cijoho Indah Waterboom</div>
+                                                        <div style={{ fontSize: '1.2rem', lineHeight: '0.8', margin: '6px 0', letterSpacing: '2px' }}>~~~~~~~~~~~~~~~</div>
+                                                        
+                                                        {/* BARCODE VECTOR SVG */}
+                                                        <div style={{ display: 'flex', justifyContent: 'center', margin: '10px 0 4px 0' }}>
+                                                            <svg width="220" height="50" viewBox="0 0 220 50">
+                                                                <rect x="5" y="0" width="3" height="45" fill="#000"/>
+                                                                <rect x="10" y="0" width="1" height="45" fill="#000"/>
+                                                                <rect x="13" y="0" width="4" height="45" fill="#000"/>
+                                                                <rect x="19" y="0" width="2" height="45" fill="#000"/>
+                                                                <rect x="23" y="0" width="1" height="45" fill="#000"/>
+                                                                <rect x="26" y="0" width="5" height="45" fill="#000"/>
+                                                                <rect x="33" y="0" width="2" height="45" fill="#000"/>
+                                                                <rect x="37" y="0" width="3" height="45" fill="#000"/>
+                                                                <rect x="42" y="0" width="1" height="45" fill="#000"/>
+                                                                <rect x="45" y="0" width="4" height="45" fill="#000"/>
+                                                                <rect x="51" y="0" width="2" height="45" fill="#000"/>
+                                                                <rect x="55" y="0" width="3" height="45" fill="#000"/>
+                                                                <rect x="60" y="0" width="1" height="45" fill="#000"/>
+                                                                <rect x="63" y="0" width="5" height="45" fill="#000"/>
+                                                                <rect x="70" y="0" width="2" height="45" fill="#000"/>
+                                                                <rect x="74" y="0" width="4" height="45" fill="#000"/>
+                                                                <rect x="80" y="0" width="1" height="45" fill="#000"/>
+                                                                <rect x="83" y="0" width="3" height="45" fill="#000"/>
+                                                                <rect x="88" y="0" width="2" height="45" fill="#000"/>
+                                                                <rect x="92" y="0" width="5" height="45" fill="#000"/>
+                                                                <rect x="99" y="0" width="1" height="45" fill="#000"/>
+                                                                <rect x="102" y="0" width="3" height="45" fill="#000"/>
+                                                                <rect x="107" y="0" width="4" height="45" fill="#000"/>
+                                                                <rect x="113" y="0" width="2" height="45" fill="#000"/>
+                                                                <rect x="117" y="0" width="1" height="45" fill="#000"/>
+                                                                <rect x="120" y="0" width="5" height="45" fill="#000"/>
+                                                                <rect x="127" y="0" width="3" height="45" fill="#000"/>
+                                                                <rect x="132" y="0" width="2" height="45" fill="#000"/>
+                                                                <rect x="136" y="0" width="4" height="45" fill="#000"/>
+                                                                <rect x="142" y="0" width="1" height="45" fill="#000"/>
+                                                                <rect x="145" y="0" width="3" height="45" fill="#000"/>
+                                                                <rect x="150" y="0" width="5" height="45" fill="#000"/>
+                                                                <rect x="157" y="0" width="2" height="45" fill="#000"/>
+                                                                <rect x="161" y="0" width="4" height="45" fill="#000"/>
+                                                                <rect x="167" y="0" width="1" height="45" fill="#000"/>
+                                                                <rect x="170" y="0" width="3" height="45" fill="#000"/>
+                                                                <rect x="175" y="0" width="5" height="45" fill="#000"/>
+                                                                <rect x="182" y="0" width="2" height="45" fill="#000"/>
+                                                                <rect x="186" y="0" width="4" height="45" fill="#000"/>
+                                                                <rect x="192" y="0" width="1" height="45" fill="#000"/>
+                                                                <rect x="195" y="0" width="3" height="45" fill="#000"/>
+                                                                <rect x="200" y="0" width="5" height="45" fill="#000"/>
+                                                                <rect x="207" y="0" width="2" height="45" fill="#000"/>
+                                                                <rect x="211" y="0" width="4" height="45" fill="#000"/>
+                                                            </svg>
                                                         </div>
-                                                    </React.Fragment>
-                                                ))
+                                                        <div style={{ fontSize: '0.9rem', fontWeight: 900, letterSpacing: '2px', color: '#000' }}>{pdfTicketData.code}</div>
+                                                    </div>
+                                                </>
                                             ) : (
-                                                <div style={{ border: '2px solid #000', borderRadius: '12px', padding: '16px', backgroundColor: '#ffffff', textAlign: 'center', fontWeight: 800, fontSize: '0.82rem', fontFamily: 'monospace' }}>
-                                                    <i>(Tidak Ada Item Sewa Add-on Pada Transaksi Ini)</i>
+                                                <div style={{ textAlign: 'center', padding: '12px 0', fontWeight: 800, fontSize: '0.82rem' }}>
+                                                    <i>(Transaksi Ini Tidak Mencakup Tiket Masuk Wahana)</i>
                                                 </div>
                                             )}
                                         </div>
-                                    );
-                                })()}
-                            </div>
-                        )}
+                                    )}
+
+                                    {/* 3. KUPON PENUKARAN SEWA ADD-ON (EXACT MATCH SAMPLE THERMAL IMAGE) */}
+                                    {printFormat === 'rental' && (() => {
+                                        const rentalSources = pdfTicketData.rentals || pdfTicketData.details?.rentals || {};
+                                        const banQty = rentalSources.ban || 0;
+                                        const sepedaQty = rentalSources.sepeda || 0;
+                                        const gazeboQty = rentalSources.gazebo || 0;
+
+                                        const coupons = [];
+                                        if (banQty > 0) {
+                                            coupons.push({
+                                                id: `BAN`,
+                                                title: 'KUPON SEWA BAN RENANG',
+                                                itemName: 'Sewa Ban Renang',
+                                                qty: banQty,
+                                                code: `${pdfTicketData.code}-BAN`,
+                                                stand: 'STAND BAN RENANG'
+                                            });
+                                        }
+                                        if (sepedaQty > 0) {
+                                            coupons.push({
+                                                id: `SPD`,
+                                                title: 'KUPON SEWA SEPEDA AIR',
+                                                itemName: 'Sewa Sepeda Air',
+                                                qty: sepedaQty,
+                                                code: `${pdfTicketData.code}-SPD`,
+                                                stand: 'STAND SEPEDA AIR'
+                                            });
+                                        }
+                                        if (gazeboQty > 0) {
+                                            coupons.push({
+                                                id: `GZB`,
+                                                title: 'KUPON SEWA GAZEBO SANTAI',
+                                                itemName: 'Sewa Gazebo Santai',
+                                                qty: gazeboQty,
+                                                code: `${pdfTicketData.code}-GZB`,
+                                                stand: 'STAND GAZEBO SANTAI'
+                                            });
+                                        }
+
+                                        return (
+                                            <div id="printable-addon-only" className="thermal-receipt-80mm" style={{ display: 'block' }}>
+                                                 {coupons.length > 0 ? (
+                                                     coupons.map((coupon) => (
+                                                         <div key={coupon.id} className="thermal-coupon-page" style={{ border: '1px solid #000', borderRadius: '0', padding: '24px 20px', backgroundColor: '#ffffff', fontFamily: "'Inter', Arial, sans-serif", color: '#000000', fontSize: '0.82rem', lineHeight: '1.4' }}>
+                                                             {/* HEADER BRAND & LOGO */}
+                                                             <div style={{ textAlign: 'center', marginBottom: '10px' }}>
+                                                                 <img src="assets/logo.png" alt="Logo" style={{ height: '46px', objectFit: 'contain', marginBottom: '2px', filter: 'grayscale(100%) contrast(200%)' }} />
+                                                                 <h2 style={{ fontSize: '1.3rem', fontWeight: 900, margin: '2px 0 0 0', letterSpacing: '-0.5px', color: '#000' }}>Cijoho Indah Waterboom</h2>
+                                                                 <div style={{ display: 'inline-block', backgroundColor: '#000', color: '#fff', padding: '3px 12px', borderRadius: '4px', fontSize: '0.66rem', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '1px', marginTop: '3px' }}>SERUNYA LIBURAN KELUARGA!</div>
+                                                             </div>
+
+                                                             <div style={{ borderTop: '1px dashed #000', margin: '10px 0' }}></div>
+
+                                                             <div style={{ textAlign: 'center', margin: '10px 0' }}>
+                                                                 <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.5px' }}>✦ {coupon.title} ✦</h3>
+                                                                 <div style={{ fontSize: '0.85rem', fontWeight: 800, marginTop: '4px' }}>Cijoho Indah Waterboom</div>
+                                                                 <div style={{ fontSize: '0.74rem', color: '#000' }}>Jl. Raya Cijoho No. 88</div>
+                                                                 <div style={{ fontSize: '0.74rem', color: '#000' }}>Cijoho - Tasikmalaya 46134</div>
+                                                                 <div style={{ fontSize: '0.74rem', color: '#000' }}>Telp. 0265-1234567</div>
+                                                             </div>
+
+                                                             <div style={{ borderTop: '1px dashed #000', margin: '10px 0' }}></div>
+
+                                                             {/* METADATA INFO */}
+                                                             <div style={{ fontSize: '0.82rem', lineHeight: '1.65', margin: '10px 0' }}>
+                                                                 <div style={{ display: 'grid', gridTemplateColumns: '115px 12px 1fr' }}>
+                                                                     <span>No. Transaksi</span><span>:</span><strong>{pdfTicketData.code}</strong>
+                                                                 </div>
+                                                                 <div style={{ display: 'grid', gridTemplateColumns: '115px 12px 1fr' }}>
+                                                                     <span>Kode Kupon</span><span>:</span><strong>{coupon.code}</strong>
+                                                                 </div>
+                                                                 <div style={{ display: 'grid', gridTemplateColumns: '115px 12px 1fr' }}>
+                                                                     <span>Tanggal</span><span>:</span><span>{pdfTicketData.date}</span>
+                                                                 </div>
+                                                                 <div style={{ display: 'grid', gridTemplateColumns: '115px 12px 1fr' }}>
+                                                                     <span>Waktu</span><span>:</span><span>{pdfTicketData.time || '10:15:32'}</span>
+                                                                 </div>
+                                                                 <div style={{ display: 'grid', gridTemplateColumns: '115px 12px 1fr' }}>
+                                                                     <span>Petugas Stand</span><span>:</span><span>{pdfTicketData.cashierName || 'DEDI SAPUTRA'}</span>
+                                                                 </div>
+                                                             </div>
+
+                                                             <div style={{ borderTop: '1px dashed #000', margin: '10px 0' }}></div>
+
+                                                             {/* ITEM PENUKARAN PER UNIT */}
+                                                             <div style={{ textAlign: 'center', margin: '10px 0' }}>
+                                                                 <div style={{ fontWeight: 900, fontSize: '0.88rem' }}>✦ ITEM HAK SEWA: {coupon.qty}x {coupon.itemName.toUpperCase()} {coupon.qty > 1 ? `(TOTAL ${coupon.qty} UNIT)` : ''} ✦</div>
+                                                                 <div style={{ fontWeight: 900, fontSize: '0.95rem', letterSpacing: '1px', textTransform: 'uppercase', marginTop: '2px' }}>SEKALI TUKAR (DISOBEK)</div>
+                                                             </div>
+
+                                                             <div style={{ borderTop: '1px dashed #000', margin: '10px 0' }}></div>
+
+                                                             {/* FOOTER & BARCODE */}
+                                                             <div style={{ textAlign: 'center', paddingTop: '4px' }}>
+                                                                 <div style={{ fontWeight: 900, fontSize: '0.95rem', marginBottom: '2px' }}>✦ TERIMA KASIH ✦</div>
+                                                                 <div style={{ fontSize: '0.78rem', color: '#000' }}>Selamat menikmati wahana</div>
+                                                                 <div style={{ fontSize: '0.78rem', fontWeight: 800, color: '#000' }}>Cijoho Indah Waterboom</div>
+                                                                 <div style={{ fontSize: '1.2rem', lineHeight: '0.8', margin: '6px 0', letterSpacing: '2px' }}>~~~~~~~~~~~~~~~</div>
+
+                                                                    {/* BARCODE VECTOR SVG */}
+                                                                    <div style={{ display: 'flex', justifyContent: 'center', margin: '10px 0 4px 0' }}>
+                                                                        <svg width="220" height="50" viewBox="0 0 220 50">
+                                                                            <rect x="5" y="0" width="3" height="45" fill="#000"/>
+                                                                            <rect x="10" y="0" width="1" height="45" fill="#000"/>
+                                                                            <rect x="13" y="0" width="4" height="45" fill="#000"/>
+                                                                            <rect x="19" y="0" width="2" height="45" fill="#000"/>
+                                                                            <rect x="23" y="0" width="1" height="45" fill="#000"/>
+                                                                            <rect x="26" y="0" width="5" height="45" fill="#000"/>
+                                                                            <rect x="33" y="0" width="2" height="45" fill="#000"/>
+                                                                            <rect x="37" y="0" width="3" height="45" fill="#000"/>
+                                                                            <rect x="42" y="0" width="1" height="45" fill="#000"/>
+                                                                            <rect x="45" y="0" width="4" height="45" fill="#000"/>
+                                                                            <rect x="51" y="0" width="2" height="45" fill="#000"/>
+                                                                            <rect x="55" y="0" width="3" height="45" fill="#000"/>
+                                                                            <rect x="60" y="0" width="1" height="45" fill="#000"/>
+                                                                            <rect x="63" y="0" width="5" height="45" fill="#000"/>
+                                                                            <rect x="70" y="0" width="2" height="45" fill="#000"/>
+                                                                            <rect x="74" y="0" width="4" height="45" fill="#000"/>
+                                                                            <rect x="80" y="0" width="1" height="45" fill="#000"/>
+                                                                            <rect x="83" y="0" width="3" height="45" fill="#000"/>
+                                                                            <rect x="88" y="0" width="2" height="45" fill="#000"/>
+                                                                            <rect x="92" y="0" width="5" height="45" fill="#000"/>
+                                                                            <rect x="99" y="0" width="1" height="45" fill="#000"/>
+                                                                            <rect x="102" y="0" width="3" height="45" fill="#000"/>
+                                                                            <rect x="107" y="0" width="4" height="45" fill="#000"/>
+                                                                            <rect x="113" y="0" width="2" height="45" fill="#000"/>
+                                                                            <rect x="117" y="0" width="1" height="45" fill="#000"/>
+                                                                            <rect x="120" y="0" width="5" height="45" fill="#000"/>
+                                                                            <rect x="127" y="0" width="3" height="45" fill="#000"/>
+                                                                            <rect x="132" y="0" width="2" height="45" fill="#000"/>
+                                                                            <rect x="136" y="0" width="4" height="45" fill="#000"/>
+                                                                            <rect x="142" y="0" width="1" height="45" fill="#000"/>
+                                                                            <rect x="145" y="0" width="3" height="45" fill="#000"/>
+                                                                            <rect x="150" y="0" width="5" height="45" fill="#000"/>
+                                                                            <rect x="157" y="0" width="2" height="45" fill="#000"/>
+                                                                            <rect x="161" y="0" width="4" height="45" fill="#000"/>
+                                                                            <rect x="167" y="0" width="1" height="45" fill="#000"/>
+                                                                            <rect x="170" y="0" width="3" height="45" fill="#000"/>
+                                                                            <rect x="175" y="0" width="5" height="45" fill="#000"/>
+                                                                            <rect x="182" y="0" width="2" height="45" fill="#000"/>
+                                                                            <rect x="186" y="0" width="4" height="45" fill="#000"/>
+                                                                            <rect x="192" y="0" width="1" height="45" fill="#000"/>
+                                                                            <rect x="195" y="0" width="3" height="45" fill="#000"/>
+                                                                            <rect x="200" y="0" width="5" height="45" fill="#000"/>
+                                                                            <rect x="207" y="0" width="2" height="45" fill="#000"/>
+                                                                            <rect x="211" y="0" width="4" height="45" fill="#000"/>
+                                                                        </svg>
+                                                                    </div>
+                                                                    <div style={{ fontSize: '0.9rem', fontWeight: 900, letterSpacing: '2px', color: '#000' }}>{coupon.code}</div>
+                                                                </div>
+                                                        </div>
+                                                        ))
+                                                ) : (
+                                                    <div style={{ border: '2px solid #000', borderRadius: '12px', padding: '16px', backgroundColor: '#ffffff', textAlign: 'center', fontWeight: 800, fontSize: '0.82rem', fontFamily: 'monospace' }}>
+                                                        <i>(Tidak Ada Item Sewa Add-on Pada Transaksi Ini)</i>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        );
+                                    })()}
+                                </div>
+                            )}
 
                             {/* OPSI CETAK STRUK INTERAKTIF */}
                             <div style={{ backgroundColor: '#f8fafc', border: '1.5px solid #cbd5e1', borderRadius: '16px', padding: '14px', marginBottom: '16px' }}>
@@ -2180,10 +2600,10 @@ Mohon diproses konfirmasinya dan dikirimkan *Tiket Resmi PDF* ke nomor WhatsApp 
                                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
                                     <button
                                         type="button"
-                                        onClick={() => triggerIsolatedPrint('card')}
-                                        style={{ backgroundColor: printFormat === 'card' ? '#0c294a' : 'white', color: printFormat === 'card' ? 'white' : '#0c294a', border: '1.5px solid #0c294a', padding: '11px 8px', borderRadius: '10px', fontSize: '0.78rem', fontWeight: 900, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', boxShadow: '0 2px 6px rgba(0,0,0,0.05)' }}
+                                        onClick={() => triggerIsolatedPrint('full')}
+                                        style={{ backgroundColor: printFormat === 'full' ? '#0c294a' : 'white', color: printFormat === 'full' ? 'white' : '#0c294a', border: '1.5px solid #0c294a', padding: '11px 8px', borderRadius: '10px', fontSize: '0.78rem', fontWeight: 900, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', boxShadow: '0 2px 6px rgba(0,0,0,0.05)' }}
                                     >
-                                        <i className="fa-solid fa-file-pdf" style={{ color: '#2563eb' }}></i> Cetak PDF E-Tiket
+                                        <i className="fa-solid fa-layer-group" style={{ color: '#2563eb' }}></i> Cetak Struk Lengkap
                                     </button>
 
                                     <button
