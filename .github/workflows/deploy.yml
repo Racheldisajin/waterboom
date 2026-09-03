@@ -1,0 +1,162 @@
+name: Build & Deploy to VPS
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+
+env:
+  NODE_VERSION: "22"
+  STAGING_DIR: /opt/lexa/webcijoho-staging
+  RELEASES_DIR: /opt/lexa/webcijoho-releases
+  APP_LINK: /opt/lexa/apps/webcijoho
+  KEEP_RELEASES: 2
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Build Vite React App
+      run: npm run build
+      env:
+        VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+        VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+        VITE_SUPABASE_ADMIN_KEY: ${{ secrets.VITE_SUPABASE_ADMIN_KEY }}
+
+    - name: Assemble deployment package
+      run: |
+        mkdir -p deploy-pkg
+        # Salin hasil build statis Vite
+        cp -r dist deploy-pkg/
+
+        # Salin file konfigurasi Nginx SPA
+        if [ -d ".nginx" ]; then
+          cp -r .nginx deploy-pkg/
+        fi
+
+        echo "📦 Package size: $(du -sh deploy-pkg | cut -f1)"
+        echo "📊 Breakdown:"
+        du -sh deploy-pkg/dist 2>/dev/null || true
+        du -sh deploy-pkg/.nginx 2>/dev/null || true
+
+    - name: Setup SSH
+      run: |
+        mkdir -p ~/.ssh
+        echo "${{ secrets.VPS_SSH_KEY }}" > ~/.ssh/deploy_key
+        chmod 600 ~/.ssh/deploy_key
+        ssh-keyscan -H ${{ secrets.VPS_IP }} >> ~/.ssh/known_hosts 2>/dev/null
+
+    - name: Rsync to staging
+      run: |
+        rsync -az --no-o --no-g --delete \
+          -e "ssh -i ~/.ssh/deploy_key" \
+          deploy-pkg/ \
+          ${{ secrets.VPS_USERNAME }}@${{ secrets.VPS_IP }}:${{ env.STAGING_DIR }}/
+
+    - name: Deploy with atomic swap
+      uses: appleboy/ssh-action@v1.2.0
+      env:
+        STAGING_DIR: ${{ env.STAGING_DIR }}
+        RELEASES_DIR: ${{ env.RELEASES_DIR }}
+        APP_LINK: ${{ env.APP_LINK }}
+        KEEP_RELEASES: ${{ env.KEEP_RELEASES }}
+      with:
+        host: ${{ secrets.VPS_IP }}
+        username: ${{ secrets.VPS_USERNAME }}
+        key: ${{ secrets.VPS_SSH_KEY }}
+        envs: STAGING_DIR,RELEASES_DIR,APP_LINK,KEEP_RELEASES
+        script_stop: true
+        script: |
+          set -euo pipefail
+
+          # 1. Release Swapping (Atomic hardlink copy)
+          RELEASE_ID=$(date +%Y%m%d_%H%M%S)
+          RELEASE_DIR="${RELEASES_DIR}/${RELEASE_ID}"
+
+          echo "==> Creating release ${RELEASE_ID} (hardlink copy)"
+          mkdir -p "${RELEASES_DIR}"
+          cp -al "${STAGING_DIR}" "${RELEASE_DIR}"
+
+          echo "==> Ensuring read permissions for container"
+          chmod -R a+rX "${RELEASE_DIR}"
+
+          PREVIOUS_RELEASE=""
+          if [ -L "${APP_LINK}" ]; then
+            PREVIOUS_RELEASE=$(readlink -f "${APP_LINK}")
+            echo "    Previous: ${PREVIOUS_RELEASE}"
+          elif [ -d "${APP_LINK}" ]; then
+            echo "==> Removing existing directory ${APP_LINK} to make way for symlink"
+            rm -rf "${APP_LINK}"
+          fi
+
+          echo "==> Swapping symlink"
+          ln -sfn "${RELEASE_DIR}" "${APP_LINK}.tmp"
+          mv -Tf "${APP_LINK}.tmp" "${APP_LINK}"
+
+          # 2. Restart / Recreate Container
+          echo "==> Recreating container"
+          cd /opt/lexa
+          docker compose up -d --force-recreate webcijoho
+
+          # 3. Health Check (Container status & HTTP response)
+          echo "==> Health check (max 30s)"
+          HEALTH_OK=false
+          for i in $(seq 1 15); do
+            STATUS=$(docker compose ps -a --format '{{.Status}}' webcijoho 2>/dev/null || true)
+            if [[ "$STATUS" == *"Up"* ]]; then
+              if docker compose exec -T webcijoho wget -q -O - http://127.0.0.1/ > /dev/null 2>&1; then
+                HEALTH_OK=true
+                echo "    ✅ Passed (attempt ${i})"
+                break
+              fi
+            fi
+            echo "    ⏳ Checking container status (${i}/15)..."
+            sleep 2
+          done
+
+          if [ "${HEALTH_OK}" = "false" ]; then
+            echo "==> ❌ HEALTH CHECK FAILED!"
+            echo "==> 📜 Container logs:"
+            docker compose logs --tail=50 webcijoho
+            if [ -n "${PREVIOUS_RELEASE}" ] && [ -d "${PREVIOUS_RELEASE}" ]; then
+              echo "==> Rolling back to previous release: ${PREVIOUS_RELEASE}"
+              ln -sfn "${PREVIOUS_RELEASE}" "${APP_LINK}.tmp"
+              mv -Tf "${APP_LINK}.tmp" "${APP_LINK}"
+              docker compose up -d --force-recreate webcijoho
+              echo "==> ⏪ Rolled back successfully"
+            fi
+            exit 1
+          fi
+
+          # 4. Cleanup Old Releases
+          echo "==> Cleanup (keep ${KEEP_RELEASES})"
+          CURRENT=$(readlink -f "${APP_LINK}")
+          cd "${RELEASES_DIR}"
+          for dir in $(ls -1dt */ 2>/dev/null | tail -n +$((KEEP_RELEASES + 1))); do
+            FULL="${RELEASES_DIR}/${dir%/}"
+            if [ "${FULL}" != "${CURRENT}" ]; then
+              echo "    🗑️ ${dir}"
+              rm -rf "${dir}"
+            fi
+          done
+
+          echo "==> ✅ Deploy done! Release: ${RELEASE_ID}"
+
+    - name: Cleanup SSH key
+      if: always()
+      run: rm -f ~/.ssh/deploy_key
