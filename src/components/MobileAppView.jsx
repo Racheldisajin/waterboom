@@ -248,6 +248,8 @@ export default function MobileAppView({ onOpenBooking, isCashierMode = false }) 
             cashierName: 'Petugas Kasir 1',
             category: hasTickets ? 'Beli' : 'Sewa',
             type: typeName,
+            hasTickets: hasTickets,
+            ticketQty: hasTickets ? ticketQty : 0,
             qty: hasTickets ? ticketQty : (sewaBan + sewaSepeda + sewaGazebo),
             ticketPrice: ticketPrice,
             subtotal: subtotal,
@@ -350,6 +352,8 @@ export default function MobileAppView({ onOpenBooking, isCashierMode = false }) 
             phone: buyerPhone,
             category: hasTickets ? 'Beli' : 'Sewa',
             type: typeName,
+            hasTickets: hasTickets,
+            ticketQty: hasTickets ? ticketQty : 0,
             ticketTypeKey: selectedTicket,
             qty: hasTickets ? ticketQty : (sewaBan + sewaSepeda + sewaGazebo),
             ticketPrice: ticketPrice,
@@ -1970,18 +1974,18 @@ Mohon diproses konfirmasinya dan dikirimkan *Tiket Resmi PDF* ke nomor WhatsApp 
                                             </tr>
                                         </thead>
                                         <tbody>
-                                            {offlineReceiptData.qty > 0 && (
+                                            {Boolean(offlineReceiptData.hasTickets || (offlineReceiptData.ticketQty > 0) || (offlineReceiptData.subtotal > 0 && offlineReceiptData.type && !offlineReceiptData.type.includes('Add-on'))) && (
                                                 <tr>
                                                     <td style={{ paddingTop: '6px', verticalAlign: 'top' }}>1.</td>
                                                     <td style={{ paddingTop: '6px', verticalAlign: 'top' }}>{offlineReceiptData.type}</td>
-                                                    <td style={{ paddingTop: '6px', textAlign: 'center', verticalAlign: 'top' }}>{offlineReceiptData.qty}</td>
-                                                    <td style={{ paddingTop: '6px', textAlign: 'right', verticalAlign: 'top' }}>Rp {((offlineReceiptData.subtotal || offlineReceiptData.total) / offlineReceiptData.qty).toLocaleString('id-ID')}</td>
+                                                    <td style={{ paddingTop: '6px', textAlign: 'center', verticalAlign: 'top' }}>{offlineReceiptData.ticketQty || offlineReceiptData.qty}</td>
+                                                    <td style={{ paddingTop: '6px', textAlign: 'right', verticalAlign: 'top' }}>Rp {((offlineReceiptData.subtotal || 0) / (offlineReceiptData.ticketQty || offlineReceiptData.qty || 1)).toLocaleString('id-ID')}</td>
                                                     <td style={{ paddingTop: '6px', textAlign: 'right', verticalAlign: 'top', fontWeight: 800 }}>Rp {offlineReceiptData.subtotal?.toLocaleString('id-ID')}</td>
                                                 </tr>
                                             )}
                                             {offlineReceiptData.rentals?.ban > 0 && (
                                                 <tr>
-                                                    <td style={{ paddingTop: '4px', verticalAlign: 'top' }}>{offlineReceiptData.qty > 0 ? 2 : 1}.</td>
+                                                    <td style={{ paddingTop: '4px', verticalAlign: 'top' }}>{Boolean(offlineReceiptData.hasTickets || (offlineReceiptData.ticketQty > 0) || (offlineReceiptData.subtotal > 0 && offlineReceiptData.type && !offlineReceiptData.type.includes('Add-on'))) ? 2 : 1}.</td>
                                                     <td style={{ paddingTop: '4px', verticalAlign: 'top' }}>Sewa Ban Renang</td>
                                                     <td style={{ paddingTop: '4px', textAlign: 'center', verticalAlign: 'top' }}>{offlineReceiptData.rentals.ban}</td>
                                                     <td style={{ paddingTop: '4px', textAlign: 'right', verticalAlign: 'top' }}>Rp {(offlineReceiptData.rentalsPrice?.ban || 5000).toLocaleString('id-ID')}</td>
@@ -1990,7 +1994,7 @@ Mohon diproses konfirmasinya dan dikirimkan *Tiket Resmi PDF* ke nomor WhatsApp 
                                             )}
                                             {offlineReceiptData.rentals?.sepeda > 0 && (
                                                 <tr>
-                                                    <td style={{ paddingTop: '4px', verticalAlign: 'top' }}>{(offlineReceiptData.qty > 0 ? 1 : 0) + (offlineReceiptData.rentals?.ban > 0 ? 1 : 0) + 1}.</td>
+                                                    <td style={{ paddingTop: '4px', verticalAlign: 'top' }}>{(Boolean(offlineReceiptData.hasTickets || (offlineReceiptData.ticketQty > 0) || (offlineReceiptData.subtotal > 0 && offlineReceiptData.type && !offlineReceiptData.type.includes('Add-on'))) ? 1 : 0) + (offlineReceiptData.rentals?.ban > 0 ? 1 : 0) + 1}.</td>
                                                     <td style={{ paddingTop: '4px', verticalAlign: 'top' }}>Sewa Sepeda Air</td>
                                                     <td style={{ paddingTop: '4px', textAlign: 'center', verticalAlign: 'top' }}>{offlineReceiptData.rentals.sepeda}</td>
                                                     <td style={{ paddingTop: '4px', textAlign: 'right', verticalAlign: 'top' }}>Rp {(offlineReceiptData.rentalsPrice?.sepeda || 15000).toLocaleString('id-ID')}</td>
@@ -1999,7 +2003,7 @@ Mohon diproses konfirmasinya dan dikirimkan *Tiket Resmi PDF* ke nomor WhatsApp 
                                             )}
                                             {offlineReceiptData.rentals?.gazebo > 0 && (
                                                 <tr>
-                                                    <td style={{ paddingTop: '4px', verticalAlign: 'top' }}>{(offlineReceiptData.qty > 0 ? 1 : 0) + (offlineReceiptData.rentals?.ban > 0 ? 1 : 0) + (offlineReceiptData.rentals?.sepeda > 0 ? 1 : 0) + 1}.</td>
+                                                    <td style={{ paddingTop: '4px', verticalAlign: 'top' }}>{(Boolean(offlineReceiptData.hasTickets || (offlineReceiptData.ticketQty > 0) || (offlineReceiptData.subtotal > 0 && offlineReceiptData.type && !offlineReceiptData.type.includes('Add-on'))) ? 1 : 0) + (offlineReceiptData.rentals?.ban > 0 ? 1 : 0) + (offlineReceiptData.rentals?.sepeda > 0 ? 1 : 0) + 1}.</td>
                                                     <td style={{ paddingTop: '4px', verticalAlign: 'top' }}>Sewa Gazebo Santai</td>
                                                     <td style={{ paddingTop: '4px', textAlign: 'center', verticalAlign: 'top' }}>{offlineReceiptData.rentals.gazebo}</td>
                                                     <td style={{ paddingTop: '4px', textAlign: 'right', verticalAlign: 'top' }}>Rp {(offlineReceiptData.rentalsPrice?.gazebo || 25000).toLocaleString('id-ID')}</td>
@@ -2041,7 +2045,7 @@ Mohon diproses konfirmasinya dan dikirimkan *Tiket Resmi PDF* ke nomor WhatsApp 
                                 {/* FOOTER & KETENTUAN */}
                                 <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '8px', fontSize: '0.7rem', alignItems: 'center', marginBottom: '10px' }}>
                                     <div>
-                                        <strong style={{ fontSize: '0.78rem', display: 'block', marginBottom: '2px' }}>👥 TERIMA KASIH</strong>
+                                        <strong style={{ fontSize: '0.78rem', display: 'block', marginBottom: '2px' }}>TERIMA KASIH</strong>
                                         <div>Selamat menikmati wahana Cijoho Indah Waterboom</div>
                                     </div>
                                     <div style={{ border: '1px solid #000', borderRadius: '6px', padding: '6px', fontSize: '0.64rem', lineHeight: '1.2' }}>
@@ -2056,7 +2060,7 @@ Mohon diproses konfirmasinya dan dikirimkan *Tiket Resmi PDF* ke nomor WhatsApp 
 
                                 <div style={{ borderTop: '1px dashed #000', paddingTop: '6px', textAlign: 'center', fontSize: '0.72rem' }}>
                                     <div style={{ marginBottom: '4px' }}>Follow us : <strong>@cijohoindahwaterboom</strong></div>
-                                    <strong style={{ fontSize: '0.76rem', textTransform: 'uppercase' }}>🌊 TERIMA KASIH ATAS KUNJUNGAN ANDA 🌊</strong>
+                                    <strong style={{ fontSize: '0.76rem', textTransform: 'uppercase' }}>TERIMA KASIH ATAS KUNJUNGAN ANDA</strong>
                                 </div>
                             </div>
 
@@ -2249,18 +2253,18 @@ Mohon diproses konfirmasinya dan dikirimkan *Tiket Resmi PDF* ke nomor WhatsApp 
                                                         </tr>
                                                     </thead>
                                                     <tbody>
-                                                        {pdfTicketData.qty > 0 && (
+                                                        {Boolean(pdfTicketData.hasTickets || (pdfTicketData.ticketQty > 0) || (pdfTicketData.subtotal > 0 && pdfTicketData.type && !pdfTicketData.type.includes('Add-on'))) && (
                                                             <tr>
                                                                 <td style={{ paddingTop: '6px', verticalAlign: 'top' }}>1.</td>
                                                                 <td style={{ paddingTop: '6px', verticalAlign: 'top' }}>{pdfTicketData.type}</td>
-                                                                <td style={{ paddingTop: '6px', textAlign: 'center', verticalAlign: 'top' }}>{pdfTicketData.qty}</td>
-                                                                <td style={{ paddingTop: '6px', textAlign: 'right', verticalAlign: 'top' }}>Rp {((pdfTicketData.subtotal || pdfTicketData.total) / pdfTicketData.qty).toLocaleString('id-ID')}</td>
+                                                                <td style={{ paddingTop: '6px', textAlign: 'center', verticalAlign: 'top' }}>{pdfTicketData.ticketQty || pdfTicketData.qty}</td>
+                                                                <td style={{ paddingTop: '6px', textAlign: 'right', verticalAlign: 'top' }}>Rp {((pdfTicketData.subtotal || 0) / (pdfTicketData.ticketQty || pdfTicketData.qty || 1)).toLocaleString('id-ID')}</td>
                                                                 <td style={{ paddingTop: '6px', textAlign: 'right', verticalAlign: 'top', fontWeight: 800 }}>Rp {pdfTicketData.subtotal?.toLocaleString('id-ID')}</td>
                                                             </tr>
                                                         )}
                                                         {pdfTicketData.rentals?.ban > 0 && (
                                                             <tr>
-                                                                <td style={{ paddingTop: '4px', verticalAlign: 'top' }}>{pdfTicketData.qty > 0 ? 2 : 1}.</td>
+                                                                <td style={{ paddingTop: '4px', verticalAlign: 'top' }}>{Boolean(pdfTicketData.hasTickets || (pdfTicketData.ticketQty > 0) || (pdfTicketData.subtotal > 0 && pdfTicketData.type && !pdfTicketData.type.includes('Add-on'))) ? 2 : 1}.</td>
                                                                 <td style={{ paddingTop: '4px', verticalAlign: 'top' }}>Sewa Ban Renang</td>
                                                                 <td style={{ paddingTop: '4px', textAlign: 'center', verticalAlign: 'top' }}>{pdfTicketData.rentals.ban}</td>
                                                                 <td style={{ paddingTop: '4px', textAlign: 'right', verticalAlign: 'top' }}>Rp {(pdfTicketData.rentalsPrice?.ban || 5000).toLocaleString('id-ID')}</td>
@@ -2269,7 +2273,7 @@ Mohon diproses konfirmasinya dan dikirimkan *Tiket Resmi PDF* ke nomor WhatsApp 
                                                         )}
                                                         {pdfTicketData.rentals?.sepeda > 0 && (
                                                             <tr>
-                                                                <td style={{ paddingTop: '4px', verticalAlign: 'top' }}>{(pdfTicketData.qty > 0 ? 1 : 0) + (pdfTicketData.rentals?.ban > 0 ? 1 : 0) + 1}.</td>
+                                                                <td style={{ paddingTop: '4px', verticalAlign: 'top' }}>{(Boolean(pdfTicketData.hasTickets || (pdfTicketData.ticketQty > 0) || (pdfTicketData.subtotal > 0 && pdfTicketData.type && !pdfTicketData.type.includes('Add-on'))) ? 1 : 0) + (pdfTicketData.rentals?.ban > 0 ? 1 : 0) + 1}.</td>
                                                                 <td style={{ paddingTop: '4px', verticalAlign: 'top' }}>Sewa Sepeda Air</td>
                                                                 <td style={{ paddingTop: '4px', textAlign: 'center', verticalAlign: 'top' }}>{pdfTicketData.rentals.sepeda}</td>
                                                                 <td style={{ paddingTop: '4px', textAlign: 'right', verticalAlign: 'top' }}>Rp {(pdfTicketData.rentalsPrice?.sepeda || 15000).toLocaleString('id-ID')}</td>
@@ -2278,7 +2282,7 @@ Mohon diproses konfirmasinya dan dikirimkan *Tiket Resmi PDF* ke nomor WhatsApp 
                                                         )}
                                                         {pdfTicketData.rentals?.gazebo > 0 && (
                                                             <tr>
-                                                                <td style={{ paddingTop: '4px', verticalAlign: 'top' }}>{(pdfTicketData.qty > 0 ? 1 : 0) + (pdfTicketData.rentals?.ban > 0 ? 1 : 0) + (pdfTicketData.rentals?.sepeda > 0 ? 1 : 0) + 1}.</td>
+                                                                <td style={{ paddingTop: '4px', verticalAlign: 'top' }}>{(Boolean(pdfTicketData.hasTickets || (pdfTicketData.ticketQty > 0) || (pdfTicketData.subtotal > 0 && pdfTicketData.type && !pdfTicketData.type.includes('Add-on'))) ? 1 : 0) + (pdfTicketData.rentals?.ban > 0 ? 1 : 0) + (pdfTicketData.rentals?.sepeda > 0 ? 1 : 0) + 1}.</td>
                                                                 <td style={{ paddingTop: '4px', verticalAlign: 'top' }}>Sewa Gazebo Santai</td>
                                                                 <td style={{ paddingTop: '4px', textAlign: 'center', verticalAlign: 'top' }}>{pdfTicketData.rentals.gazebo}</td>
                                                                 <td style={{ paddingTop: '4px', textAlign: 'right', verticalAlign: 'top' }}>Rp {(pdfTicketData.rentalsPrice?.gazebo || 25000).toLocaleString('id-ID')}</td>
@@ -2308,7 +2312,7 @@ Mohon diproses konfirmasinya dan dikirimkan *Tiket Resmi PDF* ke nomor WhatsApp 
                                             {/* FOOTER & KETENTUAN */}
                                             <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '8px', fontSize: '0.7rem', alignItems: 'center', marginBottom: '10px' }}>
                                                 <div>
-                                                    <strong style={{ fontSize: '0.78rem', display: 'block', marginBottom: '2px' }}>👥 TERIMA KASIH</strong>
+                                                    <strong style={{ fontSize: '0.78rem', display: 'block', marginBottom: '2px' }}>TERIMA KASIH</strong>
                                                     <div>Selamat menikmati wahana Cijoho Indah Waterboom</div>
                                                 </div>
                                                 <div style={{ border: '1px solid #000', borderRadius: '6px', padding: '6px', fontSize: '0.64rem', lineHeight: '1.2' }}>
@@ -2323,7 +2327,7 @@ Mohon diproses konfirmasinya dan dikirimkan *Tiket Resmi PDF* ke nomor WhatsApp 
 
                                             <div style={{ borderTop: '1px dashed #000', paddingTop: '6px', textAlign: 'center', fontSize: '0.72rem' }}>
                                                 <div style={{ marginBottom: '4px' }}>Follow us : <strong>@cijohoindahwaterboom</strong></div>
-                                                <strong style={{ fontSize: '0.76rem', textTransform: 'uppercase' }}>🌊 TERIMA KASIH ATAS KUNJUNGAN ANDA 🌊</strong>
+                                                <strong style={{ fontSize: '0.76rem', textTransform: 'uppercase' }}>TERIMA KASIH ATAS KUNJUNGAN ANDA</strong>
                                             </div>
                                         </div>
                                     )}

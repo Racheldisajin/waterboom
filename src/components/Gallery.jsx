@@ -1,5 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
+import WaveDivider from './WaveDivider';
 
 export default function Gallery() {
     const folderPath = '/assets/drive-download-20260728T150001Z-1-001/';
@@ -43,7 +44,10 @@ export default function Gallery() {
     ];
 
     return (
-        <section id="gallery" className="gallery-section">
+        <section id="gallery" className="gallery-section" style={{ paddingTop: '0px', position: 'relative', overflow: 'hidden' }}>
+            {/* Top Cheerful Tropical Cloud Canopy */}
+            <WaveDivider type="gallery-cloud" />
+
             <div className="container">
                 
                 {/* Header Layout */}
