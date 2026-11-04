@@ -6315,10 +6315,11 @@ img {
 }
 
 /* ---- Top Row 70/30 ---- */
+/* ---- Top Row (Optimized for Balanced Proportions & Readability) ---- */
 .rkeu-top-row {
     display: grid;
-    grid-template-columns: 70% 30%;
-    gap: 16px;
+    grid-template-columns: 58% 42%;
+    gap: 18px;
     align-items: start;
 }
 
@@ -6603,10 +6604,27 @@ img {
 }
 
 /* ---- rkeu-table (right panel tables) ---- */
+.rkeu-table-wrap {
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    border-radius: 8px;
+}
+
+.rkeu-table-wrap::-webkit-scrollbar {
+    height: 5px;
+}
+
+.rkeu-table-wrap::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 4px;
+}
+
 .rkeu-table {
     width: 100%;
     border-collapse: collapse;
-    font-size: 11px;
+    font-size: 11.5px;
+    table-layout: auto;
 }
 
 .rkeu-table thead tr {
@@ -6615,11 +6633,12 @@ img {
 
 .rkeu-table thead th {
     color: #fff;
-    padding: 7px 8px;
+    padding: 8px 10px;
     text-align: left;
     font-size: 11px;
-    font-weight: 600;
+    font-weight: 700;
     white-space: nowrap;
+    letter-spacing: 0.2px;
 }
 
 .rkeu-table tbody tr:nth-child(even) {
@@ -6631,11 +6650,12 @@ img {
 }
 
 .rkeu-table tbody td {
-    padding: 6px 8px;
+    padding: 8px 10px;
     color: #374151;
     border-bottom: 1px solid #f1f5f9;
     vertical-align: middle;
-    font-size: 11px;
+    font-size: 11.5px;
+    white-space: nowrap;
 }
 
 .rkeu-table tbody tr:hover {
@@ -6646,15 +6666,17 @@ img {
     background: #f0f9ff !important;
     border-top: 1px solid #bfdbfe;
     color: #1a3a5c;
+    font-weight: 700;
 }
 
 /* ---- Badges in rkeu tables ---- */
 .rkeu-badge {
-    padding: 2px 7px;
+    padding: 3px 8px;
     border-radius: 99px;
-    font-size: 10px;
+    font-size: 10.5px;
     font-weight: 600;
     white-space: nowrap;
+    display: inline-block;
 }
 
 .rkeu-badge.blue {
@@ -6675,6 +6697,34 @@ img {
 .rkeu-badge.purple {
     background: #ede9fe;
     color: #5b21b6;
+}
+
+.rkeu-method-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 6px;
+    font-size: 10.5px;
+    font-weight: 600;
+    white-space: nowrap;
+    text-transform: capitalize;
+}
+
+.rkeu-method-badge.tunai {
+    background: #f1f5f9;
+    color: #475569;
+    border: 1px solid #e2e8f0;
+}
+
+.rkeu-method-badge.qris {
+    background: #dcfce7;
+    color: #15803d;
+    border: 1px solid #bbf7d0;
+}
+
+.rkeu-method-badge.transfer {
+    background: #fef3c7;
+    color: #b45309;
+    border: 1px solid #fde68a;
 }
 
 .rkeu-cat-badge {

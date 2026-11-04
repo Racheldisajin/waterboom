@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../supabase'; // Pastikan path ini sesuai dengan struktur folder Anda
 import { TicketReceipt, InvoiceReceipt, AddonReceipt, FullPackageReceipt, DirectPrintPortal } from '../components/TicketPrintReceipts';
+import { ManualRecapModal, RecapHistoryModal, INDO_MONTHS, getPrevMonthDefaults } from '../components/ManualRecapModals';
 
 // Helper date range parser & comparator for Indonesian & ISO formats
 const parseDateToTimestamp = (str) => {
@@ -181,6 +182,35 @@ export default function AdminDashboard() {
     const [dateRangeLabel, setDateRangeLabel] = useState('Semua Waktu (All Time)');
     const [dateRange, setDateRange] = useState('Semua Waktu (All Time)');
     const [showDateRangeDropdown, setShowDateRangeDropdown] = useState(false);
+    const [filterMonthSelect, setFilterMonthSelect] = useState(() => {
+        const d = new Date();
+        d.setDate(1);
+        d.setMonth(d.getMonth() - 1);
+        return String(d.getMonth() + 1).padStart(2, '0');
+    });
+    const [filterYearSelect, setFilterYearSelect] = useState(() => {
+        const d = new Date();
+        d.setDate(1);
+        d.setMonth(d.getMonth() - 1);
+        return String(d.getFullYear());
+    });
+
+    const applySpecificMonth = (year, month) => {
+        const y = parseInt(year, 10);
+        const m = parseInt(month, 10);
+        const start = new Date(y, m - 1, 1);
+        const end = new Date(y, m, 0);
+        const mObj = INDO_MONTHS.find(im => im.value === String(m).padStart(2, '0'));
+        const monthName = mObj ? mObj.name : `Bulan ${m}`;
+        const label = `${monthName} ${y} (${formatShortIndoDate(start)} - ${formatShortIndoDate(end)})`;
+
+        setDatePreset(`month_${y}_${m}`);
+        setDateRangeLabel(label);
+        setDateRange(label);
+        setCustomStartDate(getISOString(start));
+        setCustomEndDate(getISOString(end));
+        setShowDateRangeDropdown(false);
+    };
 
     const applyDatePreset = (presetKey, customStart = null, customEnd = null) => {
         const today = new Date();
@@ -388,6 +418,11 @@ export default function AdminDashboard() {
     const [priceEdit, setPriceEdit] = useState({ tickets: {}, rentals: {} });
     const [settingsEdit, setSettingsEdit] = useState({});
 
+    // Manual Recap Modal & History States
+    const [manualRecaps, setManualRecaps] = useState([]);
+    const [showManualRecapModal, setShowManualRecapModal] = useState(false);
+    const [showRecapHistoryModal, setShowRecapHistoryModal] = useState(false);
+
     // Booking Jam Tiket Modal State
     const [showAddBookingModal, setShowAddBookingModal] = useState(false);
     const [newBooking, setNewBooking] = useState({
@@ -481,6 +516,19 @@ export default function AdminDashboard() {
             }
             setSystemSettings(settingsData);
             setSettingsEdit(settingsData);
+
+            // 6. Load Manual Recaps History
+            const savedRecaps = localStorage.getItem('waterboom_manual_recaps');
+            if (savedRecaps) {
+                try {
+                    setManualRecaps(JSON.parse(savedRecaps));
+                } catch (e) {
+                    setManualRecaps([]);
+                }
+            } else {
+                localStorage.setItem('waterboom_manual_recaps', JSON.stringify([]));
+                setManualRecaps([]);
+            }
 
             // Compute Statistics & KPIs from 0
             let totalSales = 0;
@@ -674,6 +722,187 @@ export default function AdminDashboard() {
 
     const reportMetrics = getReportMetrics();
 
+    // Weekly statistics dynamically calculated for Bar Chart
+    const weeklyStats = useMemo(() => {
+        const days = [
+            { name: 'Senin', income: 0, expense: 0 },
+            { name: 'Selasa', income: 0, expense: 0 },
+            { name: 'Rabu', income: 0, expense: 0 },
+            { name: 'Kamis', income: 0, expense: 0 },
+            { name: 'Jumat', income: 0, expense: 0 },
+            { name: 'Sabtu', income: 0, expense: 0 },
+            { name: 'Minggu', income: 0, expense: 0 }
+        ];
+        const dayMap = [6, 0, 1, 2, 3, 4, 5]; // Sunday (0) -> index 6, Monday (1) -> 0...
+
+        dateFilteredHistory.forEach(item => {
+            const ts = parseDateToTimestamp(item.created_at || item.rawDate || item.date);
+            if (ts) {
+                const d = new Date(ts).getDay();
+                const idx = dayMap[d];
+                if (idx !== undefined) {
+                    days[idx].income += Number(item.total) || 0;
+                }
+            }
+        });
+
+        dateFilteredExpenditures.forEach(exp => {
+            const ts = parseDateToTimestamp(exp.created_at || exp.date);
+            if (ts) {
+                const d = new Date(ts).getDay();
+                const idx = dayMap[d];
+                if (idx !== undefined) {
+                    days[idx].expense += Number(exp.amount) || 0;
+                }
+            }
+        });
+
+        let maxVal = 1;
+        days.forEach(d => {
+            if (d.income > maxVal) maxVal = d.income;
+            if (d.expense > maxVal) maxVal = d.expense;
+        });
+
+        return { days, maxVal };
+    }, [dateFilteredHistory, dateFilteredExpenditures]);
+
+    const handleOpenManualRecapModal = () => {
+        setShowManualRecapModal(true);
+    };
+
+    // Save Manual Recap Handler (Aggregated transactions & expenses for previous month)
+    const handleSaveManualRecap = async (recapPayload) => {
+        const {
+            batchId,
+            periodLabel,
+            mode,
+            month,
+            year,
+            targetDateStr,
+            formattedDate,
+            isoDate,
+            recapNotes,
+            newTxRows,
+            supabaseRows,
+            newExpenseRows,
+            grandTotalIncome,
+            expenseTotal,
+            totalVisitors
+        } = recapPayload;
+
+        // 1. Insert into Supabase if connected
+        if (supabaseRows && supabaseRows.length > 0) {
+            try {
+                await supabase.from('transactions').insert(supabaseRows);
+            } catch (err) {
+                console.warn('Simpan Supabase dilewati:', err);
+            }
+        }
+
+        // 2. Update history state & localStorage
+        const updatedHistory = [...newTxRows, ...history];
+        setHistory(updatedHistory);
+        localStorage.setItem('waterboom_sales_history', JSON.stringify(updatedHistory));
+
+        // 3. Update expenditures state & localStorage
+        let updatedExpenditures = [...expenditures];
+        if (newExpenseRows && newExpenseRows.length > 0) {
+            updatedExpenditures = [...newExpenseRows, ...expenditures];
+            setExpenditures(updatedExpenditures);
+            localStorage.setItem('waterboom_expenditures', JSON.stringify(updatedExpenditures));
+        }
+
+        // 4. Update manual recaps list
+        const recapRecord = {
+            batchId,
+            periodLabel,
+            mode,
+            month,
+            year,
+            targetDate: targetDateStr,
+            formattedDate,
+            isoDate,
+            notes: recapNotes,
+            totalIncome: grandTotalIncome,
+            totalExpenses: expenseTotal,
+            netIncome: grandTotalIncome - expenseTotal,
+            totalVisitors,
+            txCount: newTxRows.length,
+            expCount: newExpenseRows.length,
+            createdAt: new Date().toISOString(),
+            createdBy: currentAccount?.name || 'Admin'
+        };
+
+        const updatedRecaps = [recapRecord, ...manualRecaps];
+        setManualRecaps(updatedRecaps);
+        localStorage.setItem('waterboom_manual_recaps', JSON.stringify(updatedRecaps));
+
+        setShowManualRecapModal(false);
+
+        // 5. Prompt user to immediately filter to that month
+        const viewNow = window.confirm(
+            `Rekap untuk ${periodLabel} berhasil disimpan!\n\n` +
+            `• Total Pemasukan: Rp ${grandTotalIncome.toLocaleString('id-ID')}\n` +
+            `• Total Pengeluaran: Rp ${expenseTotal.toLocaleString('id-ID')}\n` +
+            `• Total Pengunjung: ${totalVisitors.toLocaleString('id-ID')} orang\n\n` +
+            `Apakah Anda ingin langsung menerapkan filter dan melihat laporan untuk ${periodLabel}?`
+        );
+
+        if (viewNow) {
+            if (mode === 'monthly') {
+                applySpecificMonth(year, month);
+            } else {
+                setCustomStartDate(targetDateStr);
+                setCustomEndDate(targetDateStr);
+                setDatePreset('custom');
+                setDateRangeLabel(periodLabel);
+                setDateRange(periodLabel);
+            }
+            setActiveTab('rekap_keuangan');
+        }
+    };
+
+    // Delete Entire Recap Batch
+    const handleDeleteRecapBatch = async (batchId, label) => {
+        if (!window.confirm(`Hapus seluruh data rekap untuk ${label}? Semua data transaksi dan pengeluaran terkait batch ini akan dihapus dari sistem.`)) {
+            return;
+        }
+
+        try {
+            await supabase.from('transactions').delete().like('booking_code', `${batchId}%`);
+        } catch (e) {
+            console.warn('Gagal hapus transaksi Supabase:', e);
+        }
+
+        const updatedHistory = history.filter(item => item.recap_batch_id !== batchId && !((item.code || '').startsWith(batchId)));
+        setHistory(updatedHistory);
+        localStorage.setItem('waterboom_sales_history', JSON.stringify(updatedHistory));
+
+        const updatedExp = expenditures.filter(exp => exp.recap_batch_id !== batchId && !((exp.id || '').includes(batchId)));
+        setExpenditures(updatedExp);
+        localStorage.setItem('waterboom_expenditures', JSON.stringify(updatedExp));
+
+        const updatedRecaps = manualRecaps.filter(r => r.batchId !== batchId);
+        setManualRecaps(updatedRecaps);
+        localStorage.setItem('waterboom_manual_recaps', JSON.stringify(updatedRecaps));
+
+        alert(`Rekap ${label} berhasil dihapus.`);
+    };
+
+    // Apply Recap Filter from History Modal
+    const handleApplyRecapFilter = (recapItem) => {
+        if (recapItem.mode === 'monthly' && recapItem.year && recapItem.month) {
+            applySpecificMonth(recapItem.year, recapItem.month);
+        } else if (recapItem.targetDate) {
+            setCustomStartDate(recapItem.targetDate);
+            setCustomEndDate(recapItem.targetDate);
+            setDatePreset('custom');
+            setDateRangeLabel(recapItem.periodLabel);
+            setDateRange(recapItem.periodLabel);
+        }
+        setActiveTab('rekap_keuangan');
+    };
+
 
 
     // Edit price submit
@@ -703,6 +932,7 @@ export default function AdminDashboard() {
         const expObj = {
             id: 'EXP-' + Math.floor(100000 + Math.random() * 900000),
             date: newExpense.date,
+            created_at: new Date(newExpense.date + 'T12:00:00').toISOString(),
             category: newExpense.category,
             desc: newExpense.desc,
             amount: parseFloat(newExpense.amount)
@@ -822,6 +1052,7 @@ export default function AdminDashboard() {
         const unitPrice = unitPrices[newBooking.type] || 20000;
         const totalPrice = unitPrice * parseInt(newBooking.qty || 1);
 
+        const bookingDateISO = new Date(newBooking.date + 'T10:00:00').toISOString();
         const formattedDate = new Date(newBooking.date).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
         const isRental = newBooking.category === 'Sewa' || newBooking.type.includes('Sewa');
 
@@ -839,6 +1070,8 @@ export default function AdminDashboard() {
             customer: newBooking.name || 'Pengunjung',
             phone: newBooking.phone || '-',
             name: newBooking.name || 'Pengunjung',
+            created_at: bookingDateISO,
+            dateTime: `${formattedDate} ${newBooking.time || '09:30'}`,
             status: 'Lunas - E-Tiket PDF',
             rentals: {
                 ban: newBooking.type === 'Sewa Ban' ? parseInt(newBooking.qty || 1) : 0,
@@ -867,6 +1100,26 @@ export default function AdminDashboard() {
 
         setShowAddBookingModal(false);
         setSelectedPDFTicket(createdTx);
+
+        try {
+            supabase.from('transactions').insert([{
+                booking_code: bookingCode,
+                ticket_type: newBooking.category === 'Beli'
+                    ? (newBooking.type.includes('Reguler') ? 'reguler' : newBooking.type.includes('Rombongan') ? 'rombongan' : 'kursus')
+                    : (newBooking.type.includes('Ban') ? 'ban' : newBooking.type.includes('Gazebo') ? 'gazebo' : 'angsa'),
+                transaction_type: isRental ? 'sewa' : 'beli',
+                quantity: parseInt(newBooking.qty || 1, 10),
+                total_price: totalPrice,
+                customer_name: newBooking.name || 'Pengunjung',
+                status: 'lunas',
+                payment_method: (newBooking.method || 'tunai').toLowerCase(),
+                channel: (newBooking.channel || 'online').toLowerCase(),
+                cashier_name: currentAccount?.name || 'Admin',
+                created_at: bookingDateISO
+            }]).then(() => {});
+        } catch (e) {
+            console.warn('Supabase booking warning:', e);
+        }
     };
 
     // Filter log list (combining Date Range Filter + Search Query & Offline/Online & Category Beli/Sewa Filter)
@@ -1212,6 +1465,11 @@ export default function AdminDashboard() {
                             <div className={`nav-menu-item ${activeTab === 'laporan_layanan' ? 'active' : ''}`}>
                                 <a href="#/admin" onClick={(e) => { e.preventDefault(); setActiveTab('laporan_layanan'); }}><i className="fa-solid fa-receipt"></i> Laporan Layanan</a>
                             </div>
+                            <div className="nav-menu-item" style={{ marginTop: '4px' }}>
+                                <a href="#/admin" onClick={(e) => { e.preventDefault(); handleOpenManualRecapModal(); }} style={{ color: '#2563eb', fontWeight: 800, backgroundColor: '#eff6ff', borderRadius: '10px' }}>
+                                    <i className="fa-solid fa-file-circle-plus"></i> + Input Rekap Manual
+                                </a>
+                            </div>
                         </div>
                     )}
                     {/* MASTER DATA */}
@@ -1430,10 +1688,45 @@ export default function AdminDashboard() {
                                         ))}
                                     </div>
 
+                                    {/* PILIH BULAN SPESIFIK */}
+                                    <div style={{ borderTop: '1px dashed #cbd5e1', paddingTop: '12px', marginBottom: '12px' }}>
+                                        <label style={{ fontSize: '0.74rem', fontWeight: 800, color: '#0c294a', display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px' }}>
+                                            <i className="fa-solid fa-calendar-days" style={{ color: '#2563eb' }}></i> PILIH BULAN & TAHUN LAPORAN:
+                                        </label>
+                                        <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr auto', gap: '6px' }}>
+                                            <select
+                                                value={filterMonthSelect}
+                                                onChange={(e) => setFilterMonthSelect(e.target.value)}
+                                                style={{ padding: '7px 8px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.75rem', fontWeight: 700, backgroundColor: '#f8fafc', color: '#0c294a' }}
+                                            >
+                                                {INDO_MONTHS.map(m => (
+                                                    <option key={m.value} value={m.value}>{m.name}</option>
+                                                ))}
+                                            </select>
+                                            <select
+                                                value={filterYearSelect}
+                                                onChange={(e) => setFilterYearSelect(e.target.value)}
+                                                style={{ padding: '7px 8px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.75rem', fontWeight: 700, backgroundColor: '#f8fafc', color: '#0c294a' }}
+                                            >
+                                                <option value="2024">2024</option>
+                                                <option value="2025">2025</option>
+                                                <option value="2026">2026</option>
+                                                <option value="2027">2027</option>
+                                            </select>
+                                            <button
+                                                type="button"
+                                                onClick={() => applySpecificMonth(filterYearSelect, filterMonthSelect)}
+                                                style={{ backgroundColor: '#2563eb', color: 'white', border: 'none', borderRadius: '8px', padding: '7px 12px', fontSize: '0.75rem', fontWeight: 900, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
+                                            >
+                                                <i className="fa-solid fa-check"></i> Pilih
+                                            </button>
+                                        </div>
+                                    </div>
+
                                     {/* CUSTOM DATE RANGE PICKER FORM */}
                                     <div style={{ borderTop: '1px dashed #cbd5e1', paddingTop: '12px' }}>
                                         <label style={{ fontSize: '0.74rem', fontWeight: 800, color: '#64748b', display: 'block', marginBottom: '8px' }}>
-                                            ⚙️ RENTANG TANGGAL KUSTOM:
+                                            ΓÜÖ∩╕Å RENTANG TANGGAL KUSTOM:
                                         </label>
                                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '10px' }}>
                                             <div>
@@ -1682,7 +1975,25 @@ export default function AdminDashboard() {
                                                                 <div style={{ fontWeight: 700, color: '#0f172a' }}>{item.date}</div>
                                                                 <div style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: 600 }}>⏰ {item.time || '08:30 WIB'}</div>
                                                             </td>
-                                                            <td className="font-bold">{item.code}</td>
+                                                            <td className="font-bold">
+                                                        {item.code}
+                                                        {(item.is_manual_recap || (item.code && item.code.startsWith('RKP-'))) && (
+                                                            <span style={{
+                                                                display: 'block',
+                                                                marginTop: '3px',
+                                                                backgroundColor: '#eff6ff',
+                                                                color: '#1d4ed8',
+                                                                border: '1px solid #bfdbfe',
+                                                                padding: '2px 6px',
+                                                                borderRadius: '6px',
+                                                                fontSize: '0.65rem',
+                                                                fontWeight: 800,
+                                                                width: 'fit-content'
+                                                            }}>
+                                                                <i className="fa-solid fa-file-invoice"></i> Rekap Manual
+                                                            </span>
+                                                        )}
+                                                    </td>
                                                             <td>
                                                                 <span style={{
                                                                     padding: '3px 8px',
@@ -1824,9 +2135,30 @@ export default function AdminDashboard() {
                                         <option value="category_sewa">🔑 Kategori Sewa</option>
                                     </select>
                                 </div>
-                                <button
-                                    type="button"
-                                    onClick={() => setShowAddBookingModal(true)}
+                                <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+                                    <button
+                                        type="button"
+                                        onClick={() => handleOpenManualRecapModal()}
+                                        style={{
+                                            backgroundColor: '#2563eb',
+                                            color: 'white',
+                                            border: 'none',
+                                            padding: '10px 16px',
+                                            borderRadius: '10px',
+                                            fontWeight: 800,
+                                            fontSize: '0.82rem',
+                                            cursor: 'pointer',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '6px',
+                                            boxShadow: '0 4px 12px rgba(37, 99, 235, 0.2)'
+                                        }}
+                                    >
+                                        <i className="fa-solid fa-file-circle-plus"></i> + Input Rekap Bulan Sebelumnya
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowAddBookingModal(true)}
                                     className="btn btn-accent"
                                     style={{
                                         backgroundColor: '#10b981',
@@ -1844,7 +2176,8 @@ export default function AdminDashboard() {
                                     }}
                                 >
                                     <i className="fa-solid fa-calendar-plus"></i> Tambah Jam Booking Tiket
-                                </button>
+                                    </button>
+                                </div>
                             </div>
                             <div className="superadmin-table-wrapper">
                                 <table className="superadmin-table">
@@ -2092,14 +2425,35 @@ export default function AdminDashboard() {
                     {/* TAB: LAPORAN PENJUALAN & LAYANAN (simple table) */}
                     {(activeTab === 'laporan_penjualan' || activeTab === 'laporan_layanan') && (
                         <div className="data-table-card print-report-container">
-                            <div className="table-header-block" style={{ display: 'flex', justifyContent: 'space-between' }}>
+                            <div className="table-header-block" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
                                 <h3>
                                     {activeTab === 'laporan_penjualan' && 'Laporan Penjualan Tiket Masuk'}
                                     {activeTab === 'laporan_layanan' && 'Laporan Layanan Tambahan (Sewa)'}
                                 </h3>
-                                <button onClick={() => window.print()} className="btn btn-accent btn-pill">
-                                    <i className="fa-solid fa-print"></i> Cetak Laporan (PDF)
-                                </button>
+                                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                                    <button
+                                        type="button"
+                                        onClick={() => handleOpenManualRecapModal()}
+                                        style={{
+                                            backgroundColor: '#eff6ff',
+                                            color: '#2563eb',
+                                            border: '1.5px solid #bfdbfe',
+                                            padding: '8px 14px',
+                                            borderRadius: '50px',
+                                            fontSize: '0.8rem',
+                                            fontWeight: 800,
+                                            cursor: 'pointer',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '6px'
+                                        }}
+                                    >
+                                        <i className="fa-solid fa-file-circle-plus"></i> + Input Rekap Bulan Sebelumnya
+                                    </button>
+                                    <button onClick={() => window.print()} className="btn btn-accent btn-pill">
+                                        <i className="fa-solid fa-print"></i> Cetak Laporan (PDF)
+                                    </button>
+                                </div>
                             </div>
                             <div className="superadmin-table-wrapper" style={{ marginTop: '20px' }}>
                                 <table className="superadmin-table">
@@ -2135,6 +2489,87 @@ export default function AdminDashboard() {
                     {/* TAB: REKAP KEUANGAN — Full Financial Dashboard */}
                     {activeTab === 'rekap_keuangan' && (
                         <div className="rkeu-dashboard" style={{ fontFamily: "'Roboto', sans-serif" }}>
+                            {/* ACTION HEADER: INPUT REKAP BULAN SEBELUMNYA */}
+                            <div style={{
+                                display: 'flex',
+                                justifyContent: 'space-between',
+                                alignItems: 'center',
+                                flexWrap: 'wrap',
+                                gap: '14px',
+                                backgroundColor: '#ffffff',
+                                border: '1.5px solid #e2e8f0',
+                                borderRadius: '18px',
+                                padding: '16px 20px',
+                                marginBottom: '20px',
+                                boxShadow: '0 4px 16px rgba(15, 23, 42, 0.04)'
+                            }}>
+                                <div>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                                        <span style={{
+                                            backgroundColor: '#eff6ff',
+                                            color: '#2563eb',
+                                            padding: '4px 10px',
+                                            borderRadius: '8px',
+                                            fontSize: '0.75rem',
+                                            fontWeight: 900
+                                        }}>
+                                            <i className="fa-solid fa-calendar-check"></i> {dateRangeLabel || dateRange}
+                                        </span>
+                                        <h3 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 900, color: '#0c294a' }}>
+                                            Rekap Pembukuan & Arus Kas Keuangan
+                                        </h3>
+                                    </div>
+                                    <p style={{ margin: 0, fontSize: '0.82rem', color: '#64748b' }}>
+                                        Ringkasan data pemasukan penjualan tiket, layanan sewa, dan pengeluaran operasional.
+                                    </p>
+                                </div>
+                                <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowRecapHistoryModal(true)}
+                                        style={{
+                                            backgroundColor: '#f8fafc',
+                                            border: '1.5px solid #cbd5e1',
+                                            color: '#334155',
+                                            padding: '10px 16px',
+                                            borderRadius: '12px',
+                                            fontWeight: 800,
+                                            fontSize: '0.82rem',
+                                            cursor: 'pointer',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '8px',
+                                            transition: 'all 0.2s'
+                                        }}
+                                    >
+                                        <i className="fa-solid fa-clock-rotate-left" style={{ color: '#64748b' }}></i>
+                                        Riwayat Rekap Manual ({manualRecaps.length})
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => handleOpenManualRecapModal()}
+                                        style={{
+                                            backgroundColor: '#2563eb',
+                                            border: 'none',
+                                            color: '#ffffff',
+                                            padding: '10px 18px',
+                                            borderRadius: '12px',
+                                            fontWeight: 900,
+                                            fontSize: '0.84rem',
+                                            cursor: 'pointer',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '8px',
+                                            boxShadow: '0 4px 14px rgba(37, 99, 235, 0.25)',
+                                            transition: 'all 0.2s'
+                                        }}
+                                    >
+                                        <i className="fa-solid fa-file-circle-plus"></i>
+                                        + Input Rekap Bulan Sebelumnya
+                                    </button>
+                                </div>
+                            </div>
+
                             {/* === TOP ROW: 70/30 === */}
                             <div className="rkeu-top-row">
                                 {/* LEFT COLUMN (70%) */}
@@ -2157,15 +2592,23 @@ export default function AdminDashboard() {
                                                 <span>0</span>
                                             </div>
                                             <div className="rkeu-bar-area">
-                                                {['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu'].map((d, i) => (
-                                                    <div key={i} className="rkeu-bar-group">
-                                                        <div className="rkeu-bars">
-                                                            <div className="rkeu-bar pemasukan" style={{ height: reportMetrics.sales > 0 ? '20%' : '0%' }}></div>
-                                                            <div className="rkeu-bar pengeluaran" style={{ height: kpis.outflow > 0 ? '15%' : '0%' }}></div>
+                                                {weeklyStats.days.map((d, i) => {
+                                                    const incPct = weeklyStats.maxVal > 0 && d.income > 0
+                                                        ? Math.max(14, Math.round((d.income / weeklyStats.maxVal) * 90))
+                                                        : (reportMetrics.sales > 0 ? 20 : 0);
+                                                    const expPct = weeklyStats.maxVal > 0 && d.expense > 0
+                                                        ? Math.max(14, Math.round((d.expense / weeklyStats.maxVal) * 90))
+                                                        : (kpis.outflow > 0 ? 15 : 0);
+                                                    return (
+                                                        <div key={i} className="rkeu-bar-group" title={`${d.name}: Masuk Rp ${d.income.toLocaleString('id-ID')} | Keluar Rp ${d.expense.toLocaleString('id-ID')}`}>
+                                                            <div className="rkeu-bars">
+                                                                <div className="rkeu-bar pemasukan" style={{ height: `${incPct}%` }}></div>
+                                                                <div className="rkeu-bar pengeluaran" style={{ height: `${expPct}%` }}></div>
+                                                            </div>
+                                                            <span className="rkeu-bar-label">{d.name}</span>
                                                         </div>
-                                                        <span className="rkeu-bar-label">{d}</span>
-                                                    </div>
-                                                ))}
+                                                    );
+                                                })}
                                             </div>
                                         </div>
                                     </div>
@@ -2276,24 +2719,52 @@ export default function AdminDashboard() {
                                             <span>Penjualan Terbaru</span>
                                             <a href="#/admin" onClick={(e) => { e.preventDefault(); setActiveTab('transaksi'); }} className="rkeu-lihat">Lihat Semua</a>
                                         </div>
-                                        <table className="rkeu-table">
-                                            <thead><tr><th>Tanggal & Jam</th><th>No. TRX</th><th>Jenis</th><th>Total</th><th>Metode</th></tr></thead>
-                                            <tbody>
-                                                {history.length === 0 ? (
-                                                    <tr><td colSpan="5" style={{ textAlign: 'center', color: '#94a3b8', padding: '16px' }}>Belum ada data penjualan</td></tr>
-                                                ) : (
-                                                    history.slice(0, 5).map((item, idx) => (
-                                                        <tr key={idx}>
-                                                            <td>{item.dateTime || item.date}</td>
-                                                            <td>{item.code}</td>
-                                                            <td><span className={`rkeu-badge ${item.category === 'Beli' ? 'blue' : 'green'}`}>{item.type}</span></td>
-                                                            <td>Rp {(item.total || 0).toLocaleString('id-ID')}</td>
-                                                            <td>{item.method || 'Tunai'}</td>
-                                                        </tr>
-                                                    ))
-                                                )}
-                                            </tbody>
-                                        </table>
+                                        <div className="rkeu-table-wrap">
+                                            <table className="rkeu-table">
+                                                <thead>
+                                                    <tr>
+                                                        <th style={{ textAlign: 'left', minWidth: '110px' }}>Tanggal & Jam</th>
+                                                        <th style={{ textAlign: 'left', minWidth: '85px' }}>No. TRX</th>
+                                                        <th style={{ textAlign: 'left', minWidth: '120px' }}>Jenis</th>
+                                                        <th style={{ textAlign: 'right', minWidth: '90px' }}>Total</th>
+                                                        <th style={{ textAlign: 'center', minWidth: '70px' }}>Metode</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {history.length === 0 ? (
+                                                        <tr><td colSpan="5" style={{ textAlign: 'center', color: '#94a3b8', padding: '16px' }}>Belum ada data penjualan</td></tr>
+                                                    ) : (
+                                                        history.slice(0, 5).map((item, idx) => {
+                                                            const methodLower = (item.method || 'tunai').toLowerCase().trim();
+                                                            return (
+                                                                <tr key={idx}>
+                                                                    <td style={{ textAlign: 'left', whiteSpace: 'nowrap' }}>
+                                                                        <div style={{ fontWeight: 600, color: '#1e293b' }}>{item.date || item.dateTime}</div>
+                                                                        {item.time && <div style={{ fontSize: '10px', color: '#64748b', marginTop: '2px' }}>{item.time}</div>}
+                                                                    </td>
+                                                                    <td style={{ textAlign: 'left', whiteSpace: 'nowrap' }}>
+                                                                        <span style={{ fontFamily: 'monospace', fontWeight: 600, color: '#475569', fontSize: '11px', letterSpacing: '0.2px' }}>
+                                                                            {item.code}
+                                                                        </span>
+                                                                    </td>
+                                                                    <td style={{ textAlign: 'left', whiteSpace: 'nowrap' }}>
+                                                                        <span className={`rkeu-badge ${item.category === 'Beli' ? 'blue' : 'green'}`}>{item.type}</span>
+                                                                    </td>
+                                                                    <td style={{ textAlign: 'right', whiteSpace: 'nowrap', fontWeight: 700, color: '#16a34a' }}>
+                                                                        Rp {(item.total || 0).toLocaleString('id-ID')}
+                                                                    </td>
+                                                                    <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>
+                                                                        <span className={`rkeu-method-badge ${methodLower}`}>
+                                                                            {item.method || 'Tunai'}
+                                                                        </span>
+                                                                    </td>
+                                                                </tr>
+                                                            );
+                                                        })
+                                                    )}
+                                                </tbody>
+                                            </table>
+                                        </div>
                                     </div>
                                     {/* Tabel Ringkasan Layanan Sewa */}
                                     <div className="rkeu-card rkeu-right-panel">
@@ -2301,31 +2772,39 @@ export default function AdminDashboard() {
                                             <span>Ringkasan Layanan (Sewa)</span>
                                             <a href="#/admin" onClick={(e) => { e.preventDefault(); setActiveTab('transaksi'); }} className="rkeu-lihat">Lihat Semua</a>
                                         </div>
-                                        <table className="rkeu-table">
-                                            <thead><tr><th>Layanan</th><th>Terjual</th><th>Pemasukan</th></tr></thead>
-                                            <tbody>
-                                                <tr>
-                                                    <td><div className="rkeu-service-name"><span className="rkeu-sq green"></span> Sewa Ban</div></td>
-                                                    <td>{rentals.ban.qty}</td>
-                                                    <td>Rp {rentals.ban.rev.toLocaleString('id-ID')}</td>
-                                                </tr>
-                                                <tr>
-                                                    <td><div className="rkeu-service-name"><span className="rkeu-sq orange"></span> Sewa Gazebo</div></td>
-                                                    <td>{rentals.gazebo.qty}</td>
-                                                    <td>Rp {rentals.gazebo.rev.toLocaleString('id-ID')}</td>
-                                                </tr>
-                                                <tr>
-                                                    <td><div className="rkeu-service-name"><span className="rkeu-sq purple"></span> Sewa Angsa</div></td>
-                                                    <td>{rentals.angsa.qty}</td>
-                                                    <td>Rp {rentals.angsa.rev.toLocaleString('id-ID')}</td>
-                                                </tr>
-                                                <tr className="rkeu-total-row">
-                                                    <td><strong>Total</strong></td>
-                                                    <td><strong>{rentals.totalQty}</strong></td>
-                                                    <td><strong>Rp {rentals.totalRev.toLocaleString('id-ID')}</strong></td>
-                                                </tr>
-                                            </tbody>
-                                        </table>
+                                        <div className="rkeu-table-wrap">
+                                            <table className="rkeu-table">
+                                                <thead>
+                                                    <tr>
+                                                        <th style={{ textAlign: 'left' }}>Layanan</th>
+                                                        <th style={{ textAlign: 'center', width: '22%' }}>Terjual</th>
+                                                        <th style={{ textAlign: 'right', width: '35%' }}>Pemasukan</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    <tr>
+                                                        <td><div className="rkeu-service-name"><span className="rkeu-sq green"></span> Sewa Ban</div></td>
+                                                        <td style={{ textAlign: 'center', fontWeight: 600 }}>{rentals.ban.qty}</td>
+                                                        <td style={{ textAlign: 'right', fontWeight: 600, color: '#16a34a' }}>Rp {rentals.ban.rev.toLocaleString('id-ID')}</td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td><div className="rkeu-service-name"><span className="rkeu-sq orange"></span> Sewa Gazebo</div></td>
+                                                        <td style={{ textAlign: 'center', fontWeight: 600 }}>{rentals.gazebo.qty}</td>
+                                                        <td style={{ textAlign: 'right', fontWeight: 600, color: '#16a34a' }}>Rp {rentals.gazebo.rev.toLocaleString('id-ID')}</td>
+                                                    </tr>
+                                                    <tr>
+                                                        <td><div className="rkeu-service-name"><span className="rkeu-sq purple"></span> Sewa Angsa</div></td>
+                                                        <td style={{ textAlign: 'center', fontWeight: 600 }}>{rentals.angsa.qty}</td>
+                                                        <td style={{ textAlign: 'right', fontWeight: 600, color: '#16a34a' }}>Rp {rentals.angsa.rev.toLocaleString('id-ID')}</td>
+                                                    </tr>
+                                                    <tr className="rkeu-total-row">
+                                                        <td><strong>Total</strong></td>
+                                                        <td style={{ textAlign: 'center' }}><strong>{rentals.totalQty}</strong></td>
+                                                        <td style={{ textAlign: 'right', color: '#16a34a' }}><strong>Rp {rentals.totalRev.toLocaleString('id-ID')}</strong></td>
+                                                    </tr>
+                                                </tbody>
+                                            </table>
+                                        </div>
                                     </div>
                                     {/* Tabel Pengeluaran Terbaru */}
                                     <div className="rkeu-card rkeu-right-panel">
@@ -2333,23 +2812,34 @@ export default function AdminDashboard() {
                                             <span>Pengeluaran Terbaru</span>
                                             <a href="#/admin" onClick={(e) => { e.preventDefault(); setActiveTab('pengeluaran'); }} className="rkeu-lihat">Lihat Semua</a>
                                         </div>
-                                        <table className="rkeu-table">
-                                            <thead><tr><th>Tanggal</th><th>Kategori</th><th>Deskripsi</th><th>Jumlah</th></tr></thead>
-                                            <tbody>
-                                                {expenditures.length === 0 ? (
-                                                    <tr><td colSpan="4" style={{ textAlign: 'center', color: '#94a3b8', padding: '16px' }}>Belum ada data pengeluaran</td></tr>
-                                                ) : (
-                                                    expenditures.slice(0, 5).map((exp, idx) => (
-                                                        <tr key={idx}>
-                                                            <td>{exp.date}</td>
-                                                            <td><span className="rkeu-cat-badge">{exp.category}</span></td>
-                                                            <td>{exp.desc}</td>
-                                                            <td className="rkeu-red">Rp {(exp.amount || 0).toLocaleString('id-ID')}</td>
-                                                        </tr>
-                                                    ))
-                                                )}
-                                            </tbody>
-                                        </table>
+                                        <div className="rkeu-table-wrap">
+                                            <table className="rkeu-table">
+                                                <thead>
+                                                    <tr>
+                                                        <th style={{ textAlign: 'left', minWidth: '95px' }}>Tanggal</th>
+                                                        <th style={{ textAlign: 'left', minWidth: '85px' }}>Kategori</th>
+                                                        <th style={{ textAlign: 'left', minWidth: '120px' }}>Deskripsi</th>
+                                                        <th style={{ textAlign: 'right', minWidth: '90px' }}>Jumlah</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {expenditures.length === 0 ? (
+                                                        <tr><td colSpan="4" style={{ textAlign: 'center', color: '#94a3b8', padding: '16px' }}>Belum ada data pengeluaran</td></tr>
+                                                    ) : (
+                                                        expenditures.slice(0, 5).map((exp, idx) => (
+                                                            <tr key={idx}>
+                                                                <td style={{ whiteSpace: 'nowrap' }}>{exp.date}</td>
+                                                                <td style={{ whiteSpace: 'nowrap' }}><span className="rkeu-cat-badge">{exp.category}</span></td>
+                                                                <td style={{ maxWidth: '140px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={exp.desc}>{exp.desc}</td>
+                                                                <td className="rkeu-red" style={{ textAlign: 'right', whiteSpace: 'nowrap', fontWeight: 700 }}>
+                                                                    Rp {(exp.amount || 0).toLocaleString('id-ID')}
+                                                                </td>
+                                                            </tr>
+                                                        ))
+                                                    )}
+                                                </tbody>
+                                            </table>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -3254,6 +3744,25 @@ export default function AdminDashboard() {
             )}
 
             {/* Account Switch Toast Notification */}
+            {/* MODAL INPUT MANUAL REKAP BULAN SEBELUMNYA */}
+            <ManualRecapModal
+                isOpen={showManualRecapModal}
+                onClose={() => setShowManualRecapModal(false)}
+                prices={prices}
+                currentAccount={currentAccount}
+                onSaveRecap={handleSaveManualRecap}
+            />
+
+            {/* MODAL RIWAYAT INPUT REKAP MANUAL */}
+            <RecapHistoryModal
+                isOpen={showRecapHistoryModal}
+                onClose={() => setShowRecapHistoryModal(false)}
+                manualRecaps={manualRecaps}
+                onApplyRecapFilter={handleApplyRecapFilter}
+                onDeleteRecap={handleDeleteRecapBatch}
+                onOpenManualRecap={handleOpenManualRecapModal}
+            />
+
             {switchToast && (
                 <div className="account-switch-toast">
                     <i className="fa-solid fa-circle-check" style={{ color: '#10b981', fontSize: '1.1rem' }}></i>
