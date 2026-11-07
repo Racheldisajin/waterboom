@@ -6852,18 +6852,613 @@ img {
     text-align: center;
 }
 
-/* ---- Responsive: collapse to 1 col on small screens ---- */
+/* ============================================================
+   RESPONSIVE STYLES FOR REKAP KEUANGAN & MANUAL RECAP MODALS
+   Supports: Android, Mobile (HP), Tablets (iPad/Android), Laptop/Desktop
+   ============================================================ */
+
+/* ---- Action Banner in Rekap Keuangan ---- */
+.rkeu-action-banner {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 16px;
+    background-color: #ffffff;
+    border: 1.5px solid #e2e8f0;
+    border-radius: 18px;
+    padding: 16px 20px;
+    margin-bottom: 20px;
+    box-shadow: 0 4px 16px rgba(15, 23, 42, 0.04);
+    box-sizing: border-box;
+}
+
+.rkeu-banner-info {
+    flex: 1 1 320px;
+}
+
+.rkeu-banner-title-box {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 4px;
+}
+
+.rkeu-period-badge {
+    background-color: #eff6ff;
+    color: #2563eb;
+    padding: 4px 10px;
+    border-radius: 8px;
+    font-size: 0.75rem;
+    font-weight: 900;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    word-break: break-word;
+}
+
+.rkeu-banner-heading {
+    margin: 0;
+    font-size: 1.15rem;
+    font-weight: 900;
+    color: #0c294a;
+}
+
+.rkeu-banner-desc {
+    margin: 0;
+    font-size: 0.82rem;
+    color: #64748b;
+}
+
+.rkeu-banner-btn-group {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.rkeu-banner-btn {
+    border-radius: 12px;
+    font-size: 0.82rem;
+    font-weight: 800;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+    min-height: 42px;
+    border: none;
+    box-sizing: border-box;
+}
+
+.rkeu-banner-btn-history {
+    background-color: #f8fafc;
+    border: 1.5px solid #cbd5e1;
+    color: #334155;
+    padding: 10px 16px;
+}
+
+.rkeu-banner-btn-history:hover {
+    background-color: #f1f5f9;
+    border-color: #94a3b8;
+}
+
+.rkeu-banner-btn-input {
+    background-color: #2563eb;
+    color: #ffffff;
+    padding: 10px 18px;
+    box-shadow: 0 4px 14px rgba(37, 99, 235, 0.25);
+    font-weight: 900;
+}
+
+.rkeu-banner-btn-input:hover {
+    background-color: #1d4ed8;
+    transform: translateY(-1px);
+    box-shadow: 0 6px 18px rgba(37, 99, 235, 0.35);
+}
+
+/* ---- Manual Recap Modals Responsiveness ---- */
+.manual-recap-modal-backdrop {
+    position: fixed;
+    inset: 0;
+    background-color: rgba(15, 23, 42, 0.65);
+    backdrop-filter: blur(4px);
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+    box-sizing: border-box;
+}
+
+.manual-recap-modal-card {
+    max-width: 840px;
+    width: 100%;
+    max-height: 92vh;
+    display: flex;
+    flex-direction: column;
+    background-color: #ffffff;
+    border-radius: 24px;
+    overflow: hidden;
+    box-shadow: 0 25px 50px -12px rgba(15, 23, 42, 0.35);
+    border: 1px solid #e2e8f0;
+    box-sizing: border-box;
+}
+
+.manual-recap-header {
+    background-color: #0c294a;
+    color: #ffffff;
+    padding: 18px 24px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    box-sizing: border-box;
+}
+
+.manual-recap-body {
+    padding: 20px 24px;
+    overflow-y: auto;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+    background-color: #f8fafc;
+    box-sizing: border-box;
+    -webkit-overflow-scrolling: touch;
+}
+
+.manual-recap-period-box {
+    background-color: #ffffff;
+    border-radius: 18px;
+    padding: 18px;
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
+    box-sizing: border-box;
+}
+
+.manual-recap-period-grid {
+    display: grid;
+    grid-template-columns: 1.2fr 1fr 1.8fr;
+    gap: 12px;
+}
+
+.manual-recap-sections-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 16px;
+}
+
+.manual-recap-section-card {
+    background-color: #ffffff;
+    border-radius: 18px;
+    padding: 18px;
+    box-sizing: border-box;
+}
+
+.manual-recap-ticket-card {
+    border: 1.5px solid #bfdbfe;
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.05);
+}
+
+.manual-recap-rental-card {
+    border: 1.5px solid #bbf7d0;
+    box-shadow: 0 4px 12px rgba(22, 163, 74, 0.05);
+}
+
+.manual-recap-method-box {
+    background-color: #ffffff;
+    border-radius: 18px;
+    padding: 18px;
+    border: 1px solid #e2e8f0;
+    box-sizing: border-box;
+}
+
+.manual-recap-method-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+    gap: 8px;
+}
+
+.manual-recap-expense-box {
+    background-color: #ffffff;
+    border-radius: 18px;
+    padding: 18px;
+    box-sizing: border-box;
+}
+
+.manual-recap-expense-item {
+    display: grid;
+    grid-template-columns: 1.2fr 2fr 1.5fr auto;
+    gap: 8px;
+    align-items: center;
+    background-color: #fff7ed;
+    padding: 8px 10px;
+    border-radius: 10px;
+    box-sizing: border-box;
+}
+
+.manual-recap-summary-grid {
+    background-color: #0c294a;
+    border-radius: 18px;
+    padding: 16px 20px;
+    color: white;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    align-items: center;
+    box-sizing: border-box;
+}
+
+.manual-recap-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 6px;
+}
+
+.recap-history-modal-card {
+    max-width: 880px;
+    width: 100%;
+    max-height: 88vh;
+    display: flex;
+    flex-direction: column;
+    background-color: #ffffff;
+    border-radius: 24px;
+    overflow: hidden;
+    box-shadow: 0 25px 50px -12px rgba(15, 23, 42, 0.35);
+    border: 1px solid #e2e8f0;
+    box-sizing: border-box;
+}
+
+.recap-history-item {
+    background-color: #ffffff;
+    border-radius: 16px;
+    padding: 16px;
+    border: 1.5px solid #e2e8f0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 14px;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.02);
+    box-sizing: border-box;
+}
+
+/* ---- Breakpoint: Tablet & Small Laptops (<= 1024px) ---- */
 @media (max-width: 1024px) {
     .rkeu-top-row {
-        grid-template-columns: 1fr;
+        grid-template-columns: 1fr !important;
+        gap: 16px !important;
     }
 
     .rkeu-donut-row {
-        grid-template-columns: 1fr;
+        grid-template-columns: repeat(2, 1fr) !important;
+        gap: 16px !important;
     }
 
     .rkeu-ticket-grid {
+        grid-template-columns: repeat(2, 1fr) !important;
+        gap: 14px !important;
+    }
+
+    .manual-recap-modal-card,
+    .recap-history-modal-card {
+        max-height: 94vh;
+        border-radius: 20px;
+    }
+
+    .manual-recap-sections-grid {
         grid-template-columns: 1fr;
+        gap: 14px;
+    }
+
+    .manual-recap-summary-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 12px;
+    }
+}
+
+/* ---- Breakpoint: Tablets & Phablets (<= 768px) ---- */
+@media (max-width: 768px) {
+    .rkeu-action-banner {
+        flex-direction: column !important;
+        align-items: stretch !important;
+        padding: 14px 14px !important;
+        gap: 14px !important;
+        border-radius: 14px !important;
+    }
+
+    .rkeu-banner-info {
+        width: 100% !important;
+    }
+
+    .rkeu-banner-title-box {
+        flex-direction: column !important;
+        align-items: flex-start !important;
+        gap: 6px !important;
+    }
+
+    .rkeu-banner-heading {
+        font-size: 1.05rem !important;
+    }
+
+    .rkeu-banner-btn-group {
+        display: flex !important;
+        flex-direction: column !important;
+        width: 100% !important;
+        gap: 8px !important;
+    }
+
+    .rkeu-banner-btn {
+        width: 100% !important;
+        padding: 11px 14px !important;
+        font-size: 0.82rem !important;
+        white-space: normal !important;
+        text-align: center !important;
+    }
+
+    .rkeu-donut-row {
+        grid-template-columns: 1fr !important;
+        gap: 14px !important;
+    }
+
+    .rkeu-ticket-grid {
+        grid-template-columns: repeat(2, 1fr) !important;
+        gap: 12px !important;
+    }
+
+    .manual-recap-period-grid {
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+    }
+
+    .recap-history-item {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 12px;
+        padding: 14px;
+    }
+
+    .recap-history-metrics {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+        gap: 8px;
+        width: 100%;
+    }
+
+    .recap-history-actions {
+        display: flex;
+        gap: 8px;
+        width: 100%;
+    }
+
+    .recap-history-actions button {
+        flex: 1;
+        justify-content: center;
+    }
+}
+
+/* ---- Breakpoint: Mobile Phones / Android HP (<= 576px) ---- */
+@media (max-width: 576px) {
+    .rkeu-dashboard {
+        gap: 14px !important;
+    }
+
+    .rkeu-card {
+        padding: 12px 10px !important;
+        border-radius: 14px !important;
+    }
+
+    .rkeu-card-title {
+        font-size: 13px !important;
+        margin-bottom: 10px !important;
+    }
+
+    .rkeu-top-row {
+        gap: 14px !important;
+    }
+
+    .rkeu-bar-chart-wrap {
+        height: 160px !important;
+        gap: 4px !important;
+    }
+
+    .rkeu-bar-y-axis {
+        height: 125px !important;
+        font-size: 8.5px !important;
+        min-width: 26px !important;
+    }
+
+    .rkeu-bar-area {
+        height: 125px !important;
+    }
+
+    .rkeu-bar-label {
+        font-size: 8.5px !important;
+    }
+
+    .rkeu-bar {
+        width: 42% !important;
+    }
+
+    .rkeu-donut-wrap {
+        flex-direction: column !important;
+        align-items: center !important;
+        gap: 12px !important;
+    }
+
+    .rkeu-donut-svg {
+        margin: 0 auto !important;
+    }
+
+    .rkeu-donut-legend {
+        width: 100% !important;
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 6px !important;
+    }
+
+    .rkeu-legend-row {
+        width: 100% !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: space-between !important;
+        padding: 5px 8px !important;
+        background: #f8fafc !important;
+        border-radius: 8px !important;
+        box-sizing: border-box !important;
+    }
+
+    .rkeu-legend-row > div {
+        display: flex !important;
+        justify-content: space-between !important;
+        align-items: center !important;
+        width: 100% !important;
+    }
+
+    .rkeu-leg-label {
+        font-size: 10.5px !important;
+    }
+
+    .rkeu-leg-val {
+        font-size: 10.5px !important;
+        text-align: right !important;
+    }
+
+    .rkeu-ticket-grid {
+        grid-template-columns: 1fr !important;
+        gap: 10px !important;
+    }
+
+    .rkeu-ticket-card {
+        padding: 12px 10px !important;
+        border-radius: 12px !important;
+    }
+
+    .rkeu-right-panel {
+        padding: 12px 10px !important;
+        border-radius: 14px !important;
+    }
+
+    .rkeu-table {
+        font-size: 11px !important;
+    }
+
+    .rkeu-table th,
+    .rkeu-table td {
+        padding: 7px 8px !important;
+    }
+
+    .rkeu-stacked-card {
+        padding: 12px 10px !important;
+        border-radius: 14px !important;
+    }
+
+    .rkeu-stacked-chart-wrap {
+        height: 150px !important;
+        gap: 4px !important;
+    }
+
+    .rkeu-stacked-y {
+        min-width: 24px !important;
+        font-size: 8.5px !important;
+    }
+
+    .rkeu-stacked-bars {
+        gap: 6px !important;
+        padding: 0 4px !important;
+    }
+
+    .rkeu-stacked-col {
+        max-width: 22px !important;
+    }
+
+    .rkeu-stacked-label {
+        font-size: 8.5px !important;
+    }
+
+    /* Modal Mobile Form Styles */
+    .manual-recap-modal-backdrop {
+        padding: 8px !important;
+    }
+
+    .manual-recap-modal-card {
+        border-radius: 16px !important;
+        max-height: 96vh !important;
+    }
+
+    .manual-recap-header {
+        padding: 12px 14px !important;
+    }
+
+    .manual-recap-header h3 {
+        font-size: 0.95rem !important;
+    }
+
+    .manual-recap-header p {
+        font-size: 0.72rem !important;
+    }
+
+    .manual-recap-body {
+        padding: 14px 10px !important;
+        gap: 12px !important;
+    }
+
+    .manual-recap-period-box,
+    .manual-recap-section-card,
+    .manual-recap-method-box,
+    .manual-recap-expense-box {
+        padding: 14px 12px !important;
+        border-radius: 14px !important;
+    }
+
+    .manual-recap-period-grid {
+        grid-template-columns: 1fr !important;
+        gap: 8px !important;
+    }
+
+    .manual-recap-method-grid {
+        grid-template-columns: 1fr 1fr !important;
+        gap: 6px !important;
+    }
+
+    .manual-recap-expense-item {
+        display: grid !important;
+        grid-template-columns: 1fr 1fr !important;
+        gap: 6px !important;
+        padding: 8px !important;
+    }
+
+    .manual-recap-summary-grid {
+        grid-template-columns: 1fr 1fr !important;
+        gap: 8px !important;
+        padding: 12px 14px !important;
+        border-radius: 14px !important;
+    }
+
+    .manual-recap-summary-grid strong {
+        font-size: 0.95rem !important;
+    }
+
+    .manual-recap-actions {
+        flex-direction: column-reverse !important;
+        gap: 8px !important;
+        width: 100% !important;
+    }
+
+    .manual-recap-actions button {
+        width: 100% !important;
+        padding: 12px 16px !important;
+        font-size: 0.85rem !important;
+        justify-content: center !important;
+    }
+
+    .recap-history-metrics {
+        grid-template-columns: 1fr 1fr !important;
     }
 }
 

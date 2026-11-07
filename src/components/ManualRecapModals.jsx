@@ -345,7 +345,7 @@ export function ManualRecapModal({
     return (
         <div className="v-modal-backdrop" onClick={onClose} style={{ zIndex: 9999 }}>
             <div
-                className="v-modal-card fade-in"
+                className="v-modal-card fade-in manual-recap-modal-card"
                 onClick={(e) => e.stopPropagation()}
                 style={{
                     maxWidth: '820px',
@@ -362,6 +362,7 @@ export function ManualRecapModal({
             >
                 {/* Header Modal */}
                 <div
+                    className="manual-recap-header"
                     style={{
                         backgroundColor: '#0c294a',
                         color: 'white',
@@ -423,6 +424,7 @@ export function ManualRecapModal({
                 {/* Form Body (Scrollable) */}
                 <form
                     onSubmit={handleSubmit}
+                    className="manual-recap-body"
                     style={{
                         padding: '20px 24px',
                         overflowY: 'auto',
@@ -441,7 +443,7 @@ export function ManualRecapModal({
                                 Periode & Jadwal Rekap:
                             </strong>
                             {/* Toggle Mode */}
-                            <div style={{ display: 'inline-flex', backgroundColor: '#f1f5f9', padding: '3px', borderRadius: '10px' }}>
+                            <div className="manual-recap-toggle-container" style={{ display: 'inline-flex', backgroundColor: '#f1f5f9', padding: '3px', borderRadius: '10px' }}>
                                 <button
                                     type="button"
                                     onClick={() => setMode('monthly')}
@@ -480,7 +482,7 @@ export function ManualRecapModal({
                         </div>
 
                         {mode === 'monthly' ? (
-                            <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr 1.8fr', gap: '12px' }}>
+                            <div className="manual-recap-period-grid" style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr 1.8fr', gap: '12px' }}>
                                 <div>
                                     <label style={{ fontSize: '0.75rem', fontWeight: 800, color: '#475569', display: 'block', marginBottom: '4px' }}>
                                         Pilih Bulan
@@ -578,7 +580,7 @@ export function ManualRecapModal({
                     </div>
 
                     {/* 2. DUA KOLOM: TIKET MASUK VS SEWA WAHANA */}
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: '16px' }}>
+                    <div className="manual-recap-sections-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '16px' }}>
                         {/* KOLOM 1: TIKET MASUK (BELI) */}
                         <div style={{ backgroundColor: '#ffffff', borderRadius: '18px', padding: '18px', border: '1.5px solid #bfdbfe', boxShadow: '0 4px 12px rgba(37, 99, 235, 0.05)' }}>
                             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1.5px solid #eff6ff', paddingBottom: '10px', marginBottom: '14px' }}>
@@ -825,7 +827,7 @@ export function ManualRecapModal({
                         <label style={{ fontSize: '0.8rem', fontWeight: 800, color: '#0c294a', display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '10px' }}>
                             <i className="fa-solid fa-wallet" style={{ color: '#2563eb' }}></i> Metode Pembayaran Dominan:
                         </label>
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '8px' }}>
+                        <div className="manual-recap-method-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '8px' }}>
                             {[
                                 { key: 'all_cash', label: '100% Tunai (Cash)', icon: 'fa-money-bill-1-wave' },
                                 { key: 'all_qris', label: '100% QRIS', icon: 'fa-qrcode' },
@@ -899,7 +901,7 @@ export function ManualRecapModal({
                         {includeExpenses && (
                             <div style={{ marginTop: '14px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
                                 {expenses.map((exp, idx) => (
-                                    <div key={exp.id} style={{ display: 'grid', gridTemplateColumns: '1.2fr 2fr 1.5fr auto', gap: '8px', alignItems: 'center', backgroundColor: '#fff7ed', padding: '8px 10px', borderRadius: '10px' }}>
+                                    <div key={exp.id} className="manual-recap-expense-item" style={{ display: 'grid', gridTemplateColumns: '1.2fr 2fr 1.5fr auto', gap: '8px', alignItems: 'center', backgroundColor: '#fff7ed', padding: '8px 10px', borderRadius: '10px' }}>
                                         <select
                                             value={exp.category}
                                             onChange={(e) => updateExpenseRow(exp.id, 'category', e.target.value)}
@@ -946,6 +948,7 @@ export function ManualRecapModal({
 
                     {/* 5. LIVE SUMMARY BOX */}
                     <div
+                        className="manual-recap-summary-grid"
                         style={{
                             backgroundColor: '#0c294a',
                             borderRadius: '18px',
@@ -984,7 +987,7 @@ export function ManualRecapModal({
                     </div>
 
                     {/* 6. MODAL ACTIONS */}
-                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '6px' }}>
+                    <div className="manual-recap-actions" style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '6px' }}>
                         <button
                             type="button"
                             onClick={onClose}
@@ -1061,11 +1064,7 @@ export function RecapHistoryModal({
                 }}
             >
                 {/* Header */}
-                <div
-                    style={{
-                        backgroundColor: '#0c294a',
-                        color: 'white',
-                        padding: '18px 24px',
+                <div className="recap-history-header" style={{ backgroundColor: '#0c294a', color: 'white', padding: '18px 24px',
                         display: 'flex',
                         justifyContent: 'space-between',
                         alignItems: 'center'
@@ -1104,7 +1103,7 @@ export function RecapHistoryModal({
                 </div>
 
                 {/* Body */}
-                <div style={{ padding: '20px 24px', overflowY: 'auto', flex: 1, backgroundColor: '#f8fafc' }}>
+                <div className="recap-history-body" style={{ padding: '20px 24px', overflowY: 'auto', flex: 1, backgroundColor: '#f8fafc' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
                         <span style={{ fontSize: '0.85rem', color: '#475569', fontWeight: 700 }}>
                             Total Ada <strong>{manualRecaps.length}</strong> Batch Rekap Manual
@@ -1145,6 +1144,7 @@ export function RecapHistoryModal({
                             {manualRecaps.map((item) => (
                                 <div
                                     key={item.batchId}
+                                    className="recap-history-item"
                                     style={{
                                         backgroundColor: '#ffffff',
                                         borderRadius: '16px',
@@ -1177,7 +1177,7 @@ export function RecapHistoryModal({
                                     </div>
 
                                     {/* Metrics pill */}
-                                    <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
+                                    <div className="recap-history-metrics" style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
                                         <div style={{ backgroundColor: '#f0fdf4', padding: '8px 12px', borderRadius: '10px', border: '1px solid #bbf7d0' }}>
                                             <span style={{ fontSize: '0.65rem', color: '#166534', fontWeight: 700, display: 'block' }}>PEMASUKAN</span>
                                             <strong style={{ fontSize: '0.88rem', color: '#16a34a' }}>Rp {(item.totalIncome || 0).toLocaleString('id-ID')}</strong>
@@ -1194,7 +1194,7 @@ export function RecapHistoryModal({
                                         </div>
 
                                         {/* Actions */}
-                                        <div style={{ display: 'flex', gap: '6px' }}>
+                                        <div className="recap-history-actions" style={{ display: 'flex', gap: '6px' }}>
                                             <button
                                                 type="button"
                                                 onClick={() => { onClose(); onApplyRecapFilter(item); }}

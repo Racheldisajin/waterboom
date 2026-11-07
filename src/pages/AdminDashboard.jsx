@@ -1638,7 +1638,7 @@ export default function AdminDashboard() {
                                     position: 'absolute',
                                     top: 'calc(100% + 8px)',
                                     right: 0,
-                                    width: '360px',
+                                    width: 'min(360px, calc(100vw - 28px))', maxWidth: 'calc(100vw - 28px)',
                                     backgroundColor: '#ffffff',
                                     borderRadius: '20px',
                                     boxShadow: '0 16px 36px rgba(15, 23, 42, 0.2)',
@@ -1728,7 +1728,7 @@ export default function AdminDashboard() {
                                     {/* CUSTOM DATE RANGE PICKER FORM */}
                                     <div style={{ borderTop: '1px dashed #cbd5e1', paddingTop: '12px' }}>
                                         <label style={{ fontSize: '0.74rem', fontWeight: 800, color: '#64748b', display: 'block', marginBottom: '8px' }}>
-                                            ΓÜÖ∩╕Å RENTANG TANGGAL KUSTOM:
+                                            ⚙️ RENTANG TANGGAL KUSTOM:
                                         </label>
                                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '10px' }}>
                                             <div>
@@ -2502,82 +2502,36 @@ export default function AdminDashboard() {
                     {activeTab === 'rekap_keuangan' && (
                         <div className="rkeu-dashboard" style={{ fontFamily: "'Roboto', sans-serif" }}>
                             {/* ACTION HEADER: INPUT REKAP BULAN SEBELUMNYA */}
-                            <div style={{
-                                display: 'flex',
-                                justifyContent: 'space-between',
-                                alignItems: 'center',
-                                flexWrap: 'wrap',
-                                gap: '14px',
-                                backgroundColor: '#ffffff',
-                                border: '1.5px solid #e2e8f0',
-                                borderRadius: '18px',
-                                padding: '16px 20px',
-                                marginBottom: '20px',
-                                boxShadow: '0 4px 16px rgba(15, 23, 42, 0.04)'
-                            }}>
-                                <div>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-                                        <span style={{
-                                            backgroundColor: '#eff6ff',
-                                            color: '#2563eb',
-                                            padding: '4px 10px',
-                                            borderRadius: '8px',
-                                            fontSize: '0.75rem',
-                                            fontWeight: 900
-                                        }}>
+                            <div className="rkeu-action-banner">
+                                <div className="rkeu-banner-info">
+                                    <div className="rkeu-banner-title-box">
+                                        <span className="rkeu-period-badge">
                                             <i className="fa-solid fa-calendar-check"></i> {dateRangeLabel || dateRange}
                                         </span>
-                                        <h3 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 900, color: '#0c294a' }}>
+                                        <h3 className="rkeu-banner-heading">
                                             Rekap Pembukuan & Arus Kas Keuangan
                                         </h3>
                                     </div>
-                                    <p style={{ margin: 0, fontSize: '0.82rem', color: '#64748b' }}>
+                                    <p className="rkeu-banner-desc">
                                         Ringkasan data pemasukan penjualan tiket, layanan sewa, dan pengeluaran operasional.
                                     </p>
                                 </div>
-                                <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
+                                <div className="rkeu-banner-btn-group">
                                     <button
                                         type="button"
                                         onClick={() => setShowRecapHistoryModal(true)}
-                                        style={{
-                                            backgroundColor: '#f8fafc',
-                                            border: '1.5px solid #cbd5e1',
-                                            color: '#334155',
-                                            padding: '10px 16px',
-                                            borderRadius: '12px',
-                                            fontWeight: 800,
-                                            fontSize: '0.82rem',
-                                            cursor: 'pointer',
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            gap: '8px',
-                                            transition: 'all 0.2s'
-                                        }}
+                                        className="rkeu-banner-btn rkeu-banner-btn-history"
                                     >
-                                        <i className="fa-solid fa-clock-rotate-left" style={{ color: '#64748b' }}></i>
-                                        Riwayat Rekap Manual ({manualRecaps.length})
+                                        <i className="fa-solid fa-clock-rotate-left"></i>
+                                        <span>Riwayat Rekap Manual ({manualRecaps.length})</span>
                                     </button>
                                     <button
                                         type="button"
                                         onClick={() => handleOpenManualRecapModal()}
-                                        style={{
-                                            backgroundColor: '#2563eb',
-                                            border: 'none',
-                                            color: '#ffffff',
-                                            padding: '10px 18px',
-                                            borderRadius: '12px',
-                                            fontWeight: 900,
-                                            fontSize: '0.84rem',
-                                            cursor: 'pointer',
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            gap: '8px',
-                                            boxShadow: '0 4px 14px rgba(37, 99, 235, 0.25)',
-                                            transition: 'all 0.2s'
-                                        }}
+                                        className="rkeu-banner-btn rkeu-banner-btn-input"
                                     >
                                         <i className="fa-solid fa-file-circle-plus"></i>
-                                        + Input Rekap Bulan Sebelumnya
+                                        <span>+ Input Rekap Bulan Sebelumnya</span>
                                     </button>
                                 </div>
                             </div>
