@@ -287,6 +287,9 @@ export function ManualRecapModal({
                 payment_method: selectedMethod.toLowerCase(),
                 channel: channel.toLowerCase(),
                 cashier_name: currentAccount?.name || 'Admin',
+                is_manual_recap: true,
+                recap_batch_id: batchId,
+                notes: recapNotes,
                 created_at: isoDate
             });
         };
@@ -304,18 +307,52 @@ export function ManualRecapModal({
         if (spdQty > 0) addTxItem('angsa', 'Sewa', 'Sewa Sepeda Air', 'Sewa Sepeda Air / Angsa', spdQty, rentals.sepeda.price, { ban: 0, gazebo: 0, sepeda: spdQty }, methodForRentals);
 
         const newExpenseRows = [];
+        const supabaseExpenseRows = [];
         activeExpenses.forEach((exp, idx) => {
+            const expId = `EXP-${batchId}-${idx + 1}`;
             newExpenseRows.push({
-                id: `EXP-${batchId}-${idx + 1}`,
+                id: expId,
+                expense_code: expId,
                 date: targetDateStr,
                 created_at: isoDate,
                 category: exp.category || 'Operasional',
                 desc: `${exp.desc || 'Biaya Operasional'} (Rekap ${periodLabel})`,
+                description: `${exp.desc || 'Biaya Operasional'} (Rekap ${periodLabel})`,
                 amount: parseFloat(exp.amount) || 0,
                 is_manual_recap: true,
                 recap_batch_id: batchId
             });
+
+            supabaseExpenseRows.push({
+                expense_code: expId,
+                category: exp.category || 'Operasional',
+                description: `${exp.desc || 'Biaya Operasional'} (Rekap ${periodLabel})`,
+                amount: parseFloat(exp.amount) || 0,
+                date: targetDateStr,
+                is_manual_recap: true,
+                recap_batch_id: batchId,
+                created_by: currentAccount?.name || 'Admin',
+                created_at: isoDate
+            });
         });
+
+        const supabaseRecapRow = {
+            batch_id: batchId,
+            period_label: periodLabel,
+            mode: mode,
+            month: month,
+            year: year,
+            target_date: targetDateStr,
+            notes: recapNotes,
+            total_income: grandTotalIncome,
+            total_expenses: expenseTotal,
+            net_income: grandTotalIncome - expenseTotal,
+            total_visitors: ticketTotalQty,
+            tx_count: newTxRows.length,
+            exp_count: newExpenseRows.length,
+            created_by: currentAccount?.name || 'Admin',
+            created_at: new Date().toISOString()
+        };
 
         try {
             await onSaveRecap({
@@ -331,6 +368,8 @@ export function ManualRecapModal({
                 newTxRows,
                 supabaseRows,
                 newExpenseRows,
+                supabaseExpenseRows,
+                supabaseRecapRow,
                 grandTotalIncome,
                 expenseTotal,
                 totalVisitors: ticketTotalQty
