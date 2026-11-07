@@ -2156,7 +2156,7 @@ export default function AdminDashboard() {
                                             boxShadow: '0 4px 12px rgba(37, 99, 235, 0.2)'
                                         }}
                                     >
-                                        <i className="fa-solid fa-file-circle-plus"></i> + Input Rekap Bulan Sebelumnya
+                                        <i className="fa-solid fa-file-circle-plus"></i> + Input Rekap
                                     </button>
                                     <button
                                         type="button"
@@ -2330,7 +2330,7 @@ export default function AdminDashboard() {
 
                     {/* TAB: PENGELUARAN */}
                     {activeTab === 'pengeluaran' && (
-                        <div className="tab-content-grid-120" style={{ display: 'grid', gridTemplateColumns: '1fr 1.8fr', gap: '24px' }}>
+                        <div className="tab-content-grid-120 pengeluaran-tab-layout">
                             {/* Form tambah pengeluaran */}
                             <div className="chart-card-box">
                                 <h3>Catat Pengeluaran Baru</h3>
@@ -2437,33 +2437,29 @@ export default function AdminDashboard() {
                     {/* TAB: LAPORAN PENJUALAN & LAYANAN (simple table) */}
                     {(activeTab === 'laporan_penjualan' || activeTab === 'laporan_layanan') && (
                         <div className="data-table-card print-report-container">
-                            <div className="table-header-block" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
+                            <div className="table-header-block report-header-block">
                                 <h3>
                                     {activeTab === 'laporan_penjualan' && 'Laporan Penjualan Tiket Masuk'}
                                     {activeTab === 'laporan_layanan' && 'Laporan Layanan Tambahan (Sewa)'}
                                 </h3>
-                                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                                <div className="report-action-buttons">
                                     <button
                                         type="button"
                                         onClick={() => handleOpenManualRecapModal()}
-                                        style={{
-                                            backgroundColor: '#eff6ff',
-                                            color: '#2563eb',
-                                            border: '1.5px solid #bfdbfe',
-                                            padding: '8px 14px',
-                                            borderRadius: '50px',
-                                            fontSize: '0.8rem',
-                                            fontWeight: 800,
-                                            cursor: 'pointer',
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            gap: '6px'
-                                        }}
+                                        className="btn-report-action btn-report-recap"
+                                        title="Input data rekap bulan lalu"
                                     >
-                                        <i className="fa-solid fa-file-circle-plus"></i> + Input Rekap Bulan Sebelumnya
+                                        <i className="fa-solid fa-file-circle-plus"></i>
+                                        <span>+ Input Rekap</span>
                                     </button>
-                                    <button onClick={() => window.print()} className="btn btn-accent btn-pill">
-                                        <i className="fa-solid fa-print"></i> Cetak Laporan (PDF)
+                                    <button
+                                        type="button"
+                                        onClick={() => window.print()}
+                                        className="btn-report-action btn-report-print"
+                                        title="Cetak atau simpan laporan ke PDF"
+                                    >
+                                        <i className="fa-solid fa-print"></i>
+                                        <span>Cetak PDF</span>
                                     </button>
                                 </div>
                             </div>
@@ -2955,7 +2951,7 @@ export default function AdminDashboard() {
                                 Klasifikasi resmi master data antara item <strong>BELI (Tiket Masuk)</strong> dan <strong>SEWA (Fasilitas & Wahana)</strong>.
                             </p>
 
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                            <div className="kategori-tab-grid">
                                 {/* Kategori Beli */}
                                 <div style={{ backgroundColor: '#eff6ff', border: '1.5px solid #bfdbfe', borderRadius: '16px', padding: '18px' }}>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }}>
@@ -3067,7 +3063,7 @@ export default function AdminDashboard() {
 
                     {/* TAB: PENGGUNA (MANAGEMENT) */}
                     {activeTab === 'pengguna' && (
-                        <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 2fr', gap: '20px' }}>
+                        <div className="pengguna-tab-layout">
                             {/* Form tambah akun */}
                             <div className="chart-card-box">
                                 <h3>Daftarkan Staf Baru</h3>

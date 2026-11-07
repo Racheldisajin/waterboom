@@ -11233,3 +11233,225 @@ body,
         padding: 6px 8px !important;
     }
 }
+/* ============================================================
+   RESPONSIVE TAB LAYOUTS (PENGELUARAN, PENGGUNA, KATEGORI)
+   Stack vertically downwards ("kebawah") on tablet & mobile
+   ============================================================ */
+
+.pengeluaran-tab-layout {
+    display: grid;
+    grid-template-columns: minmax(320px, 1fr) 2fr;
+    gap: 24px;
+    width: 100%;
+    align-items: start;
+    box-sizing: border-box;
+}
+
+.pengguna-tab-layout {
+    display: grid;
+    grid-template-columns: minmax(320px, 1fr) 2fr;
+    gap: 20px;
+    width: 100%;
+    align-items: start;
+    box-sizing: border-box;
+}
+
+.kategori-tab-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+/* Tablet & Mobile Breakpoint (<= 1024px): BENTUKNYA KEBAWAH (VERTICAL STACK) */
+@media (max-width: 1024px) {
+    .pengeluaran-tab-layout,
+    .pengguna-tab-layout {
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 20px !important;
+        width: 100% !important;
+    }
+
+    .pengeluaran-tab-layout > .chart-card-box,
+    .pengeluaran-tab-layout > .data-table-card,
+    .pengguna-tab-layout > .chart-card-box,
+    .pengguna-tab-layout > .data-table-card {
+        width: 100% !important;
+        max-width: 100% !important;
+        box-sizing: border-box !important;
+    }
+
+    .kategori-tab-grid {
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 14px !important;
+        width: 100% !important;
+    }
+}
+
+@media (max-width: 576px) {
+    .pengeluaran-tab-layout,
+    .pengguna-tab-layout {
+        gap: 16px !important;
+    }
+
+    .pengeluaran-tab-layout .chart-card-box,
+    .pengguna-tab-layout .chart-card-box {
+        padding: 16px 14px !important;
+        border-radius: 16px !important;
+    }
+
+    .pengeluaran-tab-layout .chart-card-box h3,
+    .pengguna-tab-layout .chart-card-box h3 {
+        font-size: 1.05rem !important;
+        margin-bottom: 12px !important;
+    }
+
+    .pengeluaran-tab-layout .login-form,
+    .pengguna-tab-layout .login-form {
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 12px !important;
+        margin-top: 12px !important;
+    }
+
+    .pengeluaran-tab-layout .input-group-field,
+    .pengguna-tab-layout .input-group-field {
+        margin-bottom: 0 !important;
+        width: 100% !important;
+    }
+
+    .pengeluaran-tab-layout .input-group-field label,
+    .pengguna-tab-layout .input-group-field label {
+        font-size: 0.8rem !important;
+        font-weight: 700 !important;
+        margin-bottom: 4px !important;
+        display: block !important;
+    }
+
+    .pengeluaran-tab-layout .table-select-filter,
+    .pengguna-tab-layout .table-select-filter {
+        width: 100% !important;
+        box-sizing: border-box !important;
+        font-size: 0.85rem !important;
+    }
+
+    .pengeluaran-tab-layout .btn-login-submit,
+    .pengguna-tab-layout .btn-login-submit {
+        width: 100% !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        gap: 8px !important;
+        margin-top: 8px !important;
+        font-size: 0.88rem !important;
+        font-weight: 800 !important;
+        height: 46px !important;
+    }
+}
+
+/* ============================================================
+   COMPACT & SIMPLE REPORT HEADER ACTIONS
+   Eliminates giant balloon/pill shapes on mobile ("besar teuing")
+   ============================================================ */
+
+.report-header-block {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-bottom: 16px;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.report-header-block h3 {
+    margin: 0;
+    font-size: 1.1rem;
+    font-weight: 800;
+    color: #0c294a;
+}
+
+.report-action-buttons {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.btn-report-action {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 7px 14px;
+    border-radius: 8px;
+    font-size: 0.8rem;
+    font-weight: 800;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+    border: none;
+    line-height: 1.3;
+    min-height: 36px;
+    box-sizing: border-box;
+    text-decoration: none;
+}
+
+.btn-report-recap {
+    background-color: #eff6ff;
+    color: #2563eb;
+    border: 1.5px solid #bfdbfe;
+}
+
+.btn-report-recap:hover {
+    background-color: #dbeafe;
+    border-color: #93c5fd;
+    color: #1d4ed8;
+}
+
+.btn-report-print {
+    background-color: #16a34a;
+    color: #ffffff;
+    box-shadow: 0 2px 6px rgba(22, 163, 74, 0.2);
+}
+
+.btn-report-print:hover {
+    background-color: #15803d;
+    box-shadow: 0 4px 10px rgba(22, 163, 74, 0.3);
+}
+
+@media (max-width: 576px) {
+    .print-report-container {
+        padding: 14px 12px !important;
+        border-radius: 14px !important;
+    }
+
+    .report-header-block {
+        flex-direction: column !important;
+        align-items: flex-start !important;
+        gap: 10px !important;
+    }
+
+    .report-header-block h3 {
+        font-size: 1rem !important;
+    }
+
+    .report-action-buttons {
+        display: flex !important;
+        width: 100% !important;
+        gap: 8px !important;
+    }
+
+    .btn-report-action {
+        flex: 1 !important;
+        padding: 8px 10px !important;
+        font-size: 0.78rem !important;
+        border-radius: 8px !important;
+        min-height: 38px !important;
+        text-align: center !important;
+    }
+}
