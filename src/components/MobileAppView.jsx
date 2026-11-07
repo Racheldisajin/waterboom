@@ -17,8 +17,8 @@ export default function MobileAppView({ onOpenBooking, isCashierMode = false }) 
     }, [location]);
 
     const [selectedTicket, setSelectedTicket] = useState('reguler');
-    const [ticketQty, setTicketQty] = useState(2);
-    const [sewaBan, setSewaBan] = useState(1);
+    const [ticketQty, setTicketQty] = useState(0);
+    const [sewaBan, setSewaBan] = useState(0);
     const [sewaSepeda, setSewaSepeda] = useState(0);
     const [sewaGazebo, setSewaGazebo] = useState(0);
     const [showSidebar, setShowSidebar] = useState(false);
@@ -897,24 +897,26 @@ Mohon diproses konfirmasinya dan dikirimkan *Tiket Resmi PDF* ke nomor WhatsApp 
 
                         {/* Ticket Selector Section */}
                         <div className="app-section" style={{ marginTop: '22px' }}>
-                            <h4 className="section-title" style={{ marginTop: 0, marginBottom: '14px' }}><i className="fa-solid fa-tag text-blue"></i> 1. TIKET MASUK (OPSIONAL)</h4>
+                            <h4 className="section-title" style={{ marginTop: 0, marginBottom: '14px' }}>
+                                <i className="fa-solid fa-tag text-blue"></i> 1. TIKET MASUK (OPSIONAL)
+                            </h4>
                             <div className="ticket-cards-scroll">
                                 <div
                                     className={`app-ticket-card reguler ${selectedTicket === 'reguler' ? 'active' : ''}`}
                                     onClick={() => setSelectedTicket('reguler')}
                                 >
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                                        <div className="card-icon-circle blue" style={{ marginBottom: 0 }}>
+                                    <div className="ticket-card-left">
+                                        <div className="card-icon-circle blue">
                                             <i className="fa-solid fa-user-group"></i>
                                         </div>
-                                        <div>
-                                            <h5 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 800, color: '#0f2942' }}>Tiket Reguler</h5>
-                                            <span className="price-unit" style={{ fontSize: '0.76rem', color: '#64748b' }}>/orang</span>
+                                        <div className="ticket-card-info">
+                                            <h5 className="ticket-card-title">Tiket Reguler</h5>
+                                            <span className="price-unit">/orang</span>
                                         </div>
                                     </div>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                                        <span className="price-tag">Rp 20.000</span>
-                                        <div style={{ width: '22px', height: '22px', borderRadius: '50%', border: selectedTicket === 'reguler' ? '6px solid #1a73e8' : '2px solid #cbd5e1', backgroundColor: 'white', boxSizing: 'border-box' }}></div>
+                                    <div className="ticket-card-right">
+                                        <span className="price-tag blue">Rp 20.000</span>
+                                        <div className="ticket-radio-indicator"></div>
                                     </div>
                                 </div>
 
@@ -922,18 +924,18 @@ Mohon diproses konfirmasinya dan dikirimkan *Tiket Resmi PDF* ke nomor WhatsApp 
                                     className={`app-ticket-card rombongan ${selectedTicket === 'rombongan' ? 'active' : ''}`}
                                     onClick={() => setSelectedTicket('rombongan')}
                                 >
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                                        <div className="card-icon-circle orange" style={{ marginBottom: 0 }}>
+                                    <div className="ticket-card-left">
+                                        <div className="card-icon-circle orange">
                                             <i className="fa-solid fa-users"></i>
                                         </div>
-                                        <div>
-                                            <h5 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 800, color: '#0f2942' }}>Tiket Rombongan</h5>
-                                            <span className="price-unit" style={{ fontSize: '0.76rem', color: '#64748b' }}>/orang</span>
+                                        <div className="ticket-card-info">
+                                            <h5 className="ticket-card-title">Tiket Rombongan</h5>
+                                            <span className="price-unit">/orang</span>
                                         </div>
                                     </div>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                    <div className="ticket-card-right">
                                         <span className="price-tag orange">Rp 17.000</span>
-                                        <div style={{ width: '22px', height: '22px', borderRadius: '50%', border: selectedTicket === 'rombongan' ? '6px solid #f97316' : '2px solid #cbd5e1', backgroundColor: 'white', boxSizing: 'border-box' }}></div>
+                                        <div className="ticket-radio-indicator"></div>
                                     </div>
                                 </div>
 
@@ -941,18 +943,18 @@ Mohon diproses konfirmasinya dan dikirimkan *Tiket Resmi PDF* ke nomor WhatsApp 
                                     className={`app-ticket-card kursus ${selectedTicket === 'kursus' ? 'active' : ''}`}
                                     onClick={() => setSelectedTicket('kursus')}
                                 >
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                                        <div className="card-icon-circle green" style={{ marginBottom: 0 }}>
+                                    <div className="ticket-card-left">
+                                        <div className="card-icon-circle green">
                                             <i className="fa-solid fa-person-swimming"></i>
                                         </div>
-                                        <div>
-                                            <h5 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 800, color: '#0f2942' }}>Kursus Renang</h5>
-                                            <span className="price-unit" style={{ fontSize: '0.76rem', color: '#64748b' }}>/1x pertemuan</span>
+                                        <div className="ticket-card-info">
+                                            <h5 className="ticket-card-title">Kursus Renang</h5>
+                                            <span className="price-unit">/1x pertemuan</span>
                                         </div>
                                     </div>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                    <div className="ticket-card-right">
                                         <span className="price-tag green">Rp 15.000</span>
-                                        <div style={{ width: '22px', height: '22px', borderRadius: '50%', border: selectedTicket === 'kursus' ? '6px solid #16a34a' : '2px solid #cbd5e1', backgroundColor: 'white', boxSizing: 'border-box' }}></div>
+                                        <div className="ticket-radio-indicator"></div>
                                     </div>
                                 </div>
                             </div>
@@ -966,8 +968,11 @@ Mohon diproses konfirmasinya dan dikirimkan *Tiket Resmi PDF* ke nomor WhatsApp 
                             <div className="ticket-counter-row">
                                 <div className="counter-box-wrapper">
                                     <button
+                                        type="button"
                                         className="counter-btn-sq minus"
+                                        disabled={ticketQty === 0}
                                         onClick={() => ticketQty > 0 && setTicketQty(ticketQty - 1)}
+                                        aria-label="Kurangi tiket"
                                     >
                                         -
                                     </button>
@@ -976,8 +981,10 @@ Mohon diproses konfirmasinya dan dikirimkan *Tiket Resmi PDF* ke nomor WhatsApp 
                                         <span className="counter-number-unit">Orang</span>
                                     </div>
                                     <button
+                                        type="button"
                                         className="counter-btn-sq plus"
                                         onClick={() => setTicketQty(ticketQty + 1)}
+                                        aria-label="Tambah tiket"
                                     >
                                         +
                                     </button>
@@ -1005,9 +1012,9 @@ Mohon diproses konfirmasinya dan dikirimkan *Tiket Resmi PDF* ke nomor WhatsApp 
                                         </div>
                                     </div>
                                     <div className="rental-card-counter">
-                                        <button onClick={() => sewaBan > 0 && setSewaBan(sewaBan - 1)} className="r-btn">-</button>
+                                        <button type="button" onClick={() => sewaBan > 0 && setSewaBan(sewaBan - 1)} className="r-btn" disabled={sewaBan === 0}>-</button>
                                         <span className="r-val">{sewaBan}</span>
-                                        <button onClick={() => { setSewaBan(sewaBan + 1); setSewaSepeda(0); setSewaGazebo(0); }} className="r-btn">+</button>
+                                        <button type="button" onClick={() => { setSewaBan(sewaBan + 1); setSewaSepeda(0); setSewaGazebo(0); }} className="r-btn">+</button>
                                     </div>
                                 </div>
 
@@ -1020,9 +1027,9 @@ Mohon diproses konfirmasinya dan dikirimkan *Tiket Resmi PDF* ke nomor WhatsApp 
                                         </div>
                                     </div>
                                     <div className="rental-card-counter">
-                                        <button onClick={() => sewaSepeda > 0 && setSewaSepeda(sewaSepeda - 1)} className="r-btn">-</button>
+                                        <button type="button" onClick={() => sewaSepeda > 0 && setSewaSepeda(sewaSepeda - 1)} className="r-btn" disabled={sewaSepeda === 0}>-</button>
                                         <span className="r-val">{sewaSepeda}</span>
-                                        <button onClick={() => { setSewaSepeda(sewaSepeda + 1); setSewaBan(0); setSewaGazebo(0); }} className="r-btn">+</button>
+                                        <button type="button" onClick={() => { setSewaSepeda(sewaSepeda + 1); setSewaBan(0); setSewaGazebo(0); }} className="r-btn">+</button>
                                     </div>
                                 </div>
 
@@ -1035,9 +1042,9 @@ Mohon diproses konfirmasinya dan dikirimkan *Tiket Resmi PDF* ke nomor WhatsApp 
                                         </div>
                                     </div>
                                     <div className="rental-card-counter">
-                                        <button onClick={() => sewaGazebo > 0 && setSewaGazebo(sewaGazebo - 1)} className="r-btn">-</button>
+                                        <button type="button" onClick={() => sewaGazebo > 0 && setSewaGazebo(sewaGazebo - 1)} className="r-btn" disabled={sewaGazebo === 0}>-</button>
                                         <span className="r-val">{sewaGazebo}</span>
-                                        <button onClick={() => { setSewaGazebo(sewaGazebo + 1); setSewaBan(0); setSewaSepeda(0); }} className="r-btn">+</button>
+                                        <button type="button" onClick={() => { setSewaGazebo(sewaGazebo + 1); setSewaBan(0); setSewaSepeda(0); }} className="r-btn">+</button>
                                     </div>
                                 </div>
                             </div>

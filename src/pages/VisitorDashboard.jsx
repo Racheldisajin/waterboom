@@ -8,7 +8,7 @@ export default function VisitorDashboard() {
 
     // State for Desktop Form
     const [selectedTicket, setSelectedTicket] = useState('reguler');
-    const [ticketQty, setTicketQty] = useState(1);
+    const [ticketQty, setTicketQty] = useState(0);
     const todayStr = new Date().toISOString().split('T')[0];
     const [visitDate, setVisitDate] = useState(todayStr);
     
