@@ -110,7 +110,9 @@ export default function AdminDashboard() {
                     method: tx.payment_method === 'tunai' ? 'Tunai' :
                         tx.payment_method === 'qris' ? 'QRIS' : 'Transfer',
                     customer: tx.customer_name,
-                    status: tx.status
+                    status: tx.status,
+                    is_manual_recap: Boolean(tx.is_manual_recap || (tx.booking_code && tx.booking_code.startsWith('RKP-'))),
+                    recap_batch_id: tx.recap_batch_id || (tx.booking_code && tx.booking_code.startsWith('RKP-') ? tx.booking_code.split('-').slice(0, 3).join('-') : null)
                 };
             });
 
@@ -140,6 +142,113 @@ export default function AdminDashboard() {
             if (saved) setHistory(JSON.parse(saved));
         } finally {
             setLoading(false);
+        }
+    };
+
+    const fetchExpenditures = async () => {
+        try {
+            const { data, error } = await supabase
+                .from('expenditures')
+                .select('*')
+                .order('created_at', { ascending: false });
+
+            if (error) {
+                console.warn('Gagal fetch expenditures dari Supabase:', error.message);
+                return;
+            }
+
+            if (data && Array.isArray(data)) {
+                const dbExpenses = data.map(item => ({
+                    id: item.expense_code || String(item.id),
+                    expense_code: item.expense_code,
+                    date: item.date,
+                    created_at: item.created_at,
+                    category: item.category,
+                    desc: item.description || '',
+                    description: item.description || '',
+                    amount: Number(item.amount) || 0,
+                    is_manual_recap: Boolean(item.is_manual_recap),
+                    recap_batch_id: item.recap_batch_id
+                }));
+
+                const saved = localStorage.getItem('waterboom_expenditures');
+                let combined = [...dbExpenses];
+                if (saved) {
+                    try {
+                        const localItems = JSON.parse(saved);
+                        const existingIds = new Set(dbExpenses.map(d => d.id));
+                        localItems.forEach(loc => {
+                            if (loc && loc.id && !existingIds.has(loc.id)) {
+                                combined.push(loc);
+                            }
+                        });
+                    } catch (e) {
+                        console.warn('Error merging local expenditures:', e);
+                    }
+                }
+
+                setExpenditures(combined);
+                localStorage.setItem('waterboom_expenditures', JSON.stringify(combined));
+            }
+        } catch (err) {
+            console.warn('Error fetching expenditures:', err);
+        }
+    };
+
+    const fetchManualRecaps = async () => {
+        try {
+            const { data, error } = await supabase
+                .from('manual_recaps')
+                .select('*')
+                .order('created_at', { ascending: false });
+
+            if (error) {
+                console.warn('Gagal fetch manual_recaps dari Supabase:', error.message);
+                return;
+            }
+
+            if (data && Array.isArray(data)) {
+                const dbRecaps = data.map(r => ({
+                    batchId: r.batch_id,
+                    periodLabel: r.period_label,
+                    mode: r.mode || 'monthly',
+                    month: r.month,
+                    year: r.year,
+                    targetDate: r.target_date,
+                    formattedDate: new Date(r.target_date || r.created_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }),
+                    isoDate: r.created_at,
+                    notes: r.notes,
+                    totalIncome: Number(r.total_income) || 0,
+                    totalExpenses: Number(r.total_expenses) || 0,
+                    netIncome: Number(r.net_income) || 0,
+                    totalVisitors: Number(r.total_visitors) || 0,
+                    txCount: Number(r.tx_count) || 0,
+                    expCount: Number(r.exp_count) || 0,
+                    createdAt: r.created_at,
+                    createdBy: r.created_by || 'Admin'
+                }));
+
+                const saved = localStorage.getItem('waterboom_manual_recaps');
+                let combined = [...dbRecaps];
+                if (saved) {
+                    try {
+                        const localItems = JSON.parse(saved);
+                        const existingBatches = new Set(dbRecaps.map(d => d.batchId));
+                        localItems.forEach(loc => {
+                            if (loc && loc.batchId && !existingBatches.has(loc.batchId)) {
+                                combined.push(loc);
+                            }
+                        });
+                    } catch (e) {
+                        console.warn('Error merging local manual recaps:', e);
+                    }
+                }
+
+                setManualRecaps(combined);
+                localStorage.setItem('waterboom_manual_recaps', JSON.stringify(combined));
+            }
+        } catch (err) {
+            console.warn('Error fetching manual recaps:', err);
         }
     };
 
@@ -555,8 +664,14 @@ export default function AdminDashboard() {
 
         loadAllData();
         fetchTransactions();
+        fetchExpenditures();
+        fetchManualRecaps();
         // Refresh data setiap 30 detik
-        const interval = setInterval(fetchTransactions, 30000);
+        const interval = setInterval(() => {
+            fetchTransactions();
+            fetchExpenditures();
+            fetchManualRecaps();
+        }, 30000);
         window.addEventListener('storage', loadAllData);
         return () => {
             window.removeEventListener('storage', loadAllData);
@@ -785,17 +900,40 @@ export default function AdminDashboard() {
             newTxRows,
             supabaseRows,
             newExpenseRows,
+            supabaseExpenseRows,
+            supabaseRecapRow,
             grandTotalIncome,
             expenseTotal,
             totalVisitors
         } = recapPayload;
 
-        // 1. Insert into Supabase if connected
+        // 1. Insert into Supabase transactions if connected
         if (supabaseRows && supabaseRows.length > 0) {
             try {
-                await supabase.from('transactions').insert(supabaseRows);
+                const { error: txErr } = await supabase.from('transactions').insert(supabaseRows);
+                if (txErr) console.warn('Simpan transaksi Supabase peringatan:', txErr.message);
             } catch (err) {
-                console.warn('Simpan Supabase dilewati:', err);
+                console.warn('Simpan transaksi Supabase dilewati:', err);
+            }
+        }
+
+        // 2. Insert into Supabase expenditures if connected
+        if (supabaseExpenseRows && supabaseExpenseRows.length > 0) {
+            try {
+                const { error: expErr } = await supabase.from('expenditures').insert(supabaseExpenseRows);
+                if (expErr) console.warn('Simpan pengeluaran Supabase peringatan:', expErr.message);
+            } catch (err) {
+                console.warn('Simpan pengeluaran Supabase dilewati:', err);
+            }
+        }
+
+        // 3. Insert into Supabase manual_recaps if connected
+        if (supabaseRecapRow) {
+            try {
+                const { error: rkpErr } = await supabase.from('manual_recaps').insert([supabaseRecapRow]);
+                if (rkpErr) console.warn('Simpan manual_recaps Supabase peringatan:', rkpErr.message);
+            } catch (err) {
+                console.warn('Simpan manual_recaps Supabase dilewati:', err);
             }
         }
 
@@ -869,9 +1007,21 @@ export default function AdminDashboard() {
         }
 
         try {
-            await supabase.from('transactions').delete().like('booking_code', `${batchId}%`);
+            await supabase.from('transactions').delete().or(`booking_code.like.${batchId}%,recap_batch_id.eq.${batchId}`);
         } catch (e) {
             console.warn('Gagal hapus transaksi Supabase:', e);
+        }
+
+        try {
+            await supabase.from('expenditures').delete().eq('recap_batch_id', batchId);
+        } catch (e) {
+            console.warn('Gagal hapus pengeluaran Supabase:', e);
+        }
+
+        try {
+            await supabase.from('manual_recaps').delete().eq('batch_id', batchId);
+        } catch (e) {
+            console.warn('Gagal hapus manual_recaps Supabase:', e);
         }
 
         const updatedHistory = history.filter(item => item.recap_batch_id !== batchId && !((item.code || '').startsWith(batchId)));
@@ -942,6 +1092,24 @@ export default function AdminDashboard() {
         setExpenditures(updated);
         localStorage.setItem('waterboom_expenditures', JSON.stringify(updated));
 
+        // Sync ke Supabase expenditures jika ada koneksi
+        try {
+            supabase.from('expenditures').insert([{
+                expense_code: expObj.id,
+                category: expObj.category,
+                description: expObj.desc,
+                amount: expObj.amount,
+                date: expObj.date,
+                is_manual_recap: false,
+                created_by: currentAccount?.name || 'Admin',
+                created_at: expObj.created_at
+            }]).then(({ error }) => {
+                if (error) console.warn('Simpan pengeluaran Supabase peringatan:', error.message);
+            });
+        } catch (e) {
+            console.warn('Simpan pengeluaran Supabase error:', e);
+        }
+
         setNewExpense({ date: '', category: 'Operasional', desc: '', amount: '' });
 
         let total = 0;
@@ -956,12 +1124,21 @@ export default function AdminDashboard() {
     // Delete expenditure
     const handleDeleteExpense = (id) => {
         if (window.confirm('Hapus log pengeluaran ini?')) {
-            const updated = expenditures.filter(item => item.id !== id);
+            const updated = expenditures.filter(item => item.id !== id && item.expense_code !== id);
             setExpenditures(updated);
             localStorage.setItem('waterboom_expenditures', JSON.stringify(updated));
             let total = 0;
             updated.forEach(item => total += item.amount);
             setKpis(prev => ({ ...prev, outflow: total }));
+
+            // Sync hapus ke Supabase
+            try {
+                supabase.from('expenditures').delete().or(`expense_code.eq.${id},id.eq.${id}`).then(({ error }) => {
+                    if (error) console.warn('Hapus pengeluaran Supabase peringatan:', error.message);
+                });
+            } catch (e) {
+                console.warn('Hapus pengeluaran Supabase error:', e);
+            }
         }
     };
 
